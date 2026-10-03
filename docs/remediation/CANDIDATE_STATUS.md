@@ -1,18 +1,30 @@
 # Candidate status — AUDIT-003-R1, COMPUTED at round 122 (every figure re-derived from the ledger)
 
-> **CURRENT STATE (2026-10-02) — DERIVED, NOT CARRIED.** *Everything below this banner is HISTORICAL
+> **CURRENT STATE (2026-10-04) — DERIVED, NOT CARRIED.** *Everything below this banner is HISTORICAL
 > candidate narrative from the round-122 era and is preserved verbatim; its SHAs, lane counts and class
 > membership are NOT the current state.* **The current canonical state is DERIVED by
-> `scripts/build_structured_closure.py`: builder status `REMEDIATION_IN_PROGRESS`, 17 internal obligations
-> OPEN across 6 findings, `verified_fixed = 0`, 5 external obligations (`gs-final-004.native-engine-half`,
-> `gs-runtime-001.android-keystore`, `gs-store-002.sqlcipher-engine`, `gs-stress-001.device-radio`,
-> `gs-ux-001.human-accessibility-acceptance`).** *The rc14 candidate, its tag object and its attestation
-> remain immutable historical evidence; the rc14 attestation's blanket internal-completion verdict is NOT a
-> current completion claim.* **NO candidate carries a valid freeze for the current tree, and no READY status
-> is asserted.**
-> **Current rc15 work:** the Board1 campaign at `1d352a24` did **not** pass:
-> 74 `KILLED`, 14 `ESCAPED`, 64 `BASELINE_INVALID`, 4 `EXEC_INVALID`, 1 `BUILD_INVALID`,
-> and 17 `SKIPPED`. These outcome counts are not an aggregate killed percentage across lineages.
+> `scripts/build_structured_closure.py`: builder status `REMEDIATION_IN_PROGRESS`, 35 internal obligations
+> OPEN across 10 findings (GS-FINAL-003, GS-FINAL-004, GS-INTEGRATION-001, GS-RUNTIME-001, GS-STRESS-001,
+> GS-UX-001, GS-ARCHIVE-005, GS-FINAL-006, GS-STORE-002, AUDIT-B1-CTRL-001), ZERO DISCHARGED (every
+> rc14-era discharge is DEMOTED with its claim kept as `historical_discharge`), `verified_fixed = 0`, 5
+> external obligations (`gs-final-004.native-engine-half`, `gs-runtime-001.android-keystore`,
+> `gs-store-002.sqlcipher-engine`, `gs-stress-001.device-radio`, `gs-ux-001.human-accessibility-acceptance`).**
+> *The rc14 candidate, its tag object and its attestation remain immutable historical evidence; the rc14
+> attestation's blanket internal-completion verdict is NOT a current completion claim.* **The prospective
+> bound candidate is `production-readiness-board1-rc15` (its tag is created at freeze time; until then the
+> ref resolve th to nothing, which is the honest pre-freeze state, never a stale rc14 authority).** **NO
+> candidate carries a valid freeze for the current tree, and no READY status is asserted.**
+> **Source reconciliation (2026-10-04):** each authored review gap now carrieth, in place, a `review_status`
+> against the current production source -- 41 `REPAIRED_STALE`, 1 `PARTIAL`, 0 `LIVE`
+> (`IOSR13-ACCESSIBILITY-ROSTER-INCOMPLETE` -- PARTIAL). A `REPAIRED_STALE` status
+> settles ONLY the source half of a review's claim and does NOT discharge any obligation.
+> **Current rc15 work:** the full Board1 campaign at `a2090b59` did **not** pass:
+> 158 `KILLED`, 9 `ESCAPED`, 3 `EXEC_INVALID`, 3 `BUILD_INVALID`, and 1 `TIMEOUT`.
+> The repaired selected campaign at `23b6a92d` qualified 15 of those 16 controls with green restorations;
+> the corrected peer transaction lock mutation qualified separately at `bed99747` with a green restoration.
+> These two selected runs do not constitute a complete campaign on one revision.
+> Compiler refusal is a catch only for the explicitly declared permit type-enforcement control;
+> ordinary compile errors, missing execution, skipped cases and timeouts remain non-catches.
 > The simulator stock-SQLite oracle now stages the resolved device's runtime image, validates its export
 > surface, and checks the copied digest; missing supply remains a named failure, never a skip.
 > SQLCipher expectation generation now produces one source for both approved host/simulator modes,

@@ -614,6 +614,19 @@ private struct ArchiveDocumentReader: View {
                 Button { onBack() } label: {
                     Label("Back", systemImage: "chevron.backward")
                 }
+                // *** *** GS-UX-001 `accessibility` (LIGHT profile): THE READER'S WAY OUT MUST MEET THE iOS TOUCH
+                // MINIMUM -- MEASURED, NOT ASSUMED. *** ***
+                //
+                // *THE DEFECT THIS CLOSES, FOUND BY THE EXECUTED WITNESS RATHER THAN BY READING: the LIGHT roster arm
+                // measured this control at **58.3 x 20.3pt** -- the height of its own label plus an 8pt vertical pad,
+                // which is ABOVE the 44pt minimum only by accident of the font. **A control a finger must hit is a
+                // control the platform's own minimum governeth, and the READER'S ONLY WAY OUT is the last place to
+                // leave that to chance.** *So the SAME `GodstoneTheme.minimumTapTarget` constant every other tappable
+                // surface on this isle already carrieth is applied here, and `contentShape` maketh the WHOLE frame
+                // hittable rather than only the glyph inside it -- without it the frame groweth and the hit target doth
+                // not, which is the difference between a measured minimum and a claimed one.*
+                .frame(minHeight: GodstoneTheme.minimumTapTarget)
+                .contentShape(Rectangle())
                 .accessibilityIdentifier("archive.back")
                 .accessibilityHint("Returns to the search results or the document list you came from")
                 .padding(.vertical, 8)

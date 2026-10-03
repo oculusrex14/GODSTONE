@@ -155,8 +155,15 @@ internal interface MeshGraphComponent {
         /**
          * *** GS-FINAL-003 (A14): THE CONCRETE ROOT FACTORY WITH EXPLICIT REAL PRE-PRIVATE CAPABILITIES. ***
          *
-         * *Dagger supplies NO default for an omitted bound instance, so shipped production builds its graph HERE,
-         * with the owner-derived real recovery capabilities rather than relying on a false Dagger default.*
+         * *Dagger supplies NO default for an omitted bound instance, so production builds its graph HERE, with the
+         * owner-derived real recovery capabilities rather than relying on a false Dagger default.*
+         *
+         * *** AND ITS NON-TEST CALLERS ARE THE LEDGER'S OWN ANSWER TO `ANDROID-PROVIDER-COURT-PRODUCTION-UNUSED`: ***
+         * *the registered, non-LIGHT LabMesh consumer resolves its ADMISSION GATE here (`LabRuntime.sameEstateGate` ->
+         * `wipeSensitiveUseGate()`, reached by `LabMeshApplication` at process birth), and the mesh foreground service
+         * resolves its NODE here (`MeshService.onCreate` -> `meshNode()`).* **Both traverse the very binding a miswiring
+         * mutation reddens -- `MeshModule.provideWipeIsPending` -- so the guard is exercised on the road a device really
+         * takes, not by courts alone (witness: `GsFinal003ProviderCourtProductionUseTest`).**
          */
         fun production(ctx: Context): MeshGraphComponent =
             DaggerMeshGraphComponent.builder()

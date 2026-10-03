@@ -4,7 +4,7 @@ test_a_face_that_omits_a_locked_component_is_refused (test_audit_supplychain_har
 FAIL: test_a_face_that_omits_a_locked_component_is_refused (test_audit_supplychain_harness.CycloneDxCoverageCourt.test_a_face_that_omits_a_locked_component_is_refused)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/private/tmp/board1-campaign-rc15-work2/wt_RS-SBOM-01-face-coverage-asleep/tools/readiness/tests/test_audit_supplychain_harness.py", line 210, in test_a_face_that_omits_a_locked_component_is_refused
+  File "/private/tmp/board1-rc15-work-final/wt_RS-SBOM-01-face-coverage-asleep/tools/readiness/tests/test_audit_supplychain_harness.py", line 210, in test_a_face_that_omits_a_locked_component_is_refused
     self.assertTrue(any("maven:g:a:1" in item for item in problems), problems)
     ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: False is not true : []

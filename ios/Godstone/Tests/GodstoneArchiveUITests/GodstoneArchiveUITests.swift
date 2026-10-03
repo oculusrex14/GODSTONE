@@ -1142,4 +1142,166 @@ final class GodstoneArchiveUITests: XCTestCase {
                 + "landed. ***",
         )
     }
+
+    // ================================================================================================
+    // *** GS-UX-001 `accessibility`: THE LIGHT (SHIPPING) ROSTER -- ITS OWN CONTROLS, ITS OWN ROLES. ***
+    // ================================================================================================
+
+    /// *** THE PLATFORM'S MINIMUM, THE SAME NUMBER THE SHARED CONTRACT CARRIETH FOR iOS. ***
+    private let lightMinimumTouchTarget: CGFloat = 44
+
+    /// *** A FRAME READ THAT NEVER THROWS, OR NIL WHEN THE PLATFORM CANNOT COMPUTE ONE. ***
+    ///
+    /// *MEASURED on the sibling bundle: at the largest accessibility size XCUITest cannot compute an activation point
+    /// and `isHittable` RAISES -- an Objective-C exception Swift cannot catch. **A MEASUREMENT HELPER THAT THROWS IS AN
+    /// INSTRUMENT DEFECT**, so the frame is taken only when it is finite and non-empty, and a combination that cannot
+    /// be measured returneth nil rather than crashing the arm. The ROLE read (`elementType`) is metadata and is safe in
+    /// every combination, which is why this arm asserteth roles everywhere and targets only where a frame existeth.*
+    private func measuredFrame(_ element: XCUIElement) -> CGRect? {
+        guard element.exists else { return nil }
+        let frame = element.frame
+        guard frame.width > 0, frame.height > 0, !frame.isNull, !frame.isInfinite else { return nil }
+        return frame
+    }
+
+    /// *** THE ROLE EACH LIGHT CONTROL REALLY CARRIETH, READ FROM THE RESOLVED ELEMENT TYPE. ***
+    ///
+    /// *THE REVIEW'S CHARGE WAS THAT iOS rendered ROLES are not verified at all; the LabMesh bundle now asserteth
+    /// them for the LABMESH profile. **THE LIGHT PROFILE IS A DIFFERENT ROSTER -- the Archive-only shipping app
+    /// carrieth NO Send, NO SOS and NO recipient selector -- so its roles must be read from ITS OWN surface rather
+    /// than borrowed from the lab's, and the lab's essential controls must be provably ABSENT here rather than
+    /// silently assumed.***
+    ///
+    /// *XCUITest carrieth no traits API, so the ROLE is read from the element TYPE the identifier resolved to: a
+    /// SwiftUI `NavigationLink`/`Button` resolves to an ACTIONABLE type (`.button`, `.cell`, `.other`), while a status
+    /// or a value resolves to `.staticText`. **So the assertion is: a control that promiseth an action must resolve to
+    /// an actionable type.** Nothing about a particular control's SPELLING is pinned -- a reword must not redden this
+    /// arm, and only the SHAPE is asserted.* This is the internal, machine-decidable half; human VoiceOver acceptance
+    /// stayeth EXTERNAL (`gs-ux-001.human-accessibility-acceptance`).
+    private func assertLightRole(_ element: XCUIElement, kind: String, combination: String) {
+        let actionable: Set<XCUIElement.ElementType> = [.button, .cell, .other]
+        XCTAssertTrue(
+            actionable.contains(element.elementType),
+            "*** [LIGHT \(combination)] \(kind) '\(element.identifier)' MUST RESOLVE TO AN ACTIONABLE ROLE, not "
+                + "'\(element.elementType)': a navigation control the tree reporteth as static text is a row a "
+                + "screen-reader user cannot open. ***",
+        )
+    }
+
+    /// *** THE LIGHT ROSTER, IN EVERY COMBINATION THE CLAUSE NAMES (default/largest x LTR/RTL). ***
+    ///
+    /// *The clause asketh the roster be run at the DEFAULT and the LARGEST accessibility size, in LTR AND RTL. **SO
+    /// THIS ARM DRIVETH ALL FOUR COMBINATIONS ON THE SHIPPING APP'S OWN TREE**, asserts each control's rendered role
+    /// and non-empty name, and asserts separately that the LABMESH-only essential controls are ABSENT -- because the
+    /// applicable roster is the PROFILE's, not one borrowed from the other isle or the other bundle.*
+    ///
+    /// *The tap journey is driven at the default scale only, the same discipline the LabMesh arms obey: at AX-XXXL an
+    /// activation point is not always obtainable and `isHittable` RAISES (an Objective-C exception Swift cannot
+    /// catch), so a "probe" there IS the failure it was meant to detect. **ADDRESSABILITY and ROLE are still asserted
+    /// in every combination -- the assertion moveth from "hittable now" to "resolveable at all", and a control truly
+    /// absent still reddeneth.***
+    private func lightRosterAssertions(rtl: Bool, largestText: Bool) throws {
+        let fixture = try fixturePath()
+        let app = XCUIApplication()
+        app.launchArguments += ["-gs-archive-fixture", fixture]
+        app.launchArguments += ["-gs-clear-archive-place", "1"]
+        app.launchArguments += rtl ? ["-AppleLanguages", "(ar)", "-AppleLocale", "ar_SA"]
+                                   : ["-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
+        if largestText {
+            app.launchArguments += ["-UIPreferredContentSizeCategoryName",
+                                    "UICTContentSizeCategoryAccessibilityXXXL"]
+        }
+        app.launch()
+        let label = "\(rtl ? "RTL" : "LTR")/\(largestText ? "largest" : "default")"
+
+        XCTAssertTrue(
+            app.searchFields.firstMatch.waitForExistence(timeout: 40),
+            "*** [LIGHT \(label)] THE ARCHIVE MUST RENDER ITS ROOT SURFACE UNDER THIS COMBINATION -- a root that "
+                + "vanisheth when the layout mirrorreth or the type enlargeth is a surface some users cannot reach. ***",
+        )
+
+        // (1) THE BROWSING ROWS: each is a real control, so its role must be actionable and its name non-empty.
+        let rows = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier BEGINSWITH 'archive.document.'"))
+        XCTAssertGreaterThan(
+            rows.count, 0,
+            "*** [LIGHT \(label)] THE BROWSE LIST MUST RENDER ITS DOCUMENTS, before any query. ***",
+        )
+        for index in 0..<min(rows.count, 3) {
+            let row = rows.element(boundBy: index)
+            guard row.exists else { continue }
+            assertLightRole(row, kind: "a document row", combination: label)
+            XCTAssertFalse(
+                row.label.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                "*** [LIGHT \(label)] EVERY DOCUMENT ROW MUST CARRY A NON-EMPTY NAME -- a row a screen reader "
+                    + "readeth as blank is a document its user cannot identify. ***",
+            )
+        }
+
+        // (2) *** AND THE APPLICABLE ROSTER IS THE PROFILE'S: THE LABMESH-ONLY ESSENTIAL CONTROLS MUST NOT STAND. ***
+        //
+        // *`AccessibilityContract.essentialControls` names Send, the distress controls, the recipient selector and
+        // Retry -- ALL LABMESH controls. **THE LIGHT SHIPPING APP CARRIETH NONE OF THEM BY DESIGN** (it ships the
+        // Archive and no radio at all, per `ci/check_shipping_path.py`), so an arm that demanded them here would be
+        // asserting a roster this profile never registered -- and that is exactly the symmetric omission this campaign
+        // keepeth finding. **The honest assertion is their ABSENCE, and it is also a real safety property: a shipping
+        // app that rendered a Send or an SOS control would be shipping a radio journey its tier forbids.***
+        for forbidden in ["lab.conversation.send", "lab.sos.hold", "lab.sos.cancel", "lab.sos.retry",
+                          "lab.conversation.recipient"] {
+            XCTAssertFalse(
+                app.descendants(matching: .any).matching(identifier: forbidden).firstMatch.exists,
+                "*** [LIGHT \(label)] '\(forbidden)' IS A LABMESH CONTROL AND MUST NOT EXIST IN THE LIGHT ROSTER. ***",
+            )
+        }
+
+        // (3) *** THE OPEN/CLOSE JOURNEY, DRIVEN WHERE THE PLATFORM CAN COMPUTE AN ACTIVATION POINT. ***
+        guard !largestText else { return }
+        let firstRow = rows.element(boundBy: 0)
+        guard firstRow.exists else { return }
+        firstRow.tap()
+        let back = app.buttons["archive.back"].firstMatch
+        XCTAssertTrue(
+            back.waitForExistence(timeout: 25),
+            "*** [LIGHT \(label)] AN OPENED DOCUMENT MUST OFFER A RENDERED WAY OUT. ***",
+        )
+        assertLightRole(back, kind: "the reader's back control", combination: label)
+        XCTAssertFalse(
+            back.label.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+            "*** [LIGHT \(label)] THE BACK CONTROL MUST CARRY A NON-EMPTY NAME. ***",
+        )
+        if let backFrame = measuredFrame(back) {
+            XCTAssertGreaterThanOrEqual(
+                backFrame.height, lightMinimumTouchTarget,
+                "*** [LIGHT \(label)] THE BACK CONTROL MEASURES \(backFrame.width)x\(backFrame.height)pt, BELOW THE "
+                    + "44pt iOS MINIMUM. ***",
+            )
+        }
+        back.tap()
+        XCTAssertTrue(
+            app.descendants(matching: .any)
+                .matching(NSPredicate(format: "identifier BEGINSWITH 'archive.document.'"))
+                .firstMatch.waitForExistence(timeout: 25),
+            "*** [LIGHT \(label)] BACK MUST RETURN TO THE LIST. ***",
+        )
+    }
+
+    /// *** THE DEFAULT SCALE, LTR. ***
+    func testGSINT001TheLightRosterSurvivesDefaultScaleLTR() throws {
+        try lightRosterAssertions(rtl: false, largestText: false)
+    }
+
+    /// *** THE DEFAULT SCALE, RTL. ***
+    func testGSINT001TheLightRosterSurvivesDefaultScaleRTL() throws {
+        try lightRosterAssertions(rtl: true, largestText: false)
+    }
+
+    /// *** THE LARGEST ACCESSIBILITY SCALE, LTR. ***
+    func testGSINT001TheLightRosterSurvivesLargestScaleLTR() throws {
+        try lightRosterAssertions(rtl: false, largestText: true)
+    }
+
+    /// *** THE LARGEST ACCESSIBILITY SCALE, RTL. ***
+    func testGSINT001TheLightRosterSurvivesLargestScaleRTL() throws {
+        try lightRosterAssertions(rtl: true, largestText: true)
+    }
 }

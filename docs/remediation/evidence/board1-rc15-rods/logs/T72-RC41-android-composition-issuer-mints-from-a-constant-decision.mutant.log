@@ -1,5 +1,18 @@
 
-TEST-SUITE TEST-io.godstone.mesh.di.GsFinal003PrePrivateRecoveryGraphTest.xml tests=14 skipped=0 failures=0 errors=0
+14 tests completed, 1 failed
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':mesh:testDebugUnitTest'.
+> There were failing tests. See the report at: file:///private/tmp/board1-rc15-work-final/wt_T72-RC41-android-composition-issuer-mints-from-a-constant-decision/android/mesh/build/reports/tests/testDebugUnitTest/index.html
+
+* Try:
+> Run with --scan to get full insights.
+
+BUILD FAILED in 30s
+
+TEST-SUITE TEST-io.godstone.mesh.di.GsFinal003PrePrivateRecoveryGraphTest.xml tests=14 skipped=0 failures=1 errors=0
 TEST-CASE PASS theBarrierAndTheAdmissionGateReadOneDecisionOnEveryRung
 TEST-CASE PASS anUnreadableDurableRecordIsCorruptAndRefusedOnBothRoads
 TEST-CASE PASS aPublishedNameReachesTheTerminalRung
@@ -7,10 +20,10 @@ TEST-CASE PASS everyPersistedRungConvergesWithZeroPrivateConstruction
 TEST-CASE PASS onlyASettledEstateMintsAndItIsCheckedAgainstTheEvidence
 TEST-CASE PASS thePermitDoorTakesOnlyNonConstructibleEvidence
 TEST-CASE PASS aCorruptRecordIsOperatorResolvedAndTheAppThenStartsHonestly
-TEST-CASE PASS aPermitIsWithheldWhenTheDurableEstateMoved
 TEST-CASE PASS theProductionIdentitySeamReportsFailureAsTheTypedNegativeChannel
 TEST-CASE PASS theConstructionCounterMovesOnThePermittedRoadAndNotOnARefusingOne
 TEST-CASE PASS theRawOwnerConstructorConsumesTheAuthorityAtItsOwnBoundary
 TEST-CASE PASS anAbsentRecordIsACleanStartAndPermitsOnBothRoads
 TEST-CASE PASS aWipeThatRanToItsEndReadsAsWipeCompleted
 TEST-CASE PASS aFailedPublicationKeepsTheWipePending
+TEST-CASE FAIL aPermitIsWithheldWhenTheDurableEstateMoved

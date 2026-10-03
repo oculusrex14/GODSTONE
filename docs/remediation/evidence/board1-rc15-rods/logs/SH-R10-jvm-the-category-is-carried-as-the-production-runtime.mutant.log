@@ -1,7 +1,19 @@
 
-TEST-SUITE TEST-io.godstone.mesh.readiness.ReadinessT72Test.xml tests=24 skipped=0 failures=0 errors=0
+24 tests completed, 2 failed
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':mesh:testDebugUnitTest'.
+> There were failing tests. See the report at: file:///private/tmp/board1-rc15-work-final/wt_SH-R10-jvm-the-category-is-carried-as-the-production-runtime/android/mesh/build/reports/tests/testDebugUnitTest/index.html
+
+* Try:
+> Run with --scan to get full insights.
+
+BUILD FAILED in 29s
+
+TEST-SUITE TEST-io.godstone.mesh.readiness.ReadinessT72Test.xml tests=24 skipped=0 failures=2 errors=0
 TEST-CASE PASS testGSSTRESS001theFifthOwnerObserversIsCensused
-TEST-CASE PASS test_w00_the_result_carrieth_the_resource_model_category
 TEST-CASE PASS test_w04_no_duplicate_delivery_under_the_retry_cap
 TEST-CASE PASS testGSSTRESS001theThirdOwnerAdmittedLeasesIsCensused
 TEST-CASE PASS test_w10_a_failed_seed_is_recorded_and_reproducible
@@ -20,7 +32,8 @@ TEST-CASE PASS testGSSTRESS001theThirdOwnerIsDistinctFromTheSecond
 TEST-CASE PASS testGSSTRESS001theStoreObserversAreADistinctOwnerFromTheAuthoritys
 TEST-CASE PASS test_w09b_the_lifecycle_defects_are_independent
 TEST-CASE PASS test_w02_zero_leaks_after_shutdown
-TEST-CASE PASS test_w09c_the_result_carrieth_its_category_and_its_unmeasured_set
 TEST-CASE PASS test_w11_the_campaign_is_bounded_in_time
 TEST-CASE PASS test_w05_no_uncaught_malformed_input
 TEST-CASE PASS testGSSTRESS001theSecondOwnerIsCensusedAndAccused
+TEST-CASE FAIL test_w00_the_result_carrieth_the_resource_model_category
+TEST-CASE FAIL test_w09c_the_result_carrieth_its_category_and_its_unmeasured_set

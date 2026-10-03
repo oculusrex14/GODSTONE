@@ -6,7 +6,7 @@ FAIL: test_the_native_stack_is_not_the_model_weights (test_audit_supplychain_har
 native_models is the llama.cpp STACK; model_weights is the WEIGHTS.
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/private/tmp/board1-campaign-rc15-work2/wt_RS-NATIVE-01-native-stack-conflated-with-model-weights/tools/readiness/tests/test_audit_supplychain_harness.py", line 744, in test_the_native_stack_is_not_the_model_weights
+  File "/private/tmp/board1-rc15-work-final/wt_RS-NATIVE-01-native-stack-conflated-with-model-weights/tools/readiness/tests/test_audit_supplychain_harness.py", line 804, in test_the_native_stack_is_not_the_model_weights
     self.assertEqual("UNPINNED", native["digest_status"])
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 'UNPINNED' != 'ABSENT'

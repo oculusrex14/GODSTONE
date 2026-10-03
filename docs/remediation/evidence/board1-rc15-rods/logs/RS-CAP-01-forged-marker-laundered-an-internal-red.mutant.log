@@ -1,7 +1,17 @@
 test_an_internal_compile_failure_with_a_forged_marker_is_not_external (test_audit_supplychain_harness.ReleaseProofCaptureCourt.test_an_internal_compile_failure_with_a_forged_marker_is_not_external)
-The contract arm Main named: a marker does not launder a real internal red. ... ok
+The contract arm Main named: a marker does not launder a real internal red. ... FAIL
+
+======================================================================
+FAIL: test_an_internal_compile_failure_with_a_forged_marker_is_not_external (test_audit_supplychain_harness.ReleaseProofCaptureCourt.test_an_internal_compile_failure_with_a_forged_marker_is_not_external)
+The contract arm Main named: a marker does not launder a real internal red.
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/board1-rc15-work-final/wt_RS-CAP-01-forged-marker-laundered-an-internal-red/tools/readiness/tests/test_audit_supplychain_harness.py", line 509, in test_an_internal_compile_failure_with_a_forged_marker_is_not_external
+    with self.assertRaises(C.CaptureError):
+         ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^
+AssertionError: CaptureError not raised
 
 ----------------------------------------------------------------------
-Ran 1 test in 0.000s
+Ran 1 test in 0.001s
 
-OK
+FAILED (failures=1)

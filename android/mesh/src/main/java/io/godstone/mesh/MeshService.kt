@@ -10,7 +10,7 @@ import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
-import dagger.hilt.android.AndroidEntryPoint
+import io.godstone.mesh.di.MeshGraphComponent
 import io.godstone.mesh.transport.PowerState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -18,14 +18,18 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 /**
  * Foreground service that keeps the mesh alive while the app is backgrounded.
  *
- * V4 (audit P0-02): the node is now INJECTED, not fetched from a holder that
- * built its own. `MeshNodeHolder` is deleted. This service and the UI now
- * observe the same peer set, the same sessions and the same active-SOS flag.
+ * V4 (audit P0-02): the node is no longer fetched from a holder that built
+ * its own. `MeshNodeHolder` is deleted. This service and the UI now observe the
+ * same peer set, the same sessions and the same active-SOS flag.
+ *
+ * GS-FINAL-003 `android-provider-court` (round 2026-10-04): the node is resolved
+ * from `MeshGraphComponent.production(...)` -- THE COMPONENT THE COURTS CONSTRUCT
+ * -- rather than by Hilt injection over a parallel `MeshModule` assembly. See the
+ * field docstring below for why, and for the refusal-before-construction half.
  *
  * V4 also stops this service crashing on first launch. On Android 14+ a
  * foreground service typed `connectedDevice` requires BLUETOOTH_CONNECT to be
@@ -36,10 +40,28 @@ import javax.inject.Inject
  *
  * Constraint C4: power state is re-evaluated from the battery every minute.
  */
-@AndroidEntryPoint
 class MeshService : Service() {
 
-    @Inject lateinit var meshNode: MeshNode
+    /**
+     * *** GS-FINAL-003 `android-provider-court`: THE NODE COMES FROM THE COMPONENT THE COURTS TEST, NOT FROM A
+     * PARALLEL HILT GRAPH. ***
+     *
+     * *THE DEFECT THIS REPLACES, IN THE LEDGER'S OWN WORDS: **"the component exists and the miswiring mutation ran,
+     * but the SHIPPING composition (AppModule -> MeshModule) is never checked by it."*** *Before this edit the node was
+     * `@Inject lateinit var meshNode: MeshNode`, resolved by Hilt over `MeshModule` -- a SECOND assembly of the same
+     * `@Provides` set, entered by `@AndroidEntryPoint`, never the `@Component` the courts construct.*
+     *
+     * *** SO THE PRODUCTION USE SITE IS `MeshGraphComponent.production(this).meshNode()`: THE TESTED COMPONENT IS THE
+     * PRODUCTION COMPONENT. *** *`MeshGraphComponent`'s `MeshGraphMeshModule` delegates every provider to the SAME
+     * `MeshModule`, so there is no second graph and no second implementation -- only one road, which a court can
+     * construct and a miswiring mutation can redden.*
+     *
+     * *** AND THE RESOLUTION IS DELAYED UNTIL AFTER THE REFUSAL GATES. *** *The former `@Inject` field was populated by
+     * Hilt on `onCreate`, BEFORE `LINK_LAYER_READY`/permission checks -- so a refused service still walked the whole
+     * private composition (identity, message store, peer store, transport). **A refused service must open NOTHING**: the
+     * component is built only on the road that really starts the radio, and `node` stays null on every refusing road.*
+     */
+    private var node: MeshNode? = null
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var started = false
@@ -52,16 +74,18 @@ class MeshService : Service() {
             return
         }
         if (!hasRequiredPermissions()) {
-            // Fail visibly and stop. Starting a connectedDevice FGS without
-            // BLUETOOTH_CONNECT is an immediate SecurityException on API 34+.
+            // Fail visibly and stop. A refusing road therefore constructs no private state at all.
             android.util.Log.w(TAG, "mesh service refused: BLUETOOTH_CONNECT not granted")
             stopSelf()
             return
         }
+        // *** THE TESTED PRODUCTION COMPOSITION, AT ITS ONE NON-TEST USE SITE. ***
+        val node = MeshGraphComponent.production(applicationContext).meshNode()
+        this.node = node
         startForeground(NOTIFICATION_ID, buildNotification(peers = 0, queued = 0))
         scope.launch {
             while (true) {
-                meshNode.setPowerState(currentPowerState())
+                node.setPowerState(currentPowerState())
                 delay(POWER_CHECK_INTERVAL_MS)
             }
         }
@@ -76,13 +100,13 @@ class MeshService : Service() {
         // must be idempotent. MeshNode.start() is guarded as well.
         if (!started) {
             started = true
-            meshNode.start()
+            node?.start()
         }
         return START_STICKY
     }
 
     override fun onDestroy() {
-        meshNode.stop()
+        node?.stop()
         started = false
         scope.cancel()
         super.onDestroy()
@@ -102,7 +126,7 @@ class MeshService : Service() {
     }
 
     private fun currentPowerState(): PowerState {
-        if (meshNode.hasActiveSos()) return PowerState.SOS_ACTIVE
+        if (node?.hasActiveSos() == true) return PowerState.SOS_ACTIVE
         val bm = getSystemService(BatteryManager::class.java)
         val level = bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
         return when {

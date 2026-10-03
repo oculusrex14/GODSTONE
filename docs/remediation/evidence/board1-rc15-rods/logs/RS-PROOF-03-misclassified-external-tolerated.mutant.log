@@ -4,7 +4,7 @@ test_an_internal_failure_misclassified_as_external_is_refused (test_audit_supply
 FAIL: test_an_internal_failure_misclassified_as_external_is_refused (test_audit_supplychain_harness.ReleaseProofCourt.test_an_internal_failure_misclassified_as_external_is_refused)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/private/tmp/board1-campaign-rc15-work2/wt_RS-PROOF-03-misclassified-external-tolerated/tools/readiness/tests/test_audit_supplychain_harness.py", line 167, in test_an_internal_failure_misclassified_as_external_is_refused
+  File "/private/tmp/board1-rc15-work-final/wt_RS-PROOF-03-misclassified-external-tolerated/tools/readiness/tests/test_audit_supplychain_harness.py", line 167, in test_an_internal_failure_misclassified_as_external_is_refused
     self.assertTrue(any("NOT an external boundary" in item
     ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
                         for item in RP.verify_release_proof(document)))

@@ -6,7 +6,7 @@ FAIL: test_w08b_the_fault_liveness_clause_biteth (test_t72.T72FaultsTest.test_w0
 *** THE FAULT CAMPAIGN MUST ACTUALLY FIRE -- AND A DEAF SCHEDULE IS REDDENED BY NAME. ***
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/private/tmp/board1-campaign-rc15-work2/wt_SH-R04-python-the-fault-liveness-clause-is-asleep/tools/readiness/tests/test_t72.py", line 210, in test_w08b_the_fault_liveness_clause_biteth
+  File "/private/tmp/board1-rc15-work-final/wt_SH-R04-python-the-fault-liveness-clause-is-asleep/tools/readiness/tests/test_t72.py", line 210, in test_w08b_the_fault_liveness_clause_biteth
     self.assertFalse(deaf.passed, "a scheduled refusing fault that never fired must redden the run")
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: True is not false : a scheduled refusing fault that never fired must redden the run

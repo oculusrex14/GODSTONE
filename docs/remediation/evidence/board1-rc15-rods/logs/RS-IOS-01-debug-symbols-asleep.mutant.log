@@ -4,7 +4,7 @@ test_a_debug_laden_image_is_refused (test_audit_supplychain_harness.IosContentIn
 FAIL: test_a_debug_laden_image_is_refused (test_audit_supplychain_harness.IosContentInventoryCourt.test_a_debug_laden_image_is_refused)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/private/tmp/board1-campaign-rc15-work2/wt_RS-IOS-01-debug-symbols-asleep/tools/readiness/tests/test_audit_supplychain_harness.py", line 317, in test_a_debug_laden_image_is_refused
+  File "/private/tmp/board1-rc15-work-final/wt_RS-IOS-01-debug-symbols-asleep/tools/readiness/tests/test_audit_supplychain_harness.py", line 369, in test_a_debug_laden_image_is_refused
     self.assertEqual("FAIL", report["verdict"])
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 'FAIL' != 'PASS'
@@ -13,6 +13,6 @@ AssertionError: 'FAIL' != 'PASS'
 
 
 ----------------------------------------------------------------------
-Ran 1 test in 0.021s
+Ran 1 test in 0.016s
 
 FAILED (failures=1)

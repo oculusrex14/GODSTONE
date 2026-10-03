@@ -6,7 +6,7 @@ FAIL: test_w09b_the_measured_and_unmeasured_sets_are_typed_and_carried (test_t72
 *** THE 11-NAMES/7-MEASURED GAP, TYPED RATHER THAN NARRATED, AND CARRIED ON THE RESULT. ***
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/private/tmp/board1-campaign-rc15-work2/wt_SH-R06-python-the-unmeasured-invariant-set-is-silently-empty/tools/readiness/tests/test_t72.py", line 266, in test_w09b_the_measured_and_unmeasured_sets_are_typed_and_carried
+  File "/private/tmp/board1-rc15-work-final/wt_SH-R06-python-the-unmeasured-invariant-set-is-silently-empty/tools/readiness/tests/test_t72.py", line 266, in test_w09b_the_measured_and_unmeasured_sets_are_typed_and_carried
     self.assertEqual(result.unmeasured_invariants, Invariant.UNMEASURED)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: Tuples differ: () != ('no_leaked_reservations', 'no_leaked_inve[52 chars]ers')
@@ -22,6 +22,6 @@ First extra element 0:
 +  'no_leaked_observers')
 
 ----------------------------------------------------------------------
-Ran 1 test in 0.010s
+Ran 1 test in 0.011s
 
 FAILED (failures=1)

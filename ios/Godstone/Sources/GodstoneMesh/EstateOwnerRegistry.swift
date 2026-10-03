@@ -119,6 +119,22 @@ public final class PhysicalEstateAuthority: @unchecked Sendable {
     internal func serialized<T>(for estateId: String, _ body: () throws -> T) rethrows -> T {
         try serialized(body)
     }
+
+    /// *** IOSR1-permit-replay-aba RACE COURT: A NONBLOCKING PROBE OF THE SAME SERIALIZATION POINT. ***
+    ///
+    /// *A regression for the baseline-stamp race must KNOW, deterministically, whether `create` currently holdeth the
+    /// estate's lock -- so it can order a concurrent request relative to the baseline transaction WITHOUT sleeps,
+    /// timeout-based blocked-thread detection, or a fake mutex. This tries the SAME existing `lock`.*
+    ///
+    /// *** IT IS SCHEDULING SUPPORT ONLY, AND A COURT MUST NOT ASSERT ITS BOOLEAN AS THE ORACLE.** *The oracles are the
+    /// durable record and the consumer's refusal; this just chooseth an admissible, deterministic interleaving.*
+    /// `false` means the lock was HELD (the body did NOT run); `true` means the body ran.
+    internal func trySerializedForTest(_ body: () throws -> Void) rethrows -> Bool {
+        guard lock.try() else { return false }
+        defer { lock.unlock() }
+        try body()
+        return true
+    }
     fileprivate func nextOwnerToken() -> Int { let token = nextToken; nextToken += 1; return token }
 
     internal static func canonicalPath(_ url: URL) -> String {

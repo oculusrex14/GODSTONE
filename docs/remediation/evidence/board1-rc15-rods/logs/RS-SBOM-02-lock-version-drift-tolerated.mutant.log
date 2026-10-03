@@ -4,7 +4,7 @@ test_a_moved_version_is_refused_by_name (test_audit_supplychain_harness.SbomVers
 FAIL: test_a_moved_version_is_refused_by_name (test_audit_supplychain_harness.SbomVersionDriftCourt.test_a_moved_version_is_refused_by_name)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/private/tmp/board1-campaign-rc15-work2/wt_RS-SBOM-02-lock-version-drift-tolerated/tools/readiness/tests/test_audit_supplychain_harness.py", line 239, in test_a_moved_version_is_refused_by_name
+  File "/private/tmp/board1-rc15-work-final/wt_RS-SBOM-02-lock-version-drift-tolerated/tools/readiness/tests/test_audit_supplychain_harness.py", line 239, in test_a_moved_version_is_refused_by_name
     self.assertTrue(any("pypi:pyyaml:6.0.3" in item for item in problems),
     ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
                     problems)

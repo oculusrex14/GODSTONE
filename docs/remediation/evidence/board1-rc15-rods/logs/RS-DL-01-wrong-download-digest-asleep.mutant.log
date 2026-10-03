@@ -4,7 +4,7 @@ test_a_wrong_digest_is_refused_by_name (test_audit_supplychain_harness.Toolchain
 FAIL: test_a_wrong_digest_is_refused_by_name (test_audit_supplychain_harness.ToolchainDownloadCourt.test_a_wrong_digest_is_refused_by_name)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/private/tmp/board1-campaign-rc15-work2/wt_RS-DL-01-wrong-download-digest-asleep/tools/readiness/tests/test_audit_supplychain_harness.py", line 73, in test_a_wrong_digest_is_refused_by_name
+  File "/private/tmp/board1-rc15-work-final/wt_RS-DL-01-wrong-download-digest-asleep/tools/readiness/tests/test_audit_supplychain_harness.py", line 73, in test_a_wrong_digest_is_refused_by_name
     self.assertTrue(any("NOT THE PINNED ARCHIVE" in item for item in problems),
     ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
                     problems)

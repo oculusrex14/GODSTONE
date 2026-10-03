@@ -85,16 +85,56 @@ public protocol ResourceCensusSource: AnyObject {
     /// report a QUARANTINE count under the sessions invariant.* `liveReservations` asketh the reservation owner the
     /// project already made askable (`RecordWriter.reservedCountForTest()`), and its DEFAULT IS THE HONEST ONE: an
     /// owner that carrieth no reservations answereth `NOT_MEASURED`, NOT 0 -- *"nothing is leaking"* and *"nobody asked
-    /// my kind of owner"* are different answers.* The remaining owner-kind names stay in `Invariants.ownerKind` and
-    /// are carried as unmeasured until their owners are made askable (do NOT claim a census this seam cannot take).
+    /// my kind of owner"* are different answers.* Every `Invariants.ownerKind` name is now askable through a hook on
+    /// this protocol (see the four below); an owner that carrieth no such owner answereth `NOT_MEASURED` for it, and
+    /// both the owner and the invariant are carried as UNMEASURED rather than read as clean.
     ///
     /// The sentinel is spelled `NOT_MEASURED`, the Android isle's own name, so ONE GREP FINDETH IT ON EVERY ISLE.
     func liveReservations() -> Int
+
+    // *** GS-STRESS-001 (round 727, iOS): THE FOUR REMAINING CARD-NAMED OWNERS -- AND THE MEASURED REASON THEY WERE
+    // ABSENT. ***
+    //
+    // *MEASURED by the read-only audit and re-measured here: Android's `ResourceCensusSource` carrieth EIGHT ask-verbs
+    // (reservations, admitted inventory leases, armed timers, the authority's observers, pending ACKs, the store's own
+    // observers) while THIS isle carried ONE ask-verb plus the reservation hook -- so `Invariants.ownerKind` (four
+    // names) could NEVER be emitted here at all, and `run()` carried them as a HARD-CODED unmeasured list REGARDLESS
+    // of what a handed-in owner could answer. The by-name court was therefore VACUOUS for all four: it looped over
+    // names no code path on this isle could ever produce.*
+    //
+    // **AND THE OWNERS' HOOKS ALREADY EXIST ON THIS ISLE**, which is why this is a SEAM repair and not new machinery:
+    // `RecordWriter.admittedCount()` is the inventory-lease census (`reservedCountForTest()` is its reservation twin,
+    // already asked); `AckObligationStore.countObligations()` is the durable pending-ACK census the card nameth; and
+    // `MessageStore.observerCensusForTest()` is the store's OWN observer registration census (the card's `observers`).
+    // Each carries the SAME name as its Android twin, so ONE GREP FINDETH THE CONTRACT ON EVERY ISLE.
+    //
+    // THE DEFAULT REMAINS THE HONEST ONE: `NOT_MEASURED`, never zero -- *"nothing is leaking"* and *"nobody asked my
+    // kind of owner"* must stay distinguishable FROM THE RESULT (see `CampaignResult.unmeasuredInvariants`).
+    /// Admitted inventory leases -- the card's own term, read through `RecordWriter.admittedCount()`.
+    func liveAdmittedLeases() -> Int
+
+    /// Pending ACK obligations: work the system owed and did not discharge, read through
+    /// `AckObligationStore.countObligations()`.
+    func livePendingAcks() -> Int
+
+    /// Observer registrations held by the owner the card nameth as `observers`. The STORE that actually allocateth the
+    /// registration answereth through `MessageStore.observerCensusForTest()`; a conformance that carrieth no owner of
+    /// this kind answereth `NOT_MEASURED` rather than a convenient zero.
+    func liveObservers() -> Int
+
+    /// *** THE STORE'S OWN OBSERVER SET -- THE SAME NAME AS `observers`, A DIFFERENT OWNER. *** *The card's word
+    /// covereth both, so both are asked. `MessageStore.observerCensusForTest()` is the hook.*
+    func liveStoreObservers() -> Int
 }
 
 public extension ResourceCensusSource {
     /// The default is NOT_MEASURED, never zero: a kind this seam cannot census is named, not reported clean.
     func liveReservations() -> Int { NOT_MEASURED }
+    /// The four owner-kind hooks, all defaulting to the honest sentinel -- never a convenient zero.
+    func liveAdmittedLeases() -> Int { NOT_MEASURED }
+    func livePendingAcks() -> Int { NOT_MEASURED }
+    func liveObservers() -> Int { NOT_MEASURED }
+    func liveStoreObservers() -> Int { NOT_MEASURED }
 }
 
 public enum FaultKind {
@@ -142,10 +182,13 @@ public enum Invariants {
     /// COUNT can tell whether they agree.*
     private static let definedCount = 11
     /// *** GS-STRESS-001 (round 727): WHAT THIS MODEL MEASURES, AND WHAT IT EMITS ONLY THROUGH A REAL OWNER. ***
-    /// *MEASURED by the read-only audit: this isle's `ResourceCensusSource` carrieth ONE hook, so four of the eleven
-    /// names could never be emitted here at all -- and the court looped over `Invariants.all` asserting they were
-    /// absent from a healthy run, which was TRUE BY CONSTRUCTION. A check that cannot fail is not a check.* The split
-    /// is typed here and CARRIED on the result (`unmeasuredInvariants`), so "nothing is leaking" and "nobody asked my
+    /// *MEASURED by the read-only audit: this isle's `ResourceCensusSource` carried ONE ask-hook plus the reservation
+    /// hook, so the four `ownerKind` names could never be emitted here by the MODEL -- the court looped over
+    /// `Invariants.all` asserting they were absent from a healthy model run, which was TRUE BY CONSTRUCTION. A check
+    /// that cannot fail is not a check.* `ResourceCensusSource` now carrieth the SAME six ask-hooks the Android isle
+    /// carrieth (reservations, admitted inventory leases, pending ACKs, the authority's observers, the store's own
+    /// observers), so every `ownerKind` name IS emittable here -- WHEN AN OWNER IS HANDED IN. With no owner the names
+    /// are CARRIED as unmeasured on the result (`unmeasuredInvariants`), so "nothing is leaking" and "nobody asked my
     /// kind of owner" are distinguishable by any reader.
     public static let measuredFromTheModel = [noLeakedLeases, noLeakedTimers, noLeakedSessions,
                                               noDuplicateInbox, noDuplicateDelivery,
@@ -363,17 +406,35 @@ public final class StressCampaign {
         leases = 0
     }
 
+    /// *** ONE OWNER-KIND ASKED ONCE: A LEAK IS NAMED AGAINST THE INVARIANT AND THE OWNER; AN UNMEASURABLE OWNER
+    /// IS NAMED, NOT COUNTED AS A ZERO. *** *The two outcomes are the whole point of the seam: `NOT_MEASURED` is
+    /// carried as an UNMEASURED owner AND its invariant, so no reader can collapse "nothing is leaking" with "nobody
+    /// asked my kind of owner". The owner label carrieth the KIND in parentheses so two owners of one name (the
+    /// authority's observers and the store's) stay distinguishable, as the Android isle's own labels do.*
+    private func ask(_ owner: any ResourceCensusSource,
+                     _ invariant: String, _ noun: String, _ kind: String, _ value: Int,
+                     _ failures: inout [String], _ unmeasuredOwners: inout [String],
+                     _ unmeasuredInvariants: inout [String]) {
+        if value == NOT_MEASURED {
+            unmeasuredOwners.append("\(owner.ownerName) (\(kind))")
+            unmeasuredInvariants.append(invariant)
+        } else if value != 0 {
+            failures.append("\(invariant): \(value) \(noun) still live in the REAL owner "
+                + "'\(owner.ownerName)' after shutdown")
+        }
+    }
+
     public func run() -> CampaignResult {
         var failures: [String] = []
         var unmeasuredOwners: [String] = []
-        // *** THE INVARIANTS THIS RUN COULD NOT MEASURE, CARRIED RATHER THAN ABSENT (round 727). *** This isle's
-        // protocol carrieth only the session hook plus the reservation hook; the other owner-kind names in
-        // `Invariants.ownerKind` (inventory leases, ACK work, observers) have NO hook here at all -- and with no owner
-        // handed in, NONE of them can be asked. They are named, so a reader cannot take the empty failure list for a
-        // clean census.
-        var unmeasuredInvariants: [String] = [Invariants.noLeakedInventoryLeases,
-                                              Invariants.pendingAckWork, Invariants.noLeakedObservers]
-        if owners.isEmpty { unmeasuredInvariants.insert(Invariants.noLeakedReservations, at: 0) }
+        // *** THE INVARIANTS THIS RUN COULD NOT MEASURE, CARRIED RATHER THAN ABSENT (round 727). *** *MEASURED before
+        // this round: this isle's protocol carrieth the session hook plus the reservation hook, and `run()` carried a
+        // HARD-CODED list of the other owner-kind names REGARDLESS of what a handed-in owner could answer -- so the
+        // by-name court was VACUOUS for the inventory-lease, ACK-work and observer kinds: no code path on this isle
+        // could emit them. The protocol now carrieth the SAME six ask-hooks the Android isle carrieth, and the list is
+        // DERIVED from the owners below rather than typed. With NO owner handed in, EVERY owner-kind name is
+        // unmeasured and named, so an empty failure list is never mistaken for a clean census.*
+        var unmeasuredInvariants: [String] = []
         var censusHigh = 0
         var step = 0
         while step < cycles {
@@ -400,29 +461,53 @@ public final class StressCampaign {
         if sessions != 0 {
             failures.append("\(Invariants.noLeakedSessions): \(sessions) session(s) leaked after shutdown")
         }
-        // *** GS-STRESS-001 step 3: AND THE INVARIANT IS ASKED OF THE REAL OWNERS. The clause above readeth the
-        // MODEL'S OWN integer, which only this campaign can move -- so it cannot be falsified by a real leak, and a
-        // model that agreeth with itself is not evidence about a runtime. THE NUMBERS BELOW ARE THE OWNERS' OWN,
-        // read through the owners' evidence hooks, and a failure NAMETH the owner it accuseth.
-        // IT IS ASKED AFTER `shutdown()` (above), because the question is whether the owner RETAINED anything. ***
+        // *** GS-STRESS-001 step 3: AND THE INVARIANT IS ASKED OF THE REAL OWNERS, AFTER `shutdown()` (above),
+        // because the question is whether the owner RETAINED anything.
+        // *** GS-STRESS-001 (round 727, iOS): EVERY CARD-NAMED OWNER-KIND IS ASKED, AND AN UNMEASURABLE ONE IS NAMED
+        // RATHER THAN TREATED AS CLEAN. *** *The clause above readeth the MODEL'S own integer, which only this
+        // campaign can move -- so it cannot be falsified by a real leak, and a model that agreeth with itself is not
+        // evidence about a runtime. THE NUMBERS BELOW ARE THE OWNERS' OWN, read through the owners' own evidence hooks
+        // (`slotCountForTest`, `reservedCountForTest`, `admittedCount`, `countObligations`, `observerCensusForTest`),
+        // and a failure NAMETH the invariant AND the owner it accuseth. A `NOT_MEASURED`
+        // answer NAMETH both the owner and the invariant instead of collapsing them to a false zero.*
+        //
+        // *AND A KIND WITHOUT A REAL OWNER IN A CONFORMANCE IS LEFT `NOT_MEASURED`, NEVER A HARDCODED ZERO.* The owner
+        // that actually allocateth a registration is the STORE (`MessageStore.observerCensusForTest()`); a conformance
+        // that carrieth no such owner leaves `noLeakedObservers` UNMEASURED rather than reporting a fabricated clean.
+        if owners.isEmpty {
+            // *No owner could be asked: the four owner-kinds are named as UNASKED, not read as clean. The OWNER list
+            // stayeth EMPTY -- there was no owner to name -- exactly as the Android isle carrieth it; the invariant
+            // names above are what tell a reader the census was never taken.*
+            unmeasuredInvariants = Invariants.ownerKind
+        }
+        // ONE ROW PER (owner, owner-kind): the invariant, its reader, the failure wording, and whether the
+        // SESSION/RESERVATION kinds belong here (they have their own clauses above and below).
         for owner in owners {
+            // THE FIRST OWNER: SESSIONS -- the one hook this isle carried from the beginning.
             let live = owner.liveSessionSlots()
             if live != 0 {
                 failures.append("\(Invariants.noLeakedSessions): \(live) session slot(s) still live in the REAL "
                     + "owner '\(owner.ownerName)' after shutdown")
             }
-            // *** GS-STRESS-001 (round 727): THE SECOND OWNER, ASKED OF THIS ISLE TOO -- AND AN UNMEASURABLE ONE IS
-            // NAMED, NOT TREATED AS CLEAN. *** `liveReservations`' DEFAULT is `NOT_MEASURED`, so an owner that carrieth
-            // no reservations is NEVER a false zero. A leak in this kind was previously reported (if at all) under the
-            // SESSIONS invariant by the only existing conformance; it now carrieth its own name.
-            let reservations = owner.liveReservations()
-            if reservations == NOT_MEASURED {
-                unmeasuredOwners.append("\(owner.ownerName) (reservations)")
-                unmeasuredInvariants.append(Invariants.noLeakedReservations)
-            } else if reservations != 0 {
-                failures.append("\(Invariants.noLeakedReservations): \(reservations) writer reservation(s) still live "
-                    + "in the REAL owner '\(owner.ownerName)' after shutdown")
-            }
+            ask(owner, Invariants.noLeakedReservations, "writer reservation(s)", "reservations",
+                owner.liveReservations(), &failures, &unmeasuredOwners, &unmeasuredInvariants)
+            ask(owner, Invariants.noLeakedInventoryLeases, "admitted lease(s)", "admitted leases",
+                owner.liveAdmittedLeases(), &failures, &unmeasuredOwners, &unmeasuredInvariants)
+            ask(owner, Invariants.noLeakedObservers, "observer registration(s)", "observers",
+                owner.liveObservers(), &failures, &unmeasuredOwners, &unmeasuredInvariants)
+            ask(owner, Invariants.noLeakedObservers, "store observer(s)", "store observers",
+                owner.liveStoreObservers(), &failures, &unmeasuredOwners, &unmeasuredInvariants)
+            ask(owner, Invariants.pendingAckWork, "pending ACK obligation(s)", "pending acks",
+                owner.livePendingAcks(), &failures, &unmeasuredOwners, &unmeasuredInvariants)
+        }
+        // *** A RESULT CARRIETH A CANONICAL, DEDUPLICATED UNMEASURED SET. *** *Two owners of one kind, or one owner
+        // that cannot answer two kinds, must not make the carried set depend on the owner list's order or repeats --
+        // the same canonical-instance discipline the `no_duplicate_inbox` clause already keepeth for its msg_id.*
+        if !unmeasuredInvariants.isEmpty {
+            unmeasuredInvariants = Array(Set(unmeasuredInvariants)).sorted()
+        }
+        if !unmeasuredOwners.isEmpty {
+            unmeasuredOwners = Array(Set(unmeasuredOwners)).sorted()
         }
         // GS-STRESS-001 (round 274): THE REPORTED INSTANCE IS CANONICAL, AND THIS IS A WITNESS REPAIR RATHER
         // THAN A BEHAVIOURAL ONE. `first(where:)` over a Dictionary chooseth WHICHEVER offending entry the

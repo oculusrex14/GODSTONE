@@ -5,12 +5,12 @@ FAILURE: Build failed with an exception.
 
 * What went wrong:
 Execution failed for task ':mesh:testDebugUnitTest'.
-> There were failing tests. See the report at: file:///private/tmp/board1-campaign-rc15-work2/wt_ANDE-A8-09-REENTRANCY-GUARD-DROPPED/android/mesh/build/reports/tests/testDebugUnitTest/index.html
+> There were failing tests. See the report at: file:///private/tmp/board1-rc15-work-final/wt_ANDE-A8-09-REENTRANCY-GUARD-DROPPED/android/mesh/build/reports/tests/testDebugUnitTest/index.html
 
 * Try:
 > Run with --scan to get full insights.
 
-BUILD FAILED in 16s
+BUILD FAILED in 31s
 
 TEST-SUITE TEST-io.godstone.mesh.di.GsFinal003EstateAuthorityCourtsTest.xml tests=8 skipped=0 failures=1 errors=0
 TEST-CASE PASS theProductionJournalReportsItsCommitVerdict

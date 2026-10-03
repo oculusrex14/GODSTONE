@@ -4,7 +4,7 @@ test_a_mesh_importing_image_is_refused_by_its_symbol_table (test_audit_supplycha
 FAIL: test_a_mesh_importing_image_is_refused_by_its_symbol_table (test_audit_supplychain_harness.IosContentInventoryCourt.test_a_mesh_importing_image_is_refused_by_its_symbol_table)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/private/tmp/board1-campaign-rc15-work2/wt_RS-IOS-02-undefined-mesh-import-asleep/tools/readiness/tests/test_audit_supplychain_harness.py", line 323, in test_a_mesh_importing_image_is_refused_by_its_symbol_table
+  File "/private/tmp/board1-rc15-work-final/wt_RS-IOS-02-undefined-mesh-import-asleep/tools/readiness/tests/test_audit_supplychain_harness.py", line 375, in test_a_mesh_importing_image_is_refused_by_its_symbol_table
     self.assertEqual("FAIL", report["verdict"])
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 'FAIL' != 'PASS'
@@ -13,6 +13,6 @@ AssertionError: 'FAIL' != 'PASS'
 
 
 ----------------------------------------------------------------------
-Ran 1 test in 0.018s
+Ran 1 test in 0.016s
 
 FAILED (failures=1)

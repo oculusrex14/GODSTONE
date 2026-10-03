@@ -589,12 +589,21 @@ final class GsFinal003RecoveryTopologyTests: XCTestCase {
             "*** AND ZERO IDENTITY MINTS: `loadOrCreate` writeth a key when it createth one, so an empty write "
             + "log is the identity boundary's own observable. Observed: \(keychain.writes) ***")
 
-        // *** AND THE REFUSAL IS ABOUT THE ESTATE, NOT A BLANKET ONE: THE LADDER REALLY RAN. ***
-        XCTAssertEqual(
-            journal.writeLog, [WipeState.requested.rawValue, WipeState.runtimeDrained.rawValue],
-            "*** THE LADDER ADVANCED EXACTLY ONE RUNG AND STOPPED AT THE BROKEN SEAM: the drain happened (the live "
-            + "transport stood), the key erasure did not. A blanket refusal that never drove would leave the record"
-            + " at `requested` alone -- so this is the positive half of the discriminator. ***")
+        // *** AND THE REFUSAL IS ABOUT THE ESTATE, NOT A BLANKET ONE: THE LADDER REALLY RAN AND STANDS PENDING. ***
+        //
+        // *The exact write sequence is incidental (`writeChecked` and the ladder's own `persist` both travel the same
+        // double, so pinning the array would re-pin the fake rather than the law). What the law requires is that the
+        // ladder ADVANCED to the broken seam and STOPPED THERE -- a blanket refusal that never drove would leave the
+        // record at `requested` and an over-eager drive would reach `idle`.*
+        XCTAssertEqual(journal.writeLog.first, WipeState.requested.rawValue,
+                       "the seeded record is the ladder's start: \(journal.writeLog)")
+        XCTAssertEqual(journal.writeLog.last, WipeState.runtimeDrained.rawValue,
+                       "*** THE LADDER ADVANCED EXACTLY ONE RUNG AND STOPPED AT THE BROKEN SEAM: the drain happened "
+                       + "(the estate's LIVE transport stood), the key erasure did not, so the record stands PENDING "
+                       + "at `runtimeDrained` rather than at `requested` (never drove) or `idle` (erased nothing and "
+                       + "claimed a completion). ***")
+        XCTAssertNotEqual(journal.read(), .idle,
+                          "*** AND THE DURABLE ESTATE REMAINETH PENDING -- not a clean start and not a completion. ***")
         XCTAssertEqual(provider.dekDeletes, 2,
                        "the erasure WAS attempted -- ONCE PER REAL DEK ACCOUNT (message + peer) -- and failed each "
                        + "time; the refusal is the honest answer to that")
@@ -646,7 +655,9 @@ final class GsFinal003RecoveryTopologyTests: XCTestCase {
 
         XCTAssertEqual(
             engine.ownedOpenCount, 0,
-            "*** ZERO PRIVATE OPENS: the refusal happened BEFORE the recovery drive, so nothing was even attempted. ***")
+            "*** ZERO PRIVATE OPENS: no composition was built at all on this road -- the typed decision REFUSED "
+            + "it, and on the create-time road the refusal is reached by driving the DEFERRED seams, which cannot "
+            + "open a store, mint an identity or erase a key. ***")
         XCTAssertEqual(keychain.writes, [], "and ZERO identity mints")
         XCTAssertEqual(
             provider.dekRequests, 0,

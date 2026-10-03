@@ -18,5 +18,3 @@
    13. a source changed while the lane ran (pre != post) red    red    KILLED
 
 ui selftest: 16/16 mutations killed
-
-(the intended control(s) ['6c'] did NOT escape -- observed ESCAPED=[]; an unattributed failure is not a kill)

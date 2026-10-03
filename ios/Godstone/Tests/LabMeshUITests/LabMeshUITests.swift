@@ -350,6 +350,224 @@ final class LabMeshUITests: XCTestCase {
         )
     }
 
+    /// *** *** GS-UX-001 `rendered-controls` / IOS-FOLLOWUP-C1: THE INDEPENDENT-PROCESS DURABLE-ACKNOWLEDGMENT
+    /// WITNESS -- THE ACKNOWLEDGED GENERATION, THE REAL LADDER'S RUNGS, AND THE PERSISTED ROWS, ACROSS THREE
+    /// PROCESSES. *** ***
+    ///
+    /// *THE GAP THIS CLOSES, MEASURED: the durable-acknowledgment road -- `establishBaseline()`'s CHECKED epoch rise,
+    /// `settledSnapshot()`'s pinned `(idle, N)`, and `bumpEpoch()`'s refusal to name a generation for a present estate
+    /// whose history carrieth no counter -- lived entirely in the module and was asserted only by in-process model
+    /// courts. **NO RENDERED SURFACE NAMED THE ACKNOWLEDGED GENERATION AT ALL**, so no witness DRIVING THIS APP could
+    /// bind the number the medium acknowledged across a terminate/reopen: an arm could see a rung, a verdict and an
+    /// artifact list, but never the NUMBER, and a number a surface cannot name is a number a fresh process cannot
+    /// prove it read. `lab.diagnostics.generation` and `lab.diagnostics.liverung` now render it, read from
+    /// `WipeJournalDurabilityAdapter.durableEpoch` over the SAME journal the ladder writeth.*
+    ///
+    /// **AND THE DISCRIMINATOR IS THE PROCESS BOUNDARY, NOT A CLAIM.** *Nothing of a terminated process is consulted
+    /// at the relaunch -- `app.terminate()` then `XCUIApplication().launch()` -- so a generation (or a rung, or an
+    /// artifact readout) held in memory would read `unacknowledged` / `none read` there, and the arm would redden.*
+    /// **The RENDERED Begin-wipe control drives `MeshRuntime.runRecoveryLadder(requestFresh: true)` over the lab's
+    /// OWN estate -- the SAME production road `MeshRuntime.create` takes -- so the REQUESTED checkpoint and every rung
+    /// it earns are written durably through the checked append, and the fresh process reads the ADVANCED generation
+    /// from the medium.** *A no-op control, or a generation the surface invented, reddens at the third process.*
+    func testGSINT001TheAcknowledgedGenerationRungAndArtifactsSurviveTheProcess() throws {
+        // (0) A CLEAN ESTATE, SO THIS ARM MEASURETH THIS RUN RATHER THAN THE PREVIOUS ONE. *`installStandardControls`
+        // establishes the normal surfaces in the SAME test, so the fixture is known to have reached the app.*
+        installStandardControls()
+
+        // The rendered readouts, addressed by their own identifiers in whatever element type SwiftUI chose.
+        func generationLine(_ app: XCUIApplication) -> XCUIElement {
+            app.staticTexts["lab.diagnostics.generation"]
+        }
+        func settled(_ element: XCUIElement) -> String {
+            var value = element.label
+            let deadline = Date().addingTimeInterval(20)
+            while Date() < deadline {
+                value = element.label
+                if value.contains("acknowledged") { break }
+                usleep(200_000)
+            }
+            return value
+        }
+        /// The NUMBER the rendered line names, or nil when it names none -- so the assertion is about the durable
+        /// value rather than about the line's spelling, and an `unacknowledged` read returneth nil and reddeneth BY
+        /// NAME in the caller's message.
+        func number(_ words: String) -> UInt64? {
+            guard let token = words.split(separator: " ").dropFirst().first else { return nil }
+            return UInt64(token)
+        }
+        /// A readout that must have rendered before its label meaneth anything: a MISSING element readeth as an
+        /// empty string, and an empty string satisfieth a `!contains(...)` clause vacuously.
+        func requiredLine(_ app: XCUIApplication, _ identifier: String, _ why: String) -> XCUIElement {
+            let element = app.staticTexts[identifier]
+            XCTAssertTrue(element.waitForExistence(timeout: 25), "*** \(why) Observed element missing: '\(identifier)'. ***")
+            return element
+        }
+        /// The diagnostics surface must stand before any of its readouts mean anything.
+        func openDiagnostics(_ app: XCUIApplication) {
+            let tab = self.tab("lab.tab.diagnostics", in: app)
+            XCTAssertTrue(tab.waitForExistence(timeout: 30),
+                          "*** A SETTLED RECORD MUST COMPOSE NORMALLY, SO THE DIAGNOSTICS SURFACE MUST STAND. ***")
+            tab.tap()
+        }
+
+        // (1) THE BASELINE: a `reset` boot re-stamps the pinned, readable `idle|1` beside floor 1, so the app must
+        // render the generation the MEDIUM acknowledged -- and the record must be readable enough to name its rung.
+        let app = launchFixture("reset")
+        openDiagnostics(app)
+        let generation = generationLine(app)
+        XCTAssertTrue(generation.waitForExistence(timeout: 25),
+                      "*** THE ACKNOWLEDGED GENERATION MUST RENDER (`lab.diagnostics.generation`). ***")
+        let baselineWords = settled(generation)
+        XCTAssertEqual(
+            number(baselineWords), 1,
+            "*** A CLEAN ESTATE MUST CARRY A DURABLY ACKNOWLEDGED BASELINE GENERATION, READ FROM THE MEDIUM (the "
+                + "record's phase-stamped suffix pinned to the floor) -- never a local 0 and never a fabricated "
+                + "number. Observed: '\(baselineWords)' ***",
+        )
+        // *** AND THE RUNG READOUT IS THE MEDIUM'S OWN VIEW, WITH NO PERSISTED-OUTCOME FALLBACK. ***
+        //
+        // *MEASURED FROM THE ADAPTER'S OWN CONTRACT BEFORE THIS ASSERTION WAS WRITTEN: `readJournal()` answereth `[]`
+        // for `.idle` -- "IDLE and 'nothing was ever requested' are the same estate and reporting a longer history
+        // than the store carrieth would be inventing a past" -- so a CLEAN PINNED RECORD LEGITIMATELY NAMES NO
+        // OUTSTANDING RUNG. **A rung line that invented one here would be the defect this arm existeth to catch**;
+        // naming none is the truth, and it is asserted as such rather than assumed away.*
+        let baselineRung = requiredLine(
+            app, "lab.diagnostics.liverung",
+            "THE MEDIUM'S OWN RUNG READING MUST RENDER, so the assertion below is about a line that really exists "
+                + "rather than about an absent element read as an empty string.").label
+        XCTAssertEqual(
+            baselineRung, "rung: none read",
+            "*** A CLEAN PINNED `idle|1` RECORD CARRIETH NO OUTSTANDING RUNG: the adapter collapseth a settled "
+                + "record to an empty durable view BY DESIGN, so the medium's own reading is 'none read'. A rung "
+                + "line that named one here would be a rung the record doth not carry. Observed: '\(baselineRung)' ***",
+        )
+
+        // (2) *** THE PROCESS BOUNDARY: terminate, relaunch WITH NO FIXTURE VALUE, and require the SAME number. ***
+        app.terminate()
+        let relaunched = XCUIApplication()
+        relaunched.launch()
+        openDiagnostics(relaunched)
+        let relaunchedGeneration = generationLine(relaunched)
+        XCTAssertTrue(relaunchedGeneration.waitForExistence(timeout: 30),
+                      "the acknowledged generation must render after a relaunch")
+        let afterRelaunch = settled(relaunchedGeneration)
+        // *** A GUARD, SO nil == nil CANNOT PASS AS "THE SAME NUMBER". ***
+        guard let baselineNumber = number(baselineWords), let relaunchNumber = number(afterRelaunch) else {
+            XCTFail("*** THE ACKNOWLEDGED GENERATION MUST BE READABLE IN BOTH PROCESSES; observed '\(baselineWords)' "
+                + "and '\(afterRelaunch)'. `unacknowledged` meaneth the record named no pinned generation, and "
+                + "`nil == nil` must never stand in for agreement. ***")
+            return
+        }
+        XCTAssertEqual(
+            relaunchNumber, baselineNumber,
+            "*** THE ACKNOWLEDGED GENERATION MUST SURVIVE THE PROCESS: a FRESH process is consulted here, and it "
+                + "reads the number from the MEDIUM, so a value held in memory would read `unacknowledged` (nil) "
+                + "instead. Observed: '\(baselineWords)' -> '\(afterRelaunch)' ***",
+        )
+
+        // (3) *** THE REAL LADDER, DRIVEN FROM THE RENDERED CONTROL -- a fresh request writes REQUESTED durably and
+        // advances every rung its real seams allow, exactly as the shipping composition's create-time road doth. ***
+        let begin = relaunched.buttons["lab.diagnostics.beginwipe"]
+        XCTAssertTrue(begin.exists, "*** THE WIPE CONTROL MUST STAND AS A CONTROL. ***")
+        XCTAssertTrue(begin.isEnabled, "and it must be actionable")
+        XCTAssertTrue(scrollIntoView(begin, in: relaunched), "and it must be reachable by a user")
+        let result = relaunched.staticTexts["lab.diagnostics.wiperesult"]
+        XCTAssertTrue(result.waitForExistence(timeout: 25), "the wipe result must render")
+        begin.tap()
+
+        // *** AND THE RESUME ROAD DRIVES THE LADDER ONWARD FROM WHEREVER THE DURABLE RECORD STANDETH -- the crash
+        // path, driven live. *** *The pair is the one the sibling wipe arm already driveth: a fresh request writeth
+        // `REQUESTED` and advances every rung its real seams allow, and a resume continueth from the persisted rung.
+        // Both controls report the PRODUCTION ladder's own typed outcome (`wipe_completed @ <rung> (<artifacts>)`), so
+        // a control whose closure merely set a string reddens here.*
+        let resume = relaunched.buttons["lab.diagnostics.resumewipe"]
+        XCTAssertTrue(resume.waitForExistence(timeout: 25), "the resume control must stand")
+        XCTAssertTrue(scrollIntoView(resume, in: relaunched), "and it must be reachable")
+        var outcome = result.label
+        var deadline = Date().addingTimeInterval(25)
+        while Date() < deadline {
+            outcome = result.label
+            if !outcome.hasSuffix("not requested") { break }
+            usleep(250_000)
+        }
+        XCTAssertFalse(
+            outcome.hasSuffix("not requested"),
+            "*** THE FRESH REQUEST MUST HAVE ACTED AND REPORTED -- its result is written from the TYPED outcome of the "
+                + "production ladder, not from a local flag. Observed: '\(outcome)' ***",
+        )
+        resume.tap()
+        // *THE RESUME IS ANOTHER PHASE. The observable is NOT a particular decision WORD -- a ladder that already ran
+        // to its end legitimately answereth `clean_start` on a subsequent resume (the estate really is clean), so
+        // pinning a phrase here would be an incidental-prose assertion, not a behavioural one. **WHAT IS ASSERTED IS
+        // THE MEDIUM: the control acted (the placeholder is gone), the filesystem lost its artifacts, and the durable
+        // record settled to no outstanding rung.***
+        deadline = Date().addingTimeInterval(30)
+        while Date() < deadline {
+            outcome = result.label
+            if !outcome.hasSuffix("not requested") { break }
+            usleep(250_000)
+        }
+        // AND THE FILESYSTEM HALF: the measured artifacts must reach empty, which is what maketh the decision's
+        // completion honest rather than a checkpoint standing over a store that survived.
+        let artifacts = relaunched.staticTexts["lab.diagnostics.wipeartifacts"]
+        XCTAssertTrue(artifacts.waitForExistence(timeout: 25), "the artifact readout must render")
+        deadline = Date().addingTimeInterval(25)
+        var artifactLine = artifacts.label
+        while Date() < deadline {
+            artifactLine = artifacts.label
+            if artifactLine.contains("no private artifact remains") { break }
+            usleep(250_000)
+        }
+        XCTAssertTrue(
+            artifactLine.contains("no private artifact remains"),
+            "*** THE WIPE MUST REALLY DELETE THE LAB'S OWN FILES: the filesystem-measured readout must reach 'no "
+                + "private artifact remains'. Observed: '\(artifactLine)' ***",
+        )
+
+        // (4) *** A THIRD PROCESS MUST READ THE ADVANCED GENERATION, THE SETTLED RECORD, AND NO OUTSTANDING RUNG --
+        // ALL FROM THE MEDIUM. ***
+        relaunched.terminate()
+        let third = XCUIApplication()
+        third.launch()
+        openDiagnostics(third)
+        let thirdGeneration = generationLine(third)
+        XCTAssertTrue(thirdGeneration.waitForExistence(timeout: 30),
+                      "the acknowledged generation must render in the third process")
+        let finalWords = settled(thirdGeneration)
+        guard let finalNumber = number(finalWords) else {
+            XCTFail("*** THE THIRD PROCESS MUST NAME A NUMERIC ACKNOWLEDGED GENERATION; observed '\(finalWords)'. A "
+                + "surface that rendered `unacknowledged` here is the failure this arm existeth to catch. ***")
+            return
+        }
+        XCTAssertGreaterThan(
+            finalNumber, baselineNumber,
+            "*** THE ACKNOWLEDGED GENERATION MUST HAVE ADVANCED ACROSS THE REAL WIPE, STORED ON THE MEDIUM: the fresh "
+                + "request's checked epoch rise raiseth the durable floor, and the bump is REFUSED (not fabricated) when "
+                + "the medium cannot acknowledge it -- so a fresh process must read a STRICTLY GREATER number than the "
+                + "baseline. Observed: \(baselineNumber) -> \(finalNumber) ***",
+        )
+        // *** AND WITH THE NUMBER, THE RECORD'S OWN ROWS: a completed ladder settles to an EMPTY durable view, so a
+        // fresh process must find NO OUTSTANDING RUNG and must not read the record as a first launch. ***
+        let finalRung = requiredLine(
+            third, "lab.diagnostics.liverung",
+            "THE MEDIUM'S OWN RUNG READING MUST RENDER IN THE THIRD PROCESS, so 'no outstanding rung' is asserted of "
+                + "a line that really exists rather than of an absent element read as an empty string.")
+        XCTAssertTrue(
+            finalRung.label.contains("none read"),
+            "*** A COMPLETED LADDER SETTLES TO AN EMPTY DURABLE VIEW, SO A FRESH PROCESS MUST FIND NO OUTSTANDING "
+                + "RUNG -- the journal's own answer, read from the medium. Observed: '\(finalRung.label)' ***",
+        )
+        // AND THE HUMAN-FACING WIPE LINE STILL RENDERETH ITS HONEST WORDS FROM THE SAME RECORD.
+        let finalState = requiredLine(third, "lab.diagnostics.wipestate",
+                                      "THE WIPE STATE MUST RENDER IN THE THIRD PROCESS.")
+        XCTAssertFalse(
+            finalState.label.contains("no wipe was ever requested"),
+            "*** A RECORD THE FIRST PROCESS REALLY WROTE MUST NOT READ AS A FIRST LAUNCH IN THE THIRD: a wipe was "
+                + "requested, durably. Observed: '\(finalState.label)' ***",
+        )
+    }
+
     /// *** *** GS-UX-001 `required-retry`: THE ESSENTIAL `Retry` CONTROL, DRIVEN. *** ***
     ///
     /// *THE OMISSION THIS ARM CLOSES: `AccessibilityContract.essentialControls` declares `("retry", "Retry")`

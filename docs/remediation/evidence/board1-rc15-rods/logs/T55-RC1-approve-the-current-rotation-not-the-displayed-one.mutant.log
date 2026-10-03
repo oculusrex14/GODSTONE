@@ -5,12 +5,12 @@ FAILURE: Build failed with an exception.
 
 * What went wrong:
 Execution failed for task ':app:testLightDebugUnitTest'.
-> There were failing tests. See the report at: file:///private/tmp/board1-campaign-rc15-work2/wt_T55-RC1-approve-the-current-rotation-not-the-displayed-one/android/app/build/reports/tests/testLightDebugUnitTest/index.html
+> There were failing tests. See the report at: file:///private/tmp/board1-rc15-work-final/wt_T55-RC1-approve-the-current-rotation-not-the-displayed-one/android/app/build/reports/tests/testLightDebugUnitTest/index.html
 
 * Try:
 > Run with --scan to get full insights.
 
-BUILD FAILED in 8s
+BUILD FAILED in 15s
 
 TEST-SUITE TEST-io.godstone.app.readiness.ReadinessT55Test.xml tests=15 skipped=0 failures=2 errors=0
 TEST-CASE PASS test_w01_one_contact_is_verified_only_after_the_compare

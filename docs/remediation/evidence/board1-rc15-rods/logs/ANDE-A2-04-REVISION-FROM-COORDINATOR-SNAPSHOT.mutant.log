@@ -1,10 +1,23 @@
 
-TEST-SUITE TEST-io.godstone.mesh.di.GsFinal003EstateAuthorityCourtsTest.xml tests=8 skipped=0 failures=0 errors=0
+8 tests completed, 1 failed
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':mesh:testDebugUnitTest'.
+> There were failing tests. See the report at: file:///private/tmp/board1-rc15-work-final/wt_ANDE-A2-04-REVISION-FROM-COORDINATOR-SNAPSHOT/android/mesh/build/reports/tests/testDebugUnitTest/index.html
+
+* Try:
+> Run with --scan to get full insights.
+
+BUILD FAILED in 30s
+
+TEST-SUITE TEST-io.godstone.mesh.di.GsFinal003EstateAuthorityCourtsTest.xml tests=8 skipped=0 failures=1 errors=0
 TEST-CASE PASS aReentrantDriveOnTheOneOwnerIsRefused
 TEST-CASE PASS theProductionJournalReportsItsCommitVerdict
 TEST-CASE PASS aFailedCheckpointStopsTheLadderBeforeAnyEffect
 TEST-CASE PASS theCorruptResolutionErasesAndNeverClaimsCleanStart
 TEST-CASE PASS aStoreThatCannotNameAGenerationFailsClosed
 TEST-CASE PASS theRawOwnerBoundaryConsumesTheAuthority
-TEST-CASE PASS aCompletedWipeIsADifferentEstate
 TEST-CASE PASS thePermitDoorAdmitsOnlyNonConstructibleEvidence
+TEST-CASE FAIL aCompletedWipeIsADifferentEstate

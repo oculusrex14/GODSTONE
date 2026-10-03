@@ -347,29 +347,46 @@ class LabRuntime private constructor(
         }
 
         /**
-         * *** THE SAME-ESTATE GATE ITSELF: ONE READING OF THE DURABLE RECORD, THE ONE THE BARRIER USES. ***
+         * *** THE SAME-ESTATE GATE ITSELF: THE REGISTERED CONSUMER CONSUMES THE TESTED PRODUCTION COMPONENT. ***
          *
          * *`StartupRecoveryGraph.decisionAtRest` is the PRODUCTION mapping over the isle's own `FileWipeJournal`, so the
          * answer a bootstrap gets and the answer the startup barrier gets are two readings of ONE decision function --
          * never two authorities.* **This is what maketh "the app consults the recovery owner before it composes" a fact
          * about the code.**
          *
-         * *The decision is read ON EVERY ADMISSION (`NormalEstateGate.admit()` is called once per node), so an estate
-         * that a wipe requested between two nodes refuses the SECOND node rather than a cached answer.*
+         * *The decision is read ON EVERY ADMISSION (`NormalEstateGate.admit()` is called once at process birth), so an
+         * estate that a wipe requested between two compositions refuses the later one rather than a cached answer.*
+         *
+         * *** GS-FINAL-003 `android-provider-court`: AND THE ADMISSION IS TAKEN FROM `MeshGraphComponent`, NOT FROM A
+         * PARALLEL LAMBDA. *** *THE LEDGER'S OWN WORDS: **"the component exists and the miswiring mutation ran, but the
+         * SHIPPING composition is never checked by it."*** *Before this edit this gate re-implemented the mapping over
+         * `decisionAtRest` itself, so no production consumer ever resolved `MeshGraphComponent` -- and the binding whose
+         * POLARITY shipped INVERTED for eighteen rounds (`MeshModule.provideWipeIsPending`, the one the component
+         * resolves) was exercised by courts alone.* **The launchable LabMesh application now resolves its admission
+         * through `MeshGraphComponent.production(ctx).wipeSensitiveUseGate()`, so THE REGISTERED, NON-LIGHT CONSUMER
+         * traverses the very binding a miswiring mutation reddens -- the component's `production(ctx)` factory at last
+         * has a non-test caller, in the boot path a user's device really takes.**
+         *
+         * *The refusal WORDS re-read the same decision function, for the human-facing sentence only: the ADMISSION is
+         * single-sourced from the tested binding, so a miswired gate refuses here rather than admitting a private estate
+         * mid-erasure.*
          */
-        fun sameEstateGate(ctx: android.content.Context): io.godstone.mesh.runtime.NormalEstateGate =
-            io.godstone.mesh.runtime.NormalEstateGate {
-                val decision = io.godstone.mesh.di.StartupRecoveryGraph
-                    .decisionAtRest(io.godstone.mesh.identity.FileWipeJournal(ctx))
-                if (decision.allowsPrivateConstruction) {
+        fun sameEstateGate(ctx: android.content.Context): io.godstone.mesh.runtime.NormalEstateGate {
+            // *** THE TESTED PRODUCTION BINDING -- the component the courts construct, resolved at the lab's own gate. ***
+            val productionGate = io.godstone.mesh.di.MeshGraphComponent.production(ctx).wipeSensitiveUseGate()
+            return io.godstone.mesh.runtime.NormalEstateGate {
+                if (productionGate.allowsSensitiveUse()) {
                     io.godstone.mesh.runtime.NormalEstateVerdict.Admitted
                 } else {
+                    val decision = io.godstone.mesh.di.StartupRecoveryGraph
+                        .decisionAtRest(io.godstone.mesh.identity.FileWipeJournal(ctx))
                     io.godstone.mesh.runtime.NormalEstateVerdict.Refused(
                         "the durable recovery record decided ${decision.wireName}: a normal private estate may " +
                             "not be composed until the wipe is resolved",
                     )
                 }
             }
+        }
 
         /** The honest readiness statement. It carrieth no parameter, so no caller
          *  can argue it into saying true. */

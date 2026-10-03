@@ -242,6 +242,132 @@ final class ReadinessT72Tests: XCTestCase {
         func liveSessionSlots() -> Int { 0 }
     }
 
+    /// *** W15d -- GS-STRESS-001 (round 727): THE THREE REMAINING CARD-NAMED OWNER-KINDS, EACH ASKED BY ITS OWN
+    /// NAME. ***
+    ///
+    /// *MEASURED before this arm: iOS's `ResourceCensusSource` carrieth ONE ask-hook (`liveSessionSlots`) plus the
+    /// reservation hook, so `noLeakedInventoryLeases`, `pendingAckWork` and `noLeakedObservers` could NEVER be emitted
+    /// here -- the by-name court was VACUOUS for them. This conformance carrieth a value per kind (nil = the protocol
+    /// default = `NOT_MEASURED`), so each kind is exercised on its own. The names and semantics are the Android isle's,
+    /// spell'd the same way, and the hooks read REAL owner methods (`RecordWriter.admittedCount`,
+    /// `AckObligationStore.countObligations`, `MessageStore.observerCensusForTest`) wherever a real owner is handed in
+    /// -- see W15e.*
+    private final class W15dOwners: ResourceCensusSource {
+        let ownerName: String
+        private let slots: Int
+        private let reservations: Int?
+        private let admitted: Int?
+        private let acks: Int?
+        private let observers: Int?
+        private let storeObservers: Int?
+        init(_ name: String, slots: Int = 0, reservations: Int? = 0,
+             admitted: Int? = 0, acks: Int? = 0, observers: Int? = 0, storeObservers: Int? = 0) {
+            self.ownerName = name; self.slots = slots; self.reservations = reservations
+            self.admitted = admitted; self.acks = acks; self.observers = observers
+            self.storeObservers = storeObservers
+        }
+        func liveSessionSlots() -> Int { slots }
+        func liveReservations() -> Int { reservations ?? NOT_MEASURED }
+        func liveAdmittedLeases() -> Int { admitted ?? NOT_MEASURED }
+        func livePendingAcks() -> Int { acks ?? NOT_MEASURED }
+        func liveObservers() -> Int { observers ?? NOT_MEASURED }
+        func liveStoreObservers() -> Int { storeObservers ?? NOT_MEASURED }
+    }
+
+    /// *** THE MEASURED-CLEAN CONTROL FIRST, SO EVERY LEAK ARM BELOW IS NOT SATISFIED BY A SEAM THAT ACCUSES EVERY
+    /// OWNER. *** *An owner that overrideth ALL SIX hooks to a MEASURED ZERO is neither accused nor reported
+    /// unmeasured -- the cheapest way to pass (report every owner unmeasured) is condemned here.*
+    func testW15dAMeasuredCleanOwnerIsNeitherAccusedNorUnmeasured() {
+        let clean = StressCampaign(seed: 7, cycles: 64, owners: [W15dOwners("RecordWriter")]).run()
+        XCTAssertTrue(clean.failures.allSatisfy { !$0.contains("REAL owner") }, "\(clean.failures)")
+        XCTAssertFalse(clean.unmeasuredOwners.contains { $0.contains("RecordWriter") },
+                       "a fully-measured clean owner must not be listed unmeasured: \(clean.unmeasuredOwners)")
+        XCTAssertTrue(Set(clean.unmeasuredInvariants).isDisjoint(with: Set(Invariants.ownerKind)),
+                      "and no owner-kind invariant may be named unmeasured: \(clean.unmeasuredInvariants)")
+    }
+
+    /// *** THE THIRD OWNER -- THE CARD'S OWN "INVENTORY LEASES" -- IS CENSUSED, AND ITS LEAK IS NAMED. ***
+    func testW15dTheInventoryLeaseOwnerIsCensusedAndAccused() {
+        let leaking = StressCampaign(seed: 7, cycles: 64,
+                                     owners: [W15dOwners("RecordWriter", admitted: 2)]).run()
+        XCTAssertTrue(leaking.failures.contains {
+            $0.contains(Invariants.noLeakedInventoryLeases) && $0.contains("RecordWriter")
+        }, "a leaked admitted lease must be named against its owner: \(leaking.failures)")
+        XCTAssertFalse(leaking.unmeasuredInvariants.contains(Invariants.noLeakedInventoryLeases))
+        // AND DISTINGUISHABLE FROM THE RESERVATION KIND: an owner clean in reservations but leaking leases accuseth
+        // ONLY the lease -- otherwise two censuses would be one census wearing two names.
+        XCTAssertFalse(leaking.failures.contains { $0.contains("writer reservation") }, "\(leaking.failures)")
+    }
+
+    /// *** THE SIXTH OWNER -- "ACK WORK" -- IS CENSUSED: a pending obligation is A DUTY THE SYSTEM OWED. ***
+    func testW15dThePendingAckOwnerIsCensusedAndAccused() {
+        let leaking = StressCampaign(seed: 7, cycles: 64,
+                                     owners: [W15dOwners("AckObligationStore", acks: 2)]).run()
+        XCTAssertTrue(leaking.failures.contains {
+            $0.contains(Invariants.pendingAckWork) && $0.contains("AckObligationStore")
+        }, "a pending ACK obligation must be named against its owner: \(leaking.failures)")
+        XCTAssertFalse(leaking.unmeasuredInvariants.contains(Invariants.pendingAckWork))
+    }
+
+    /// *** THE FIFTH AND SEVENTH -- TWO OWNERS OF ONE NAME (`observers`) -- STAY DISTINGUISHABLE. ***
+    func testW15dTheTwoObserverOwnersStayDistinguishable() {
+        let authority = StressCampaign(seed: 7, cycles: 64,
+                                       owners: [W15dOwners("LinkInfoSnapshotAuthority", observers: 3)]).run()
+        XCTAssertTrue(authority.failures.contains {
+            $0.contains(Invariants.noLeakedObservers) && $0.contains("LinkInfoSnapshotAuthority")
+        }, "\(authority.failures)")
+        XCTAssertFalse(authority.failures.contains { $0.contains("store observer") }, "\(authority.failures)")
+
+        let store = StressCampaign(seed: 7, cycles: 64,
+                                   owners: [W15dOwners("MessageStore", storeObservers: 4)]).run()
+        XCTAssertTrue(store.failures.contains {
+            $0.contains(Invariants.noLeakedObservers) && $0.contains("MessageStore")
+        }, "\(store.failures)")
+        XCTAssertFalse(store.failures.contains { $0.contains("observer registration") }, "\(store.failures)")
+    }
+
+    /// *** AND EACH NEW KIND IS DISTINGUISHABLE WHEN ITS OWNER CANNOT ANSWER: an unmeasurable kind is NAMED, never
+    /// treated as a clean zero. ***
+    func testW15dAnUnmeasurableKindIsNamedNotCountedAsClean() {
+        let unanswered = StressCampaign(seed: 7, cycles: 64,
+                                        owners: [W15dOwners("TimerWheel", admitted: nil, acks: nil,
+                                                           observers: nil, storeObservers: nil)]).run()
+        XCTAssertTrue(unanswered.unmeasuredOwners.contains { $0.contains("TimerWheel") },
+                      "each unmeasurable kind must be named: \(unanswered.unmeasuredOwners)")
+        for invariant in [Invariants.noLeakedInventoryLeases, Invariants.pendingAckWork,
+                          Invariants.noLeakedObservers] {
+            XCTAssertTrue(unanswered.unmeasuredInvariants.contains(invariant),
+                          "\(invariant) went unasked and must say so: \(unanswered.unmeasuredInvariants)")
+        }
+        XCTAssertFalse(unanswered.failures.contains { $0.contains("TimerWheel") },
+                       "an unmeasured owner is NAMED, never accused of a leak it did not report: "
+                       + "\(unanswered.failures)")
+
+        // *** AND THE PROTOCOL'S OWN DEFAULTS, EXERCISED RATHER THAN COPIED: an owner that overrideth NOTHING must
+        // leave EVERY owner-kind name UNMEASURED -- never a convenient zero -- AND THE RESULT MUST CARRY THE
+        // PER-KIND OWNER RECORD BY NAME. ***
+        //
+        // *THE ASSERTION IS ON THE CARRIED OWNER RECORDS, NOT MERELY THE INVARIANT SET, AND THIS IS THE WHOLE POINT:
+        // `noLeakedObservers` is carried by TWO distinct kinds (the authority's `observers` and the store's
+        // `store observers`). A rod that zeroed EITHER default would leave the SHARED invariant in the unmeasured set
+        // -- because the OTHER hook still answereth NOT_MEASURED -- so an invariant-only assertion would let that rod
+        // ESCAPE. Naming each `Silent (kind)` record reddens the zeroed hook precisely, and distinguishes the two
+        // observer owners a maintainer would otherwise confuse.*
+        let silent = StressCampaign(seed: 7, cycles: 64, owners: [W15cSilentOwner("Silent")]).run()
+        XCTAssertEqual(Set(silent.unmeasuredOwners),
+                       ["Silent (reservations)", "Silent (admitted leases)", "Silent (observers)",
+                        "Silent (store observers)", "Silent (pending acks)"],
+                       "each silent kind must be carried as its OWN named record: \(silent.unmeasuredOwners.sorted())")
+        for invariant in [Invariants.noLeakedReservations, Invariants.noLeakedInventoryLeases,
+                          Invariants.pendingAckWork, Invariants.noLeakedObservers] {
+            XCTAssertTrue(silent.unmeasuredInvariants.contains(invariant),
+                          "a silent owner leaveth \(invariant) NAMED unmeasured, never a false zero: "
+                          + "\(silent.unmeasuredInvariants)")
+        }
+        XCTAssertFalse(silent.failures.contains { $0.contains("Silent") },
+                       "a silent owner is NAMED, never accused: \(silent.failures)")
+    }
+
     // ------------------------------------------------------------ W10
 
     func testW10AFailedSeedIsRecordedAndReproducible() {
@@ -379,6 +505,124 @@ final class ReadinessT72Tests: XCTestCase {
             self.slots = slots
         }
         func liveSessionSlots() -> Int { slots() }
+    }
+
+    // ------------------------------------------------------------ W15e
+
+    /// *** GS-STRESS-001 (round 727, iOS): ONE REAL OWNER PER CARD-NAMED KIND, READ THROUGH EACH OWNER'S OWN
+    /// EVIDENCE HOOK -- NOT A STUB. ***
+    ///
+    /// *MEASURED before this arm: iOS's `ResourceCensusSource` carried NO hook for inventory leases, pending ACKs or
+    /// observers, so this isle's by-name court was VACUOUS for three of the four `ownerKind` names: no code path could
+    /// emit them. THIS arm hands the campaign REAL owners -- `RecordWriter`, the `InMemoryAckStore` paired engine the
+    /// courts use (`AckObligationStore`, whose `countObligations` is the same law the durable engine answereth) and
+    /// `SqliteMessageStore` -- and requires each READING to be the owner's OWN (`admittedCount`, `countObligations`,
+    /// `observerCensusForTest`), measured against a REAL mutation: a reservation NOT sealed is one the writer still
+    /// holdeth, a second `insertIfAbsent` is refused by the store's own uniqueness, and a registration OUTLIVES the
+    /// store's release only until it is withdrawn.*
+    ///
+    /// THE FAILURE NAMETH THE INVARIANT AND THE OWNER, so a maintainer is never sent to the wrong one.
+    func testW15eEachCardNamedOwnerKindIsReadFromItsRealOwner() throws {
+        // ---- (1) INVENTORY LEASES: `RecordWriter.admittedCount()` is the owner's own census of admitted records. ----
+        let conn = BleConnection(peerId: UUID(), initialMaxAttValueLength: 512)
+        XCTAssertTrue(conn.markReadyForTesting(), "the connection must stand active to admit a record")
+        let writer = RecordWriter(connection: conn,
+                                  relationKey: RelationKey(direction: .outboundCentral, peerId: conn.peerId))
+        XCTAssertEqual(writer.admittedCount(), 0, "the owner starts clean -- or the reading below measures a row it already held")
+        XCTAssertEqual(writer.stageSealed(recordType: .data, sealed: Data(repeating: 0x11, count: 16), capacity: 512),
+                       .queued, "the owner's own admission road must admit the record")
+        XCTAssertEqual(writer.admittedCount(), 1, "and its OWN census must show the admitted lease it holdeth")
+
+        // ---- (2) PENDING ACK WORK: the paired store's own `countObligations()`. ----
+        let ackStore = InMemoryAckStore()
+        let obligation = try XCTUnwrap(AckObligation.of(msgId: Data(repeating: 0xA1, count: 16),
+                                                        recipientNodeId: Data(repeating: 0xB2, count: 16),
+                                                        identityGeneration: 1, remainingLifetimeMs: 60_000,
+                                                        state: .pending))
+        XCTAssertEqual(ackStore.insertIfAbsent(obligation), .stored, "the owner's own insert must store the obligation")
+        XCTAssertEqual(ackStore.countObligations(), 1, "and its OWN census must show the pending ACK work")
+        XCTAssertEqual(ackStore.insertIfAbsent(obligation), .duplicate,
+                       "the store's own uniqueness must refuse a second obligation for one identity")
+        XCTAssertEqual(ackStore.countObligations(), 1, "and the refused duplicate must not move the census")
+
+        // ---- (3) THE STORE'S OWN OBSERVERS: `MessageStore.observerCensusForTest()`. ----
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("w15e_\(UUID().uuidString).db")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let store = SqliteMessageStore(url: url, maxBytes: 4 * 1024 * 1024)
+        defer { store.close() }
+        let baseline = store.observerCensusForTest()
+        let token = store.registerHeldSetObserver { }
+        XCTAssertNotNil(token, "the store's own registration must hand back a withdrawable lease")
+        XCTAssertEqual(store.observerCensusForTest(), baseline + 1,
+                       "and its OWN census must show the registration")
+
+        // ---- A REAL SESSION OWNER: a fresh `SessionManager` that genuinely holdeth nothing (its own reading is 0).
+        let sessions = SessionManager(identity: try MeshIdentity.generateAndStore(keychain: W15Keychain()),
+                                      trustAuthority: W15TrustAuthority())
+
+        // ---- THE ONE ADAPTER THE CAMPAIGN IS HANDED: every number is an OWNER's own hook. ----
+        let owners = W15eOwners(writer: writer, ackStore: ackStore, store: store, sessions: sessions)
+        let result = StressCampaign(seed: 7, cycles: 64, owners: [owners]).run()
+
+        // CLAUSE 1 -- EVERY REAL LEAK IS NAMED, AGAINST ITS OWNER.
+        XCTAssertTrue(result.failures.contains {
+            $0.contains(Invariants.noLeakedInventoryLeases) && $0.contains("RecordWriter")
+        }, "an admitted record the writer still holdeth must be named as an inventory lease: \(result.failures)")
+        XCTAssertTrue(result.failures.contains {
+            $0.contains(Invariants.pendingAckWork) && $0.contains("pending ACK obligation")
+        }, "a pending ACK obligation must be named as work owed: \(result.failures)")
+        XCTAssertTrue(result.failures.contains {
+            $0.contains(Invariants.noLeakedObservers) && $0.contains("SqliteMessageStore")
+        }, "a store registration must be named against the store that holdeth it: \(result.failures)")
+        // CLAUSE 2 -- AND THE RELEASE VERBS EMPTY THE OWNERS' OWN CENSUSES, so the clauses above are about RETAINED
+        // resources and not about a detector that fires for anything.
+        writer.shutdown()
+        XCTAssertEqual(writer.admittedCount(), 0, "the writer's own close path must release its admitted leases")
+        _ = ackStore.retireObligation(obligation.msgId, obligation.recipientNodeId)
+        XCTAssertEqual(ackStore.countObligations(), 0, "the obligation must retire whole")
+        store.removeHeldSetObserver(token!)
+        XCTAssertEqual(store.observerCensusForTest(), baseline,
+                       "the withdrawn registration must leave the store's census at its baseline")
+
+        let after = StressCampaign(seed: 7, cycles: 64, owners: [owners]).run()
+        XCTAssertFalse(after.failures.contains { $0.contains("REAL owner") },
+                       "with every owner released, the selfsame campaign must accuse NOBODY: \(after.failures)")
+        // *** THE KINDS THAT HAVE A REAL OWNER IN THIS ARM MUST NOT READ UNMEASURED -- or the clean above is a census
+        // never taken. `noLeakedObservers` is NOT asserted here: this adapter carrieth the STORE's observers, not the
+        // authority's, and left `liveObservers()` at its honest default.*
+        for invariant in [Invariants.noLeakedReservations, Invariants.noLeakedInventoryLeases,
+                          Invariants.pendingAckWork] {
+            XCTAssertFalse(after.unmeasuredInvariants.contains(invariant),
+                           "\(invariant) has a real owner here and must be MEASURED, not unmeasured: "
+                           + "\(after.unmeasuredInvariants)")
+        }
+    }
+
+    /// *The per-kind adapter for W15e: every number comes from the owner's OWN evidence hook, never a copy. The
+    /// SESSION kind has no owner in this arm (there is no `SessionManager` here) and the AUTHORITY's observer
+    /// attachment has no live census (its registration liveth in the store), so BOTH are left at the honest
+    /// `NOT_MEASURED` default rather than a fabricated zero.*
+    private final class W15eOwners: ResourceCensusSource {
+        private let writer: RecordWriter
+        private let ackStore: InMemoryAckStore
+        private let store: SqliteMessageStore
+        private let sessions: SessionManager
+        init(writer: RecordWriter, ackStore: InMemoryAckStore, store: SqliteMessageStore,
+             sessions: SessionManager) {
+            self.writer = writer; self.ackStore = ackStore; self.store = store; self.sessions = sessions
+        }
+        var ownerName: String { "real owners (RecordWriter/InMemoryAckStore/SqliteMessageStore/SessionManager)" }
+        /// *A REAL session owner -- a fresh `SessionManager` that genuinely holdeth nothing, so zero is its own honest
+        /// reading and not a fabricated constant. `liveSessionSlots` carrieth NO protocol default (`run()` treateth it
+        /// as always-measured), so an adapter MUST carry a real owner for it.*
+        func liveSessionSlots() -> Int { sessions.slotCountForTest() }
+        func liveReservations() -> Int { writer.reservedCountForTest() }
+        func liveAdmittedLeases() -> Int { writer.admittedCount() }
+        func livePendingAcks() -> Int { ackStore.countObligations() }
+        func liveStoreObservers() -> Int { store.observerCensusForTest() }
+        // liveObservers() is LEFT AT ITS DEFAULT: this arm carrieth no authority observer owner (the registration
+        // liveth in the store), so the honest answer is NOT_MEASURED, never a false clean zero.
     }
 
 }

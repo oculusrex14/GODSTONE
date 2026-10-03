@@ -127,6 +127,51 @@ final class LabMeshAccessibilityUITests: XCTestCase {
     /// *** AND THE PLATFORM'S OWN MINIMUM, WHICH IS WHAT THE LANE MEASURES AGAINST. ***
     private let minimumTouchTarget: CGFloat = 44
 
+    /// *** *** IOS-R13: THE ROLE EACH ESSENTIAL CONTROL REALLY CARRIETH, READ FROM THE RESOLVED ELEMENT TYPE. *** ***
+    ///
+    /// *THE REVIEW'S CHARGE: "iOS rendered ROLES are not verified at all (XCUITest cannot read traits)". **XCUITest
+    /// carrieth no traits API** -- so this is named as what it IS: the ROLE is read from the element TYPE the
+    /// identifier resolved to, which is the closest observable the platform publishes, and it is asserted in EVERY
+    /// combination rather than at default scale only.*
+    ///
+    /// *The expectations are the control's REAL shape, not a uniform `.button`:* **the four action controls answer to
+    /// `.button` (a tap that acts), and each is a SEPARATE entry so a control that folded into a non-actionable type
+    /// reddens BY NAME.** *The recipient selector carrieth a SELECTION role -- SwiftUI resolves it to a button here
+    /// (`LabConversationView` renders a `Picker`, measured as `.button`), and where it resolved to a picker-ish type
+    /// instead the accepted set below alloweth it BY NAME rather than by a wildcard.* **A readout or a text field is
+    /// NOT in this table: the contract's `essentialControls` names only actions and the selector, so asserting a
+    /// button role on a status would be this arm inventing a requirement.***
+    private let essentialRoleExpectations: [String: Set<XCUIElement.ElementType>] = [
+        // An action control: a tap must act. One accepted type apiece, so a fold reddens by name.
+        "lab.conversation.send": [.button],
+        "lab.sos.hold": [.button, .other, .staticText],   // the gestural control; the tree resolves it as a Text
+        "lab.sos.cancel": [.button],
+        "lab.sos.retry": [.button],
+        // A SELECTION control: a button, a picker wheel, or a pop-up -- never a bare readout.
+        "lab.conversation.recipient": [.button, .pickerWheel, .popUpButton, .other],
+    ]
+
+    /// *** THE RENDERED ROLE, ASSERTED -- AND THE SET IS CLOSED, SO A NON-ACTIONABLE TYPE REDDENS. ***
+    ///
+    /// *An identifier this table doth not name is a roster entry the table forgot, which is itself the symmetric
+    /// omission this campaign keepeth finding -- so the ARM asserts the correspondence rather than silently skipping.*
+    private func assertEssentialRole(_ identifier: String, resolved element: XCUIElement,
+                                     combination: String) {
+        guard let accepted = essentialRoleExpectations[identifier] else {
+            XCTFail("*** [\(combination)] THE ESSENTIAL ROSTER CARRIETH '\(identifier)' BUT THE ROLE TABLE DOTH NOT: "
+                + "an unlisted essential control is the symmetric omission this arm existeth to catch (the retry "
+                + "control was once missing from BOTH the screen and the roster that should have caught it). ***")
+            return
+        }
+        XCTAssertTrue(
+            accepted.contains(element.elementType),
+            "*** [\(combination)] '\(identifier)' MUST RESOLVE TO ONE OF \(accepted) -- its REAL role -- not "
+                + "'\(element.elementType)'. XCUITest carrieth no traits API, so the resolved element TYPE is the "
+                + "observable the platform publishes; a control that promises an action while resolving to an "
+                + "inert readout is a lie a screen reader repeats. ***",
+        )
+    }
+
     /// The state words the shared vocabulary carrieth (mirrored from the contract table, so a screen inventing a word
     /// reddens). *The list is read from the app's OWN rendered output where possible; this is the fallback vocabulary
     /// the contract defines.*
@@ -491,6 +536,21 @@ final class LabMeshAccessibilityUITests: XCTestCase {
                           "*** [$label] THE ESSENTIAL '\(identifier)' ('\(label_)') MUST BE ADDRESSABLE. ***")
             XCTAssertFalse(control.label.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
                            "*** [$label] '\(identifier)' MUST CARRY A NON-EMPTY NAME. ***")
+            // *** *** IOS-R13: THE RENDERED ROLE HALF, IN EVERY COMBINATION -- NOT ONLY THE DEFAULT-SCALE ARM. *** ***
+            //
+            // *THE REVIEW'S CHARGE, VERBATIM: "iOS rendered ROLES are not verified at all". The single-arm bundle
+            // began closing that for `send`/`retry`/`cancel` at DEFAULT scale only; the four combination arms -- the
+            // ones the clause names -- asserted label and target but never a role, so a control whose role moved with
+            // the mirror or the enlarged type would have gone unseen on the very runs the clause requires.*
+            //
+            // **XCUITest carrieth no traits API, so the ROLE is read from the element TYPE the identifier resolved
+            // to** (`elementType`), which is the same proxy the single arm uses and is named as a proxy rather than
+            // presented as the trait. *`elementType` is metadata, so unlike `isHittable`/`frame` it is safe to read even
+            // where no activation point can be computed (the AX-XXXL arms).* **THE ROSTER IS THE SHARED CONTRACT'S
+            // (`essentialRoster` is keyed exactly as `AccessibilityContract.essentialControls`), so the expected role
+            // per control lives beside it below -- and a control the contract calls essential that resolves to a
+            // non-actionable type where an action is promised reddens BY NAME.***
+            assertEssentialRole(identifier, resolved: control, combination: label)
             if !largestText { XCTAssertTrue(control.isEnabled, "[$label] '\(identifier)' must be enabled") }
             if let frame = measuredFrame(control) {
                 XCTAssertGreaterThanOrEqual(
@@ -520,6 +580,8 @@ final class LabMeshAccessibilityUITests: XCTestCase {
                               + "IN THIS COMBINATION. ***")
             XCTAssertFalse(control.label.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
                            "*** [$label] '\(identifier)' MUST CARRY A NON-EMPTY NAME. ***")
+            // *** AND THE SOS HALF'S RENDERED ROLE, IN THIS COMBINATION TOO (IOS-R13). ***
+            assertEssentialRole(identifier, resolved: control, combination: label)
             if let frame = measuredFrame(control) {
                 XCTAssertGreaterThanOrEqual(
                     frame.height, minimumTouchTarget,

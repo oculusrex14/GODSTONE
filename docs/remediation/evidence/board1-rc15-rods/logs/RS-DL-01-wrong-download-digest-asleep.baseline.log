@@ -1,6 +1,6 @@
 test_a_wrong_digest_is_refused_by_name (test_audit_supplychain_harness.ToolchainDownloadCourt.test_a_wrong_digest_is_refused_by_name) ... ok
 
 ----------------------------------------------------------------------
-Ran 1 test in 0.002s
+Ran 1 test in 0.001s
 
 OK

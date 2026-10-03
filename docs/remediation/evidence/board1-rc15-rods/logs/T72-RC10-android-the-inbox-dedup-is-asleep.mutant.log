@@ -5,12 +5,12 @@ FAILURE: Build failed with an exception.
 
 * What went wrong:
 Execution failed for task ':mesh:testDebugUnitTest'.
-> There were failing tests. See the report at: file:///private/tmp/board1-campaign-rc15-work2/wt_T72-RC10-android-the-inbox-dedup-is-asleep/android/mesh/build/reports/tests/testDebugUnitTest/index.html
+> There were failing tests. See the report at: file:///private/tmp/board1-rc15-work-final/wt_T72-RC10-android-the-inbox-dedup-is-asleep/android/mesh/build/reports/tests/testDebugUnitTest/index.html
 
 * Try:
 > Run with --scan to get full insights.
 
-BUILD FAILED in 14s
+BUILD FAILED in 29s
 
 TEST-SUITE TEST-io.godstone.mesh.readiness.ReadinessT72Test.xml tests=24 skipped=0 failures=8 errors=0
 TEST-CASE PASS testGSSTRESS001theFifthOwnerObserversIsCensused

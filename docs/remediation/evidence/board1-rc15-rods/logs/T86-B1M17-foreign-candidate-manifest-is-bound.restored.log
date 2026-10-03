@@ -1,25 +1,29 @@
-FREEZE: board1-court-rc -> b0e5b3e84eb613ac4880ab520c11569a0037cbb4 (tree 27005d38b20d86fa49d5630c95de6cb11cd9f298) bound to run 1 attempt 1 7/7 jobs success
-  attestation written to /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmp8_p8bpy1/repo/docs/remediation/evidence/FREEZE_ATTESTATION_rc15.json
+FREEZE: board1-court-rc -> 39d36e3f7085cdf2ec3446aa4b9a6d6518d8f3a6 (tree c223af0668d1ab5b57a16e5b76e374395e2806e6) bound to run 1 attempt 1 7/7 jobs success
+  attestation written to /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmp86_xou8c/repo/docs/remediation/evidence/FREEZE_ATTESTATION_rc15.json
   auditor block stays NULL: the terminal builder verdict is READY_FOR_EXTERNAL_REAUDIT, NEVER VERIFIED_FIXED
-/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmp8_p8bpy1/repo/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmp8_p8bpy1/repo/ci/mutations.py'>
+/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmp86_xou8c/repo/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmp86_xou8c/repo/ci/mutations.py'>
   return hashlib.sha256(open(path, "rb").read()).hexdigest()
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmp8_p8bpy1/repo/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmp8_p8bpy1/repo/ci/mutations.py'>
+/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmp86_xou8c/repo/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmp86_xou8c/repo/ci/mutations.py'>
   return hashlib.sha256(open(path, "rb").read()).hexdigest()
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmp8_p8bpy1/repo/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmp8_p8bpy1/repo/ci/mutations.py'>
+/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmp86_xou8c/repo/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmp86_xou8c/repo/ci/mutations.py'>
   return hashlib.sha256(open(path, "rb").read()).hexdigest()
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-test_a_manifest_bound_to_another_candidate_is_refused_by_the_freeze (test_board1_gate_manifest.AttestationBindingTests.test_a_manifest_bound_to_another_candidate_is_refused_by_the_freeze) ... /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmp8_p8bpy1/repo/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmp8_p8bpy1/repo/ci/mutations.py'>
+test_a_manifest_bound_to_another_candidate_is_refused_by_the_freeze (test_board1_gate_manifest.AttestationBindingTests.test_a_manifest_bound_to_another_candidate_is_refused_by_the_freeze)
+*** A FREEZE MAY NOT BIND A MANIFEST WHOSE CANDIDATE IS NOT THE TAG'S OWN PEEL. *** ... /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmp86_xou8c/repo/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmp86_xou8c/repo/ci/mutations.py'>
   return hashlib.sha256(open(path, "rb").read()).hexdigest()
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmp8_p8bpy1/repo/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmp8_p8bpy1/repo/ci/mutations.py'>
+/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmp86_xou8c/repo/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmp86_xou8c/repo/ci/mutations.py'>
   return hashlib.sha256(open(path, "rb").read()).hexdigest()
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-::error::/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmp8_p8bpy1/repo/docs/remediation/evidence/FREEZE_ATTESTATION_rc15.json already EXISTETH -- an attestation is written ONCE. Refusing to overwrite it (even malformed bytes are left untouched: a reader must be able to see exactly what was written first)
+/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmp86_xou8c/repo/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmp86_xou8c/repo/ci/mutations.py'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+::error::gate manifest: candidate.tag 'board1-court-other' peels to ca0bc9221c843eac914b9b5588c387a07fac591b but the manifest stateth sha 39d36e3f7085cdf2ec3446aa4b9a6d6518d8f3a6 -- a binding whose two halves disagree
 ok
 
 ----------------------------------------------------------------------
-Ran 1 test in 4.487s
+Ran 1 test in 4.582s
 
 OK

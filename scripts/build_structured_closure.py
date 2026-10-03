@@ -767,6 +767,10 @@ def _with_authored_discharges(obligations: list[dict]) -> list[dict]:
         inline = copy.get("known_internal_gaps") or []
         merged = [dict(g) if isinstance(g, dict) else {"defect": str(g)} for g in inline]
         merged.extend(dict(g) for g in KNOWN_INTERNAL_GAPS.get(oid, []))
+        # *** THE REVIEW DEFECTS IN `KNOWN_INTERNAL_GAPS` CARRY THEIR SOURCE STATUS DIRECTLY (`review_status`). ***
+        # *No second representation: each record names, in place, the verdict its own production evidence supports
+        # (`LIVE` | `REPAIRED_STALE` | `PARTIAL`) and the `path:line` it was taken from. An obligation STAYS OPEN
+        # regardless -- a settled SOURCE defect is not a discharged OBLIGATION.*
         merged.append({"defect": "CURRENTC-PROOF-REQUIRED", "source": "current candidate acceptance",
                        "canonical_obligation": oid,
                        "canonical_defect": copy.get("text"),
@@ -1109,6 +1113,7 @@ def structured_semantics(closure: dict) -> dict:
             "known_internal_gaps": gaps,
             "unresolved_internal_dependencies": internal_deps,
             "external_obligations": external,
+            "review_defect_statuses": _review_status_rollup(),
             "note": ("required_controls_present carrieth ONLY obligations whose authored `structured_discharge` names "
                      "what was exercised; a DISCHARGED obligation with no such block is listed in `refused_controls` "
                      "and is NOT present. `unresolved_internal_dependencies` is INTERNAL work that must land first; "
@@ -1191,7 +1196,7 @@ def _binding() -> dict:
 #: pinned-image clause.**
 KNOWN_INTERNAL_GAPS: dict[str, list[dict]] = {
     "gs-final-003.ios-recovery-graph": [
-        {"source": "SqliteReview / IosReview IOS-R1,IOS-R5", "defect": "IOSR1-permit-replay-aba",
+        {"source": "SqliteReview / IosReview IOS-R1,IOS-R5", "defect": "IOSR1-permit-replay-aba", "review_status": "REPAIRED_STALE", "review_status_evidence": "`path:ios/Godstone/Sources/GodstoneMesh/MeshRuntime.swift:454-459` -- the production `create` road now takes ONE `consumeCompositionTopology()` drive that binds the verdict AND the permit for the `.normal` arm; the `.recoveryOnly` arm (MeshRuntime.swift:~487-520) drives the LIVE pre-private recovery over `DefaultRecoveryEstate` (the estate's OWN transport) and opens no store, throwing the typed decision; the deferred seams (:448-451) defer EVERY effect because the runtime does not yet stand, which is the legitimate pre-runtime shape. New rod `IOS-RECOVERY-005` witness `testGSFINAL003_aRecoveryThatCannotSettleRefusesAndOpensNothing` strikes it. *Current-C runtime proof still pending.*",
          "canonical_defect": "ios-recovery-graph: the production road (MeshRuntime) still mints its create-time "
                               "decision over DEFERRED seams; a court-time order over deferred seams is not production "
                               "reachability.",
@@ -1199,7 +1204,7 @@ KNOWN_INTERNAL_GAPS: dict[str, list[dict]] = {
                            "graph, driving a LIVE transport to a typed decision."},
     ],
     "gs-final-003.typed-permit": [
-        {"source": "NativeLifetimeReview SQLITE-LATEST-C3", "defect": "IOSR1-estate-scope-metadata",
+        {"source": "NativeLifetimeReview SQLITE-LATEST-C3", "defect": "IOSR1-estate-scope-metadata", "review_status": "REPAIRED_STALE", "review_status_evidence": "`path:ios/Godstone/Sources/GodstoneMesh/EncryptedStoreFactory.swift:30-49` derives the admission scope from a live `ConstructionLease`; the atomic claim is consumed before any key API (:133-153,:206,:236); `path:ios/Godstone/Sources/GodstoneMesh/EstateOwnerRegistry.swift:216-275` has a `fileprivate` lease init, a sole `beginConstruction` issuer requiring a settled epoch and a spent permit, and the permit's `consumeForConstruction` refuseth stale/unknown generations (`path:ios/Godstone/Sources/GodstoneMesh/StartupRecoveryDecision.swift:265-295`). RESIDUAL: `StartupRecoveryBootstrap.init` still defaults `estateId` to `\"\"` (StartupRecoveryDecision.swift:417-420), but the construction boundary refuseth an empty/foreign estate, so no scope is mintable from it.",
          "canonical_defect": "typed-permit: the registered scope is metadata, not a frozen recovery capability; the "
                               "public shared ledger mint accepts caller-supplied estate/generation/tag without recovery "
                               "evidence, factory opens are replayable before consumption, and the claim's Bool is "
@@ -1207,20 +1212,20 @@ KNOWN_INTERNAL_GAPS: dict[str, list[dict]] = {
          "what_must_land": "A frozen typed permit tied to the actual estate authority and live epoch, atomically "
                            "claimed at factory admission BEFORE key fetch/open, spending attempts even on failure, "
                            "rejecting stale/unknown epochs instead of substituting the permit's own."},
-        {"source": "NativeLifetimeReview SQLITE-LATEST-I8", "defect": "GF004-courts-empty-estate-permit",
+        {"source": "NativeLifetimeReview SQLITE-LATEST-I8", "defect": "GF004-courts-empty-estate-permit", "review_status": "REPAIRED_STALE", "review_status_evidence": "`path:ios/Godstone/Tests/GodstoneMeshTests/GsFinal004OwnedConnectionTests.swift:704-718` -- `drivenCleanEstateOf` binds the boundary's own `MeshRuntime.recoveryEstateId` and issues the permit over the composition's own journal/keychain; both positive composition courts use it (:751-761,:934-943), with separate empty/foreign-estate refusal arms (:861-882) -- so the production estate check was not weakened.",
          "canonical_defect": "Both GF004 composition courts mint an empty-estate permit that the actual boundary "
                               "rejects, so they cannot be counted as current positive controls.",
          "what_must_land": "Positive permits obtained through the real same-estate bootstrap road, with a separate "
                            "empty/wrong-estate refusal arm; the production estate check is not weakened to pass."},
     ],
     "gs-final-003.android-provider-court": [
-        {"source": "ClosureAuthority", "defect": "ANDROID-PROVIDER-COURT-PRODUCTION-UNUSED",
+        {"source": "ClosureAuthority", "defect": "ANDROID-PROVIDER-COURT-PRODUCTION-UNUSED", "review_status": "REPAIRED_STALE", "review_status_evidence": "`path:android/mesh/src/main/java/io/godstone/mesh/MeshService.kt:83` now resolves the production entry `MeshGraphComponent.production(applicationContext).meshNode()` (its one non-test use site), and `path:android/mesh/src/main/java/io/godstone/mesh/lab/LabRuntime.kt:376` takes the registered NON-LIGHT consumer's admission from `MeshGraphComponent.production(ctx).wipeSensitiveUseGate()` at process birth -- so the tested binding a miswiring reddens is traversed by production. Covered by `path:android/mesh/src/test/java/io/godstone/mesh/di/GsFinal003ProviderCourtProductionUseTest.kt` (4 arms). *Current-C runtime proof still pending.*",
          "canonical_defect": "android-provider-court: the component exists and the miswiring mutation ran, but the "
                               "SHIPPING composition (AppModule -> MeshModule) is never checked by it.",
          "what_must_land": "The production composition consumes the component at its own use site."},
     ],
     "gs-final-003.zero-private-opens": [
-        {"source": "IosReview IOS-R11 / NativeLifetimeReview SQLITE-LATEST-I9", "defect": "IOSR11-COUNTERS-DISCONNECTED",
+        {"source": "IosReview IOS-R11 / NativeLifetimeReview SQLITE-LATEST-I9", "defect": "IOSR11-COUNTERS-DISCONNECTED", "review_status": "REPAIRED_STALE", "review_status_evidence": "`path:ios/Godstone/Tests/GodstoneMeshTests/GsFinal003StartupPermitTests.swift` -- `openedStore` is called by `PinnedCountingEngine.openOwnedForWriting`/`reopenOwnedRequiringDEK` (:179-186), `builtSensitiveRuntime` was DELETED (:117-120), the accepted arm requires the counter NON-ZERO (:365-370), and every refusal arm passeth the instrumented factory (:485-490,:562-564,:691-693); no `encryptedStores: nil` remains.",
          "canonical_defect": "zero-private-opens: `openedStore`/`builtSensitiveRuntime` have no callsites; the refusal "
                               "arms pass `encryptedStores: nil` and measure objects the road never touches.",
          "what_must_land": "Every refused construction passes the actual instrumented factory/provider and counts "
@@ -1228,34 +1233,34 @@ KNOWN_INTERNAL_GAPS: dict[str, list[dict]] = {
                            "replaces the disconnected counter."},
     ],
     "gs-final-003.bootstrap-permit-unit": [
-        {"source": "IosReview IOS-R14", "defect": "IOSR14-ENUM-CASE-COMPARE",
+        {"source": "IosReview IOS-R14", "defect": "IOSR14-ENUM-CASE-COMPARE", "review_status": "REPAIRED_STALE", "review_status_evidence": "`path:ios/Godstone/Tests/GodstoneMeshTests/GsFinal003RecoveryTopologyTests.swift:837` now pattern-matcheth `if case .corruptJournal(let reason) = first.decision` (mirror identical at `ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/GsFinal003RecoveryTopologyTests.swift:837`); the associated-value case is declared at `path:ios/Godstone/Sources/GodstoneMesh/StartupRecoveryDecision.swift:76`.",
          "canonical_defect": "bootstrap-permit-unit: the topology court compares an associated-value enum case as if "
                               "it were a value, which does not compile.",
          "what_must_land": "Pattern-match the corruptJournal case or assert the semantic predicate, then an unfiltered "
                            "test compilation and court."},
-        {"source": "ClosureAuthority", "defect": "BOOTSTRAP-TYPED-SHAPE-NO-ROD",
+        {"source": "ClosureAuthority", "defect": "BOOTSTRAP-TYPED-SHAPE-NO-ROD", "review_status": "REPAIRED_STALE", "review_status_evidence": "The named rod now EXISTS: `path:ci/mutations.py` registers `IOS-RECOVERY-010-corrupt-journal-hides-operator-requirement`, targeting the PRODUCTION `path:ios/Godstone/Sources/GodstoneMesh/StartupRecoveryDecision.swift` `requiresOperator` (`case .corruptJournal, .terminalFailure: return true -> false`) with witness `test:testGSFINAL003_TheBootstrapDecisionIsTypedAndATypedDecisionIsWhatThisCourtAsserts` in `path:ios/Godstone/Tests/GodstoneMeshTests/CrashStartupResumeTests.swift`, and it is in `BOARD1_REQUIRED_IDS` (180 ids). The SOURCE prerequisite is present; QUALIFICATION (the final serialized baseline/mutant/restored on the frozen candidate) is still pending. *Current-C runtime proof still pending.*",
          "canonical_defect": "The typed-shape assertions are asserted but not mutation-witnessed by any BOARD1 rod.",
          "what_must_land": "A named rod striking the court's typed assertions."},
     ],
     "gs-final-004.owned-connection": [
-        {"source": "SqliteReview SQLITE-REVIEW-2/3 + NativeLifetimeReview SQLITE-LATEST-C1", "defect": "SQLITE-REVIEW-2-CLOSE-VS-USE",
+        {"source": "SqliteReview SQLITE-REVIEW-2/3 + NativeLifetimeReview SQLITE-LATEST-C1", "defect": "SQLITE-REVIEW-2-CLOSE-VS-USE", "review_status": "REPAIRED_STALE", "review_status_evidence": "`path:ios/Godstone/Sources/GodstoneMesh/OwnedVerifiedConnection.swift:52-115` -- `ConnectionLifecycle` refuseth use after close and maketh close wait for active users exactly-once; the stores admit every verb against it (MessageStore.swift:2658-2660,:3366-3369,:3864-3871) and the peer transaction takes ONE store-lock acquisition per transaction (PeerIdentityStore.swift:468-489).",
          "canonical_defect": "owned-connection: close ownership races outstanding use. The peer store's new shared-use "
                               "cutover double-acquires the nonrecursive store lock in every transaction (a regression), "
                               "and owner close does not participate in the stores' use locks.",
          "what_must_land": "One store-lock acquisition for the entire peer transaction; every migration/query/transaction "
                            "under the owner's shared use/close critical section; close waits for active use and is "
                            "exactly-once; the peer transaction is driven through the real repository."},
-        {"source": "SqliteReview SQLITE-REVIEW-3 + NativeLifetimeReview SQLITE-LATEST-I2", "defect": "SQLITE-REVIEW-3-OWNER-DEINIT",
+        {"source": "SqliteReview SQLITE-REVIEW-3 + NativeLifetimeReview SQLITE-LATEST-I2", "defect": "SQLITE-REVIEW-3-OWNER-DEINIT", "review_status": "REPAIRED_STALE", "review_status_evidence": "`path:ios/Godstone/Sources/GodstoneMesh/OwnedVerifiedConnection.swift:240-262` -- `OwnedConnection.deinit` calls `close()` (exactly-once) before releasing image ownership; MessageStore.swift:1207-1214 releases the adopted lease/owner on deinit otherwise.",
          "canonical_defect": "OwnedConnection deinit releases the image but never closes its live database; adopted "
                               "stores deliberately do not close on deinit, so the final-owner road leaks the handle.",
          "what_must_land": "Final-owner cleanup through the same exactly-once close path before releasing image "
                            "ownership, with explicit close idempotence preserved."},
-        {"source": "NativeLifetimeReview SQLITE-LATEST-I1", "defect": "SQLITE-LATEST-I1-REENTRANT-CLOSE",
+        {"source": "NativeLifetimeReview SQLITE-LATEST-I1", "defect": "SQLITE-LATEST-I1-REENTRANT-CLOSE", "review_status": "REPAIRED_STALE", "review_status_evidence": "`path:ios/Godstone/Sources/GodstoneMesh/OwnedVerifiedConnection.swift:86-105` -- a synchronous observer already holding a use sets `pendingClose` and returns WITHOUT waiting, so a reentrant `owner.close()` does not deadlock; the maintenance notification is dispatched only after the use frame ends (MessageStore.swift:1607-1613).",
          "canonical_defect": "A synchronous maintenance observer that calls owner.close() deadlocks waiting for its "
                               "own active use.",
          "what_must_land": "End the database-use lifetime before invoking user observers, or make reentrant-close "
                            "semantics explicitly safe, with a named bounded callback-completion assertion."},
-        {"source": "IosReview IOS-R4", "defect": "IOSR4-WRONG-DEK-TAG-WITHDRAWN-ON-TAG",
+        {"source": "IosReview IOS-R4", "defect": "IOSR4-WRONG-DEK-TAG-WITHDRAWN-ON-TAG", "review_status": "REPAIRED_STALE", "review_status_evidence": "`path:ios/Godstone/Sources/GodstoneMesh/WipeKeyVaultSeam.swift:49-74` routes the message/peer DEKs to the REAL provider tags (`message-store`/`peer-identity-store`), deleteth through `provider.deleteDEK(tag:)` (:106) and then requireth `fetchDEK` to answer `dekNotFound` for `.verifiedAbsent` (:113-119). RESIDUAL: physical Keychain absence and old-ciphertext unreadability on a real device remain EXTERNAL.",
          "canonical_defect": "The wrong-DEK-tag defect is WITHDRAWN as a canonical finding: the seam now deletes the "
                               "message-store and peer-identity-store accounts through the provider that owns "
                               "`io.godstone.private-store.dek`, following each deletion with `fetchDEK` requiring "
@@ -1266,93 +1271,94 @@ KNOWN_INTERNAL_GAPS: dict[str, list[dict]] = {
                            "on a real Keychain (external device boundary)."},
     ],
     "gs-final-004.migrations-on-verified": [
-        {"source": "SqliteReview SQLITE-REVIEW-4", "defect": "SQLITE-REVIEW-4-UNDURABLE-VERSION-STAMP",
+        {"source": "SqliteReview SQLITE-REVIEW-4", "defect": "SQLITE-REVIEW-4-UNDURABLE-VERSION-STAMP", "review_status": "REPAIRED_STALE", "review_status_evidence": "`path:ios/Godstone/Sources/GodstoneMesh/MessageStore.swift:3136-3167` stampeth `PRAGMA user_version` INSIDE the edge transaction before COMMIT and throweth on a stamp fault (:3147-3150), rolling the whole edge back on any failure (:3165-3167); the memory checkpoint advances only after that commit (:3100-3118). The peer store is the same: `path:ios/Godstone/Sources/GodstoneMesh/PeerIdentityStore.swift:525-536` stamps inside `BEGIN..COMMIT` with a guard-throw. No `try? user_version` write remains.",
          "canonical_defect": "migrations-on-verified: the migration road used `try?` and could proceed on a FALSE "
                               "result; the version stamp must be durable before publication.",
          "what_must_land": "Stamp `user_version` in the same transaction as the migration and propagate failure; "
                            "advance the memory checkpoint only after durable success."},
     ],
     "gs-final-004.provider-dispatch": [
-        {"source": "SqliteReview SQLITE-REVIEW-5 + NativeLifetimeReview SQLITE-LATEST-C4", "defect": "SQLITE-REVIEW-5-APPROVED-ARTIFACT-PIN",
+        {"source": "SqliteReview SQLITE-REVIEW-5 + NativeLifetimeReview SQLITE-LATEST-C4", "defect": "SQLITE-REVIEW-5-APPROVED-ARTIFACT-PIN", "review_status": "REPAIRED_STALE", "review_status_evidence": "`path:ios/Godstone/Sources/GodstoneMesh/SqlCipherDylibEngine.swift:367-443` verifieth the compiled-in `SQLCipherTrustedExpectation` (full-field sidecar agreement with FULL commit equality, not a prefix; cipher major, byte count, Mach-O platform/arch, sha256) before `dlopen`, and `:509-527/:569` make an arbitrary-path load report `.plainSQLite`, never pinned; the expectation is GENERATED from `docs/supplychain/SQLCIPHER.pins.json` into `SQLCipherTrustedExpectation.swift`. RESIDUAL: the device-signed artifact's own digest remains the external half (fail-closed).",
          "canonical_defect": "provider-dispatch: production accepts any libraryPath or a bare search-path filename; an "
                               "editable co-located sidecar can self-certify any same-named SQLCipher-4 image as pinned "
                               "before dlopen, and the source-commit check is only a prefix.",
          "what_must_land": "Bind production loading to a trusted builder/package artifact manifest outside the "
                            "replaceable image/sidecar boundary; verify full source identity, exact version, platform, "
                            "architecture and trusted digest before dlopen."},
-        {"source": "SqliteReview SQLITE-REVIEW-1 + NativeLifetimeReview SQLITE-LATEST-C2", "defect": "SQLITE-REVIEW-1-IMAGE-LEASE",
+        {"source": "SqliteReview SQLITE-REVIEW-1 + NativeLifetimeReview SQLITE-LATEST-C2", "defect": "SQLITE-REVIEW-1-IMAGE-LEASE", "review_status": "REPAIRED_STALE", "review_status_evidence": "`path:ios/Godstone/Sources/GodstoneMesh/SQLiteFunctionTable.swift:39-76` -- `SQLiteImageLease` is an ARC class held STRONGLY by every table/connection/store; `deinit` (and an idempotent `unloadIfNeeded`) `dlclose`es exactly once. The manual reference counter is gone.",
          "canonical_defect": "provider-dispatch: the image lease can unload while a public function-table copy is "
                               "alive; dlclose follows a manual reference counter rather than ARC, so escaped "
                               "table/statement copies are unprotected.",
          "what_must_land": "Image lifetime follows a real shared ARC owner whose deinit performs dlclose, retained by "
                            "every table value and connection/statement owner; statements retain the owner to "
                            "finalization."},
-        {"source": "SqliteReview SQLITE-REVIEW-7 / NativeLifetimeReview SQLITE-LATEST-I7", "defect": "SQLITE-REVIEW-7-COPIED-FAKE-PROOF",
+        {"source": "SqliteReview SQLITE-REVIEW-7 / NativeLifetimeReview SQLITE-LATEST-I7", "defect": "SQLITE-REVIEW-7-COPIED-FAKE-PROOF", "review_status": "REPAIRED_STALE", "review_status_evidence": "`path:ios/Godstone/Tests/GodstoneMeshTests/GsFinal004OwnedConnectionTests.swift:473-496` constructeth `SqlCipherDylibEngine(testTable:claimPinned:)` and driveth the REAL `openKeyedVerified` with the production table counting `closeV2`; the production cleanup is `path:ios/Godstone/Sources/GodstoneMesh/SqlCipherDylibEngine.swift:611-623` (partial handle closed on all paths).",
          "canonical_defect": "provider-dispatch: the partial-open witness invokes a COPIED fake cleanup rather than "
                               "`SqlCipherDylibEngine.openKeyedVerified`.",
          "what_must_land": "Operation-bound instrumentation on the production engine seam with nonempty durable rows, "
                            "exact bytes/version and real finalize/close counts."},
-        {"source": "SqliteReview SQLITE-REVIEW-6 / NativeLifetimeReview SQLITE-LATEST-I6", "defect": "SQLITE-REVIEW-6-EMPTY-FILE-ROUNDTRIP",
+        {"source": "SqliteReview SQLITE-REVIEW-6 / NativeLifetimeReview SQLITE-LATEST-I6", "defect": "SQLITE-REVIEW-6-EMPTY-FILE-ROUNDTRIP", "review_status": "REPAIRED_STALE", "review_status_evidence": "`path:ios/Godstone/Tests/GodstoneMeshTests/NativeConnectionRepairTests.swift:466-534` persisteth a known nonempty payload, closes store AND owner, asserteth the header is not the plaintext magic, reopens with the correct DEK and readeth the exact bytes, then requireth `.wrongKey` for a wrong/empty DEK; a missing image `XCTFail`s (`:1350-1356`) rather than skipping.",
          "canonical_defect": "provider-dispatch: the native roundtrip opens/probes/closes a fresh EMPTY file and then "
                               "expects a different key to fail; mandatory native courts may still skip.",
          "what_must_land": "Persist known nonempty payloads, close all owners, reopen with the correct key and read the "
                            "exact payload; binding failure is a court failure, not a skip."},
-        {"source": "SqliteReview SQLITE-REVIEW-8 / NativeLifetimeReview SQLITE-LATEST-I5", "defect": "SQLITE-REVIEW-8-INTENT-ERROR-AS-ABSENT",
+        {"source": "SqliteReview SQLITE-REVIEW-8 / NativeLifetimeReview SQLITE-LATEST-I5", "defect": "SQLITE-REVIEW-8-INTENT-ERROR-AS-ABSENT", "review_status": "REPAIRED_STALE", "review_status_evidence": "`path:ios/Godstone/Sources/GodstoneMesh/MessageStore.swift:3527-3571` treats ONLY `SQLITE_DONE` as absence; a read fault throweth and a corrupt/unparseable row becometh `IntentReadFault.corrupt`. `path:ios/Godstone/Sources/GodstoneMesh/SqliteOutboundIntentJournal.swift:10-30` mapeth nil->notFound, corrupt->corrupt, any other throw->storageFailure -- never absence.",
          "canonical_defect": "provider-dispatch: an intent read converts SQLite errors and a corrupt existing row into "
                               "'not found', permitting fresh authoring.",
          "what_must_land": "Absence only for DONE; row reconstruction failure and invalid persisted rank become typed "
                            "corruption, routed to the existing authority gate."},
-        {"source": "NativeLifetimeReview SQLITE-LATEST-I4", "defect": "SQLITE-LATEST-I4-SWEEP-BEFORE-BEGIN",
+        {"source": "NativeLifetimeReview SQLITE-LATEST-I4", "defect": "SQLITE-LATEST-I4-SWEEP-BEFORE-BEGIN", "review_status": "REPAIRED_STALE", "review_status_evidence": "`path:ios/Godstone/Sources/GodstoneMesh/MessageStore.swift:1645-1654` -- a checked `BEGIN IMMEDIATE` refuseth before any mutation, the tombstone reap runs INSIDE it (:1704-1710), the positive count is published only past an acknowledged COMMIT (:1789-1797), and faults are typed with one checked ROLLBACK (:1821-1835).",
          "canonical_defect": "The expiry sweep writes tombstones BEFORE the checked BEGIN and hides errors from public "
                               "and automatic callers.",
          "what_must_land": "Every sweep mutation inside the checked transaction, faults propagated and consumed at "
                            "every caller, fault state scoped per attempt."},
-        {"source": "NativeLifetimeReview SQLITE-LATEST-I3", "defect": "SQLITE-LATEST-I3-PROTECTION-BEFORE-CREATE",
+        {"source": "NativeLifetimeReview SQLITE-LATEST-I3", "defect": "SQLITE-LATEST-I3-PROTECTION-BEFORE-CREATE", "review_status": "REPAIRED_STALE", "review_status_evidence": "`path:ios/Godstone/Sources/GodstoneMesh/EncryptedStoreFactory.swift:180-197,222-249,290-338` -- the parent directory is protected BEFORE the keyed create, and the created DB/WAL/SHM are protected AFTER they exist; a missing sidecar is not a failure, so fresh/post-wipe composition is no longer refused.",
          "canonical_defect": "File protection is applied to missing DB/WAL/SHM files before first-install open, so "
                               "fresh and post-wipe composition is refused before SQLCipher can create the file.",
          "what_must_land": "Protect/create the parent first, create the keyed database under it, then verify protection "
                            "on the files that exist."},
-        {"source": "ClosureAuthority", "defect": "PROVIDER-DISPATCH-STRUCTURED-DISCHARGE-BYPASS",
+        {"source": "ClosureAuthority", "defect": "PROVIDER-DISPATCH-STRUCTURED-DISCHARGE-BYPASS", "review_status": "REPAIRED_STALE", "review_status_evidence": "`path:scripts/build_structured_closure.py` -- `structured_discharge_problems` now refuseth a terminal obligation with no `structured_discharge` by name (the old `if sd is None: continue` skip is gone), `candidate_binding` is mandatory (`_discharge_block_problems`), and `structured_semantics` measures controls from authored semantics rather than from status. RESIDUAL: the obligation remains OPEN on its own native-engine clause (the device-signed engine is external).",
          "canonical_defect": "The discharge machinery skipped any obligation without a `structured_discharge` block "
                               "and made `candidate_binding` optional, so terminal claims needed no semantics.",
          "what_must_land": "The schema is mandatory at the terminal boundary (now enforced); the obligation remains "
                            "open on its own native engine clause."},
     ],
     "gs-store-002.internal-architecture": [
-        {"source": "SqliteReview SQLITE-REVIEW-4", "defect": "SQLITE-REVIEW-4-UNDURABLE-VERSION-STAMP",
+        {"source": "SqliteReview SQLITE-REVIEW-4", "defect": "SQLITE-REVIEW-4-UNDURABLE-VERSION-STAMP", "review_status": "REPAIRED_STALE", "review_status_evidence": "Same production repair as GS-FINAL-004: `path:ios/Godstone/Sources/GodstoneMesh/MessageStore.swift:3136-3167` stamps `user_version` inside the edge transaction and throweth on a stamp fault; the durable readback arm is `path:ios/Godstone/Tests/GodstoneMeshTests/NativeConnectionRepairTests.swift:420-470`. RESIDUAL: the real native host proof remains the engine half. *Current-C runtime proof still pending.*",
          "canonical_defect": "The store's migration road shared the `try?` `user_version` defect with GS-FINAL-004.",
          "what_must_land": "The store's migration refusal proven against a real native host with the durable version "
                            "readback."},
     ],
     "gs-stress-001.real-owner-invariants": [
-        {"source": "LaneControls StressAudit", "defect": "STRESS-4-UNMODELLED-OWNER-INVARIANTS",
+        {"source": "LaneControls StressAudit", "defect": "STRESS-4-UNMODELLED-OWNER-INVARIANTS", "review_status": "REPAIRED_STALE", "review_status_evidence": "BOTH ISLES NOW MODELLED. Android: `path:android/mesh/src/main/java/io/godstone/mesh/stress/StressCampaign.kt:494-553` asks reservations, inventory leases, timers, observers and pending-ACK of the real owners. iOS: `path:ios/Godstone/Sources/GodstoneMesh/StressCampaign.swift:93-138` now carries the four additional NOT_MEASURED-default hooks (`liveAdmittedLeases`, `livePendingAcks`, `liveObservers`, `liveStoreObservers`), and `path:ios/Godstone/Tests/GodstoneMeshTests/GsStress001RealRuntimeDriverTests.swift` (`test:testGSSTRESS001TheCampaignCensusIsAskedOfThisDriversRealOwners`) reads the ACTUAL `SessionManager`/`RecordWriter` reserved+admitted/`AckStore`/store-observer registry; the by-name court now distinguishes NOT_MEASURED from zero (`test:testW15dAnUnmeasurableKindIsNotCountedAsClean`, `test:testW15dTheInventoryLeaseOwnerIsCensusedAndAccused`). New rods SH-R15..SH-R19 strike the defaults. RESIDUAL: the AUTHORITY-specific observer hook remains HONESTLY NOT_MEASURED (the rejected/reverted authority attach counter is gone; no fabricated zero) -- the real observers invariant is measured from the store registry instead. *Current-C runtime proof still pending.*",
          "canonical_defect": "`StressCampaign` models NEITHER NO_LEAKED_RESERVATIONS NOR NO_LEAKED_INVENTORY_LEASES "
                               "NOR PENDING_ACK_WORK NOR NO_LEAKED_OBSERVERS, so the by-name court is vacuous for them.",
          "what_must_land": "The four unmodelled owners modelled and their invariants real."},
     ],
     "gs-stress-001.classification": [
-        {"source": "LaneControls StressAudit", "defect": "STRESS-CLASSIFICATION-NOT-CARRIED",
+        {"source": "LaneControls StressAudit", "defect": "STRESS-CLASSIFICATION-NOT-CARRIED", "review_status": "REPAIRED_STALE", "review_status_evidence": "`path:ios/Godstone/Sources/GodstoneMesh/StressCampaign.swift:249-254` -- `CampaignResult.category` and `isResourceModel` carry the value `resource-model` into the result, the report line (`tools/readiness/stress.py` `campaign_report`) and the ledger-facing row; `path:tools/readiness/tests/test_t72.py:335-357` asserteth `category=resource-model` and the SH-R05 rod striketh the carry.",
          "canonical_defect": "The `resource-model` category is declared and asserted in courts but carried by no "
                               "result field, report line or ledger row, so a model result remains quotable as a "
                               "runtime result.",
          "what_must_land": "The category CARRIED by the typed result/report/ledger."},
     ],
     "gs-ux-001.facade": [
-        {"source": "IosReview IOS-R10", "defect": "IOSR10-DISJOINT-SEND",
+        {"source": "IosReview IOS-R10", "defect": "IOSR10-DISJOINT-SEND", "review_status": "REPAIRED_STALE", "review_status_evidence": "The lab send takes the DURABLE owned store for routing/ACK/intents/SOS (`path:android/mesh/src/main/java/io/godstone/mesh/lab/LabDurableDirectSend.kt`), and the lab wires the real trust repository resolver (`path:ios/Godstone/Sources/GodstoneMesh/LabRuntime.swift:589`). The author-own-DH road survives only as the DOCUMENTED court fallback reached when no resolver is wired (`path:ios/Godstone/Sources/GodstoneMesh/ComposedRuntime.swift:1161-1168`), which the lab does not take. RESIDUAL: the court-only `KeyTableTrustResolver` fallback still stands by design.",
          "canonical_defect": "The facade/lab send opens a disconnected SQLite store, bypasses the contact trust "
                               "authority, and uses the author's own DH key.",
          "what_must_land": "The same owned durable store for node routing, delivery/ACK state, intents and SOS; "
                            "recipient DH material and accepted generation from the actual trust repository."},
-        {"source": "IosReview IOS-R6", "defect": "IOSR6-ESTATE-FRAGMENTATION",
+        {"source": "IosReview IOS-R6", "defect": "IOSR6-ESTATE-FRAGMENTATION", "review_status": "REPAIRED_STALE", "review_status_evidence": "The facade and the root both compose through ONE estate authority: `path:ios/Godstone/Sources/GodstoneMesh/MeshRuntime.swift:689,697,1397` and the lab's real inventory forwarding (`path:ios/Godstone/Sources/GodstoneMesh/LabRuntime.swift:591-709`) reach `PhysicalEstateAuthority.shared`.",
          "canonical_defect": "The facade and the root runtime composition do not share a single coherent estate "
                               "lifecycle.",
          "what_must_land": "One estate authority the facade and the root both compose through."},
-        {"source": "IosReview IOS-R9", "defect": "IOSR9-SOS-DISPLAY-REGISTER",
+        {"source": "IosReview IOS-R9", "defect": "IOSR9-SOS-DISPLAY-REGISTER", "review_status": "REPAIRED_STALE", "review_status_evidence": "`path:ios/Godstone/Sources/GodstoneMesh/LabRuntime.swift:1241-1302` -- the JSON register now carrieth ONLY the last call's id (`LabCallRegister(msgId:)`), and the rendered state is read from the durable delivery row (`sosStateNames`, `activeSosMsgId`); the id is validated against the row before use, so a file naming a dead row changes nothing.",
          "canonical_defect": "Live SOS restoration is a JSON display register over a lost in-memory obligation.",
          "what_must_land": "Reconstruct SOS state solely from the durable authority; remove the register as fallback."},
     ],
     "gs-ux-001.rendered-controls": [
-        {"source": "RecoveryDurabilityReview IOS-FOLLOWUP-C1", "defect": "IOS-FOLLOWUP-C1-DURABLE-ACK-PROOF",
+        {"source": "RecoveryDurabilityReview IOS-FOLLOWUP-C1", "defect": "IOS-FOLLOWUP-C1-DURABLE-ACK-PROOF", "review_status": "REPAIRED_STALE", "review_status_evidence": "The durable-acknowledgment road is repaired in source: `path:ios/Godstone/Sources/GodstoneMesh/StartupRecoveryDecision.swift:527` requires `wipe.establishBaseline()` and refuseth with `terminalFailure(\"no acknowledged baseline generation\")`, and `path:ios/Godstone/Sources/GodstoneMesh/FileWipeJournal.swift:100-120` writes file+directory fsync. AND THE INDEPENDENT-PROCESS WITNESS NOW EXISTS: `path:ios/Godstone/Tests/LabMeshUITests/LabMeshUITests.swift:373` (`test:testGSINT001TheAcknowledgedGenerationRungAndArtifactsSurviveTheProcess`) drives the launchable app, terminates and RELAUNCHES it, and asserts the acknowledged generation rung and artifacts survive. *Current-C runtime proof still pending (the arm must be run against the frozen candidate).*",
+         "canonical_defect2_note": "(historical canonical text below kept verbatim)",
          "canonical_defect": "The production helper cutover to `FileWipeJournal.standard()` has LANDED (measured in "
                               "`MeshRuntime.swift`: the `create`/composition helpers default to it, and `PanicWipe` "
                               "documents that the retained `UserDefaultsWipeJournal` is the retired non-resumable "
@@ -1364,7 +1370,7 @@ KNOWN_INTERNAL_GAPS: dict[str, list[dict]] = {
                            "construction and both store attempts, then terminate/reopen and verify the exact generation "
                            "and persisted rows -- plus a default production wipe completing through acknowledged "
                            "REQUESTED and every checkpoint. *Review-inferred; no runtime proof executed.*"},
-        {"source": "IosReview IOS-R3 / RecoveryDurabilityReview IOS-FOLLOWUP-C2", "defect": "IOS-FOLLOWUP-C2-SYNC-FAILURE-ACKNOWLEDGED",
+        {"source": "IosReview IOS-R3 / RecoveryDurabilityReview IOS-FOLLOWUP-C2", "defect": "IOS-FOLLOWUP-C2-SYNC-FAILURE-ACKNOWLEDGED", "review_status": "REPAIRED_STALE", "review_status_evidence": "`path:ios/Godstone/Sources/GodstoneMesh/WipeJournalDurabilityAdapter.swift:96-130` consumes `writeChecked`'s `synchronized` result and returns `.refused` unless the write round-trips AND the durable record carrieth the state AND a generation; `FileWipeJournal.persist` (:321-345) replaces the record with `replaceItemAt` (never an unlink-first) and carries a durable pre-visibility refusal marker.",
          "canonical_defect": "`FileWipeJournal.persist` returns false on sync failure but `write` discards it, so the "
                               "adapter rereads the intended state and acknowledges it anyway; the journal also unlinks "
                               "the old record before moving the temporary file, leaving a record-loss crash window "
@@ -1372,71 +1378,71 @@ KNOWN_INTERNAL_GAPS: dict[str, list[dict]] = {
          "what_must_land": "One atomic replacement without unlinking first; the checked write/epoch result propagated; "
                            "ENOENT distinguished from unreadable/corrupt; a crash at each replacement boundary must "
                            "leave the old committed record or the complete new one."},
-        {"source": "IosReview IOS-R3 / RecoveryDurabilityReview IOS-FOLLOWUP-C3", "defect": "IOS-FOLLOWUP-C3-GENERATION-RESET",
+        {"source": "IosReview IOS-R3 / RecoveryDurabilityReview IOS-FOLLOWUP-C3", "defect": "IOS-FOLLOWUP-C3-GENERATION-RESET", "review_status": "REPAIRED_STALE", "review_status_evidence": "`path:ios/Godstone/Sources/GodstoneMesh/FileWipeJournal.swift:255-291` -- the state suffix is parsed EVEN when the head is malformed (`parts[1]`), the phase is pinned to the durable floor (a mismatch is UNPINNED, not admitted), and `clear` keepeth the generation; the adapter refuseth a missing epoch rather than fabricating `committed(generation: 0)` (WipeJournalDurabilityAdapter.swift:124-130).",
          "canonical_defect": "Corrupt/operator recovery can reset the generation to a previously issued value: `parse` "
                               "discards a valid generation suffix when the state head is malformed, `clear` removes the "
                               "epoch, and the adapter turns a missing durable epoch into committed(generation: 0).",
          "what_must_land": "A durable monotonic generation authority preserved across corruption, operator resolution "
                            "and clear; missing/unsupported epoch evidence refused rather than fabricated."},
-        {"source": "RecoveryDurabilityReview IOS-FOLLOWUP-C4", "defect": "IOS-FOLLOWUP-C4-NOT-ONE-TRANSACTION",
+        {"source": "RecoveryDurabilityReview IOS-FOLLOWUP-C4", "defect": "IOS-FOLLOWUP-C4-NOT-ONE-TRANSACTION", "review_status": "REPAIRED_STALE", "review_status_evidence": "`path:ios/Godstone/Sources/GodstoneMesh/MeshRuntime.swift:689,697,1152-1160,1397` -- permit minting, validation, construction and owner registration run inside ONE `PhysicalEstateAuthority.shared.serialized(for:)` critical section.",
          "canonical_defect": "Permit minting, validation, construction and registration are not one serialized estate "
                               "transaction; a request can land between the permitting decision and its evidence reads, "
                               "or after consumption before registration.",
          "what_must_land": "One physical-estate authority lock across decision/epoch observation, mint/consume, actual "
                            "construction, owner registration and rung advancement."},
-        {"source": "RecoveryDurabilityReview IOS-FOLLOWUP-C5", "defect": "IOS-FOLLOWUP-C5-COLD-SELF-MINT",
+        {"source": "RecoveryDurabilityReview IOS-FOLLOWUP-C5", "defect": "IOS-FOLLOWUP-C5-COLD-SELF-MINT", "review_status": "REPAIRED_STALE", "review_status_evidence": "`path:ios/Godstone/Sources/GodstoneMesh/EstateOwnerRegistry.swift:19-65,185-205` -- a cold claim requireth `verifiedCatalog`, which `bindInventory` setteth only after writing the inventory and VERIFYING it by Keychain readback (throw `inventory_unacknowledged` otherwise); an unarmed/empty registry answereth `ownersLive`.",
          "canonical_defect": "A newly armed EMPTY registry self-mints cold evidence while other owners of the physical "
                               "estate remain live; the registry is per-graph and `arm()` is a caller-set bit, while "
                               "production DEKs are global service/account pairs.",
          "what_must_land": "The registry bound to the actual physical estate/key capability, including aliases and "
                            "shared service/account ownership; cold a VERIFIED absence under that authority."},
-        {"source": "IosReview IOS-R5 / RecoveryDurabilityReview IOS-FOLLOWUP-C6", "defect": "IOS-FOLLOWUP-C6-RESUME-SKIPS-DRAIN",
+        {"source": "IosReview IOS-R5 / RecoveryDurabilityReview IOS-FOLLOWUP-C6", "defect": "IOS-FOLLOWUP-C6-RESUME-SKIPS-DRAIN", "review_status": "REPAIRED_STALE", "review_status_evidence": "`path:ios/Godstone/Sources/GodstoneMesh/CrashResumableWipe.swift:637-654` -- on resume from `RUNTIME_DRAINED`, a `WipeOwnerDraining` seam's `drainOwners()` is ALWAYS consulted and an `.ownersLive` answer returneth `retryLater` BEFORE any key is erased.",
          "canonical_defect": "Resume from RUNTIME_DRAINED skips re-drain for the new estate seam and ignores "
                               "owner-drain failure before key erasure, so keys can be erased while the current "
                               "process's transport/producer cannot drain.",
          "what_must_land": "Current-lifetime owner/transport quiescence re-proven on every resume before destruction, "
                            "including WipeOwnerDraining seams; owner-drain refusal a checked failure."},
-        {"source": "RecoveryDurabilityReview IOS-FOLLOWUP-C7", "defect": "IOS-FOLLOWUP-C7-IDENTITY-ADOPTION",
+        {"source": "RecoveryDurabilityReview IOS-FOLLOWUP-C7", "defect": "IOS-FOLLOWUP-C7-IDENTITY-ADOPTION", "review_status": "REPAIRED_STALE", "review_status_evidence": "`path:ios/Godstone/Sources/GodstoneMesh/WipeIdentityAuthoritySeam.swift:31-128` -- adoption is authorized by the staged FULL pair written through a CHECKED publication for the wipe generation; a mismatch is a REFUSAL (no fall-through) and the publication write is a checked `Bool`, not `try?`.",
          "canonical_defect": "Identity adoption accepts an unknown or mismatching standing key, and its publication "
                               "record is not checked or updateable (Void `try?` Keychain add).",
          "what_must_land": "Durable association of the full replacement identity with the wipe generation; unknown, "
                            "wrong-generation or mismatching keys refused rather than relabelled."},
-        {"source": "IosReview IOS-R2 / RecoveryDurabilityReview IOS-FOLLOWUP-H1", "defect": "IOS-FOLLOWUP-H1-RETAINED-GATE-UNREADABLE",
+        {"source": "IosReview IOS-R2 / RecoveryDurabilityReview IOS-FOLLOWUP-H1", "defect": "IOS-FOLLOWUP-H1-RETAINED-GATE-UNREADABLE", "review_status": "REPAIRED_STALE", "review_status_evidence": "`path:ios/Godstone/Sources/GodstoneMesh/CrashResumableWipe.swift:442-479` -- `allowsSensitiveApi()` returneth true only when `isSupportedJournal()` (which requireth `isReadableJournal()` AND a well-formed, floor-pinned record) AND the durable state is `.idle`; an unreadable record therefore refuses instead of resembling a clean one.",
          "canonical_defect": "The retained sensitive-use gate still treats an unreadable journal as permission: "
                               "`allowsSensitiveApi` returns only `!isWipePending` and an unreadable value is coerced "
                               "to idle.",
          "what_must_land": "Retained admission uses the same readable/supported/current-generation terminal evidence as "
                            "private construction, with permanent per-owner invalidation."},
-        {"source": "IosReview IOS-R7", "defect": "IOSR7-LAB-WIPE-DELETION-LADDER",
+        {"source": "IosReview IOS-R7", "defect": "IOSR7-LAB-WIPE-DELETION-LADDER", "review_status": "REPAIRED_STALE", "review_status_evidence": "`path:ios/Godstone/Sources/GodstoneMesh/LabRuntime.swift:591-709` -- the estate is armed with the lab's TOTAL on-disk inventory (`labEstateInventory(root:)`) so the ladder iterates the real `lab_<label>_<seed>.db` stores and the trust store, rather than the fixed `mesh.db`/`peer.db` names.",
          "canonical_defect": "Lab wipe paths never match the deletion ladder, so the exposed wipe cannot delete its "
                               "artifacts or finish -- not withdrawn by the follow-up review.",
          "what_must_land": "An estate-owned artifact inventory the ladder actually iterates, with a positive live-lab "
                            "wipe reaching committed terminal state."},
-        {"source": "IosReview IOS-R8 / RecoveryDurabilityReview IOS-FOLLOWUP-C7", "defect": "IOSR8-BRICK-AFTER-IDENTITY-PUBLICATION",
+        {"source": "IosReview IOS-R8 / RecoveryDurabilityReview IOS-FOLLOWUP-C7", "defect": "IOSR8-BRICK-AFTER-IDENTITY-PUBLICATION", "review_status": "REPAIRED_STALE", "review_status_evidence": "`path:ios/Godstone/Sources/GodstoneMesh/WipeIdentityAuthoritySeam.swift:84-128` -- a re-opened drive ADOPTS the publication record whose generation matcheth the wipe generation (idempotent), so a crash after publication no longer bricketh recovery.",
          "canonical_defect": "A crash after identity publication but before NEW_IDENTITY can brick recovery; "
                               "same-generation recorded adoption now exists, but adoption provenance and publication "
                               "durability/update remain (see IOS-FOLLOWUP-C7).",
          "what_must_land": "Replacement publication idempotent and durably associated with the wipe generation."},
-        {"source": "IosReview IOS-R12", "defect": "IOSR12-NOOP-COMMANDS-PERMITTED",
+        {"source": "IosReview IOS-R12", "defect": "IOSR12-NOOP-COMMANDS-PERMITTED", "review_status": "REPAIRED_STALE", "review_status_evidence": "The `retry` control has a LIVE surface on BOTH isles: `path:android/labmesh/src/main/java/io/godstone/labmesh/LabMeshJourneyScreen.kt:317-340,491-497` (state-aware, bound to `SosCommand.Retry` via `LabJourneyBindings.retry()`) and `path:ios/Godstone/Sources/LabMesh/LabMeshRootApp.swift:954,1032-1035` (`lab.sos.retry` -> the node's own `.retry(msgId:)` arm); the send road is durable (`LabRuntime.durableIntentVerdict`, `LabDurableDirectSend.kt`), so a no-op Send no longer passeth.",
          "canonical_defect": "Rendered command courts permit no-op Send, permanently pending wipe and always-refused "
                               "Retry; the roster moved without the lane being re-bound to this candidate.",
          "what_must_land": "Command effects observed on the actual owned authority, and the lane executing the CURRENT "
                            "source-derived roster bound to this candidate."},
     ],
     "gs-ux-001.ui-test-target": [
-        {"source": "IosReview IOS-R12", "defect": "IOSR12-NOOP-COMMANDS-PERMITTED",
+        {"source": "IosReview IOS-R12", "defect": "IOSR12-NOOP-COMMANDS-PERMITTED", "review_status": "REPAIRED_STALE", "review_status_evidence": "Same evidence as `gs-ux-001.rendered-controls`: `retry` has a LIVE rendered surface on BOTH isles (`path:ios/Godstone/Sources/LabMesh/LabMeshRootApp.swift:954,1032-1035` `lab.sos.retry` -> the node's own `.retry(msgId:)`; `path:android/labmesh/src/main/java/io/godstone/labmesh/LabMeshJourneyScreen.kt:317-340,491-497`), and the send road is durable (`LabRuntime.durableIntentVerdict`), so a no-op Send no longer passeth. REMAINING: the lane executing the CURRENT source-derived roster bound to this candidate. *Current-C runtime proof still pending.*",
          "canonical_defect": "Rendered command courts permit no-op Send, permanently pending wipe and always-refused "
                               "Retry; the roster moved without the lane being re-bound to this candidate.",
          "what_must_land": "Command effects observed on the actual owned authority, and the lane executing the CURRENT "
                            "source-derived roster bound to this candidate."},
-        {"source": "IosReview IOS-R15", "defect": "IOSR15-STALE-SNAPSHOT-RETRY",
+        {"source": "IosReview IOS-R15", "defect": "IOSR15-STALE-SNAPSHOT-RETRY", "review_status": "REPAIRED_STALE", "review_status_evidence": "`path:ci/mutations.py` rods `IOS-R15-unrefreshed-snapshot` (removes the `model.refresh()`) and `IOS-R15-impossible-no-call` strike the model Retry witnesses, which now refresh the projection before asserting (`path:ios/Godstone/Tests/GodstoneMeshTests/ReadinessT58Tests.swift`).",
          "canonical_defect": "The model Retry witnesses mutate the authority but assert against an unrefreshed "
                               "snapshot.",
          "what_must_land": "Project the modified authority state before asserting the projection or issuing the "
                            "command."},
     ],
     "gs-ux-001.accessibility": [
-        {"source": "IosReview IOS-R13", "defect": "IOSR13-ACCESSIBILITY-ROSTER-INCOMPLETE",
+        {"source": "IosReview IOS-R13", "defect": "IOSR13-ACCESSIBILITY-ROSTER-INCOMPLETE", "review_status": "PARTIAL", "review_status_evidence": "The Android roster is extracted from the rendered semantics tree (`android/labmesh/.../LabMeshLiveAccessibilityRosterTest.kt`, `LabMeshJourneySemanticsTest.kt`) at both text scales and directions, and the iOS tree's role/label/value semantics are asserted (`path:ios/Godstone/Tests/LabMeshUITests/LabMeshUITests.swift:1026`). AND THE LIGHT APP'S ROSTER IS NOW EXERCISED AT BOTH SCALES AND BOTH DIRECTIONS: `path:ios/Godstone/Tests/GodstoneArchiveUITests/GodstoneArchiveUITests.swift:1289-1306` (`testGSINT001TheLightRosterSurvives{DefaultScale,LargestScale}{LTR,RTL}` -- essential-control labelling, 44pt bounds, Back returns). RESIDUAL: the iOS RENDERED-ROLE half remains unverifiable in-process (XCUITest cannot read traits) and human accessibility acceptance stays EXTERNAL (see `gs-ux-001.human-accessibility-acceptance`).",
          "canonical_defect": "The four accessibility profiles omit most of the required live roster, and iOS rendered "
                               "ROLES are not verified at all (XCUITest cannot read traits), while `retry` is still "
                               "being closed.",
@@ -1444,7 +1450,7 @@ KNOWN_INTERNAL_GAPS: dict[str, list[dict]] = {
                            "44-point bounds; the iOS role half verified on this candidate."},
     ],
     "audit-b1-ctrl-001.closure-law": [
-        {"source": "ClosureAuthority", "defect": "CTRL-001-DISCHARGE-SCHEMA-BYPASS",
+        {"source": "ClosureAuthority", "defect": "CTRL-001-DISCHARGE-SCHEMA-BYPASS", "review_status": "REPAIRED_STALE", "review_status_evidence": "`path:scripts/build_structured_closure.py::structured_discharge_problems` / `_discharge_block_problems` / `structured_semantics` -- the schema is mandatory at the terminal boundary, `candidate_binding` is required (with a self-SHA and an rc14/historical-attestation refusal), and the two dependency populations are emitted separately. RESIDUAL: the parent obligation's own `--check` re-derivation and the added semantics gate are exercised by `path:tools/readiness/tests/test_closure_law_refuses.py`; the obligation stays OPEN pending current-C proof.",
          "canonical_defect": "structured_discharge_problems skipped obligations with no block and made "
                               "candidate_binding optional; structured_semantics reported every terminal obligation as "
                               "a present control without semantic proof and folded external obligations into internal "
@@ -1453,7 +1459,7 @@ KNOWN_INTERNAL_GAPS: dict[str, list[dict]] = {
                            "and the two dependency populations kept separate (now enforced)."},
     ],
     "audit-b1-ctrl-001.ready-requires-both-populations": [
-        {"source": "ClosureAuthority", "defect": "CTRL-001-READINESS-NOT-SEMANTIC-GATED",
+        {"source": "ClosureAuthority", "defect": "CTRL-001-READINESS-NOT-SEMANTIC-GATED", "review_status": "REPAIRED_STALE", "review_status_evidence": "`path:scripts/build_structured_closure.py::main` -- `--check` gateth the readiness claim on BOTH populations (`internal_obligations_open` AND `findings_with_internal_status_open`), runneth `internal_status_state_problems`/`obligation_state_problems` (unknown states refused by name), and `semantics_gate_problems` (a terminal claim behind a refused control). RESIDUAL: the obligation stays OPEN pending the current-C freeze re-derivation.",
          "canonical_defect": "Readiness is not yet gated on the structured semantics, and unknown states are not "
                               "enforced at the closure boundary.",
          "what_must_land": "Readiness gated on the measured controls and unknown states refused by name (now "
@@ -1738,6 +1744,59 @@ HISTORICAL_DISCHARGES.update({
         "candidate_binding": _binding(),
     },
 })
+
+
+#: *** THE LEGAL REVIEW-SOURCE STATUSES, AND THE GATE THAT KEEPS THEM HONEST. ***
+#:
+#: *Same law the OBLIGATION states carry: an UNKNOWN status is neither `REPAIRED_STALE` nor `LIVE`, so this
+#: instrument may not guess which -- it is NAMED. And a status with no production evidence is a bare label, refused
+#: in the other direction. The status lives DIRECTLY on the `KNOWN_INTERNAL_GAPS` record (`review_status`), beside
+#: the defect it judges -- never a parallel map, so there is no second representation to drift.*
+REVIEW_STATUSES = ("REPAIRED_STALE", "PARTIAL", "LIVE")
+
+
+def review_status_problems() -> list[str]:
+    """*** EVERY REVIEW-SOURCE STATUS MUST BE LEGAL AND CARRY ITS `path:line` EVIDENCE. ***
+
+    *The "unknown enum state loophole" the closure boundary refuseth for obligations applies here too; and a status
+    whose evidence is absent is the prose defect wearing a field.*  A record with NO `review_status` at all is NOT
+    refused -- it is simply an unreconciled gap, read as LIVE by its own present-tense claim.
+    """
+    problems: list[str] = []
+    for obligation_id, gaps in sorted(KNOWN_INTERNAL_GAPS.items()):
+        for g in gaps:
+            if not isinstance(g, dict):
+                continue
+            status = g.get("review_status")
+            if status is None:
+                continue
+            if status not in REVIEW_STATUSES:
+                problems.append(
+                    f"{obligation_id}/{g.get('defect')}: carrieth `review_status` {status!r}, which is NOT one of "
+                    f"{REVIEW_STATUSES} -- an unknown status is neither repaired nor live, so this instrument may "
+                    f"not guess which")
+            if not g.get("review_status_evidence"):
+                problems.append(
+                    f"{obligation_id}/{g.get('defect')}: carrieth `review_status` {status!r} with NO "
+                    f"`review_status_evidence` -- a status must name the production `path:line` it was taken from, or "
+                    f"a reader cannot re-check it")
+    return problems
+
+
+def _review_status_rollup() -> dict:
+    """The rollup of the in-place source statuses, for a reader (derived; never an authority)."""
+    counts: dict[str, int] = {}
+    for gaps in KNOWN_INTERNAL_GAPS.values():
+        for g in gaps:
+            if isinstance(g, dict) and g.get("review_status"):
+                counts[g["review_status"]] = counts.get(g["review_status"], 0) + 1
+    return {
+        "by_status": counts,
+        "legal_statuses": list(REVIEW_STATUSES),
+        "scope": ("SOURCE-ONLY: a REPAIRED_STALE status meaneth the named review defect is absent from the current "
+                  "production source, NOT that the obligation is discharged. Every obligation stays OPEN until its own "
+                  "current-candidate production controls are authored as a `structured_discharge`."),
+    }
 
 
 def discharged_prose_scan(closure: dict) -> dict:
@@ -2135,6 +2194,13 @@ def main(argv=None) -> int:
         for msg in discharge_problems:
             print(f"  ::error:: {msg}")
         if discharge_problems:
+            return 1
+
+        # *** AND EVERY REVIEW-SOURCE STATUS IS LEGAL AND CARRYING ITS `path:line` EVIDENCE. ***
+        recon_problems = review_status_problems()
+        for msg in recon_problems:
+            print(f"  ::error:: {msg}")
+        if recon_problems:
             return 1
 
         # *** AND THE AUTHORED SEMANTICS MUST DESCRIBE THE CLOSURE THAT EXISTS. ***

@@ -1,10 +1,15 @@
 # BOARD 1 — INTERNAL PRODUCTION-READINESS CLOSURE
 
-> *** CURRENT STATUS, DERIVED (2026-10-02): *** the machine-readable record of this board is
+> *** CURRENT STATUS, DERIVED (2026-10-04): *** the machine-readable record of this board is
 > `docs/production-readiness/BOARD1_CLOSURE.json` -- `status: REMEDIATION_IN_PROGRESS`,
-> `verified_fixed: 0`, ten findings internally OPEN with 35 OPEN obligations -- and it is DERIVED by
+> `verified_fixed: 0`, ten findings internally OPEN with 35 OPEN obligations (ZERO DISCHARGED), and the
+> prospective bound candidate `production-readiness-board1-rc15` -- and it is DERIVED by
 > `scripts/build_structured_closure.py` from the ledger's own entries, whose persisted blocks
 > `--check` re-derives field by field (counts, statuses, `structured_semantics`, prose dispositions).
+> A source-level reconciliation (2026-10-04) annotated each authored review gap, in place, with a `review_status`
+> against the current production source (41 `REPAIRED_STALE` / 1 `PARTIAL` / 0 `LIVE`); a `REPAIRED_STALE` status
+> settles ONLY the source half of a review's claim and does NOT discharge any obligation, which stays
+> OPEN until its own current-candidate production controls are authored.
 > **No terminal status -- `COMPLETE` or `READY_FOR_EXTERNAL_REAUDIT` -- may be asserted by any
 > document this repository carries: a terminal claim is admitted only in the frozen candidate's
 > AUTHENTICATED attestation, read by the A-side authority in `ci/check_candidate_binding.py`, after

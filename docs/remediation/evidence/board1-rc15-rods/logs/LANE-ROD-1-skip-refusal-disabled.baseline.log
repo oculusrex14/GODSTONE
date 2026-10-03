@@ -12,5 +12,3 @@
    8. the real log, unmutated -- MUST be accepted                                 expect=green got=green KILLED
 
 foundation selftest: 12/12 mutations caught
-
-(the intended control(s) ['6', '7a'] did NOT escape -- observed ESCAPED=[]; an unattributed failure is not a kill)

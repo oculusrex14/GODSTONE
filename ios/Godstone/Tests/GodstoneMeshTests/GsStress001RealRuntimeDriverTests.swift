@@ -2096,6 +2096,139 @@ final class GsStress001RealRuntimeDriverTests: XCTestCase {
         XCTAssertEqual(runtime.sessionManager.slotCountForTest(), 0,
                        "*** and the destructor must clear what the leak left. ***")
     }
+
+    /// *** GS-STRESS-001 (round 727, iOS): THE CAMPAIGN'S OWNER CENSUS, ASKED OF **THIS DRIVER'S REAL OWNERS**. ***
+    ///
+    /// *MEASURED before this arm: iOS's `ResourceCensusSource` carried NO hook for inventory leases, pending ACKs or
+    /// observers, so `run()` could not ask a real owner for them even when one was handed in. THIS arm hands the
+    /// campaign GENUINELY MEASURED owners -- a real `RecordWriter` (reservations AND admitted inventory leases), the
+    /// composition's own `AckObligationStore`, its `SessionManager` and its `SqliteMessageStore` -- and requires each
+    /// real retained resource to be NAMED.*
+    ///
+    /// *** THE ONE KIND THIS ADAPTER CARRIETH NO OWNER FOR IS `observers`. *** *The live registration liveth in the
+    /// STORE, so the store's own `observerCensusForTest()` is the census of that owner; this adapter does not carry a
+    /// second owner of the same name, so `liveObservers()` is LEFT AT ITS DEFAULT `NOT_MEASURED` and the assertion below
+    /// is NARROWED to that one kind -- the reservation, inventory-lease, ACK and session kinds MUST NOT appear
+    /// unmeasured, because they HAVE real owners. **A FALSE CLEAN (a hardcoded zero for a kind nobody asked) is exactly
+    /// what this seam existeth to prevent, and it will not be smuggled in here as a convenience.***
+    func testGSSTRESS001TheCampaignCensusIsAskedOfThisDriversRealOwners() throws {
+        let e = estate("owner-census"); defer { e.remove() }
+        let runtime = try openRuntime(e)
+        defer { runtime.messageStore.close(); runtime.peerIdentityStore.close() }
+        let peer = try peerIdentity(0x51, 0x52)
+        try pinPeer(runtime, peer.identity)
+
+        // A REAL WRITER on a real relation: the reservation AND inventory-lease census is ITS OWN, never a constant.
+        let handle = UUID()
+        let conn = BleConnection(peerId: handle, initialMaxAttValueLength: 512)
+        XCTAssertTrue(conn.markReadyForTesting(), "*** the relation must stand active to admit a record. ***")
+        let writer = RecordWriter(connection: conn,
+                                  relationKey: RelationKey(direction: .outboundCentral, peerId: handle))
+
+        // THE STORE'S OBSERVER BASELINE, read from the store itself: the composition's authority legitimately standeth
+        // with one ear, so a leak is MORE than that -- never a fabricated constant.
+        _ = runtime.meshNode.ble.snapshotAuthority     // touch the lazy transport, so its authority attached first
+        let storeBaseline = runtime.messageStore.observerCensusForTest()
+        let owners = DriverRealOwners(runtime: runtime, writer: writer, storeObserverBaseline: storeBaseline)
+
+        // (A) HEALTH: every MEASURED kind is clean; the authority's attachment is the ONE kind with no live census
+        // here, CARRIED as unmeasured rather than reported as a false zero.
+        let healthy = StressCampaign(seed: 7, cycles: 64, owners: [owners]).run()
+        XCTAssertFalse(healthy.failures.contains { $0.contains("REAL owner") },
+                       "*** a composition at its own baseline must not be accused: \(healthy.failures) ***")
+        XCTAssertEqual(Set(healthy.unmeasuredInvariants), [Invariants.noLeakedObservers],
+                       "*** the ONLY owner-kind without an honest live census here is the authority's attachment; the "
+                       + "reservation, inventory-lease and ACK kinds HAVE real owners and must NOT read unmeasured: "
+                       + "\(healthy.unmeasuredInvariants) ***")
+
+        // (B) INVENTORY LEASES -- a record the REAL writer admitted and did not retire.
+        XCTAssertEqual(writer.stageSealed(recordType: .data, sealed: Data(repeating: 0x11, count: 16), capacity: 512),
+                       .queued, "*** the real writer's own admission road must admit the record. ***")
+        XCTAssertGreaterThan(owners.liveAdmittedLeases(), 0, "*** and its OWN census must show it. ***")
+        let withLease = StressCampaign(seed: 7, cycles: 64, owners: [owners]).run()
+        XCTAssertTrue(withLease.failures.contains {
+            $0.contains(Invariants.noLeakedInventoryLeases) && $0.contains("RecordWriter")
+        }, "*** a record the real writer still holdeth must be named as an inventory lease: \(withLease.failures) ***")
+
+        // (C) RESERVATIONS -- a ticket reserved and never sealed: the SAME owner, a DISTINCT kind.
+        guard case .admitted = writer.reserve(recordType: .data, clearLength: 16, capacity: 512) else {
+            XCTFail("*** the real writer's reservation road must admit a ticket. ***"); return
+        }
+        XCTAssertGreaterThan(owners.liveReservations(), 0, "*** its OWN reservation census must show the open ticket. ***")
+        let withReservation = StressCampaign(seed: 7, cycles: 64, owners: [owners]).run()
+        XCTAssertTrue(withReservation.failures.contains {
+            $0.contains(Invariants.noLeakedReservations) && $0.contains("RecordWriter")
+        }, "*** an unsealed ticket must be named as a reservation, DISTINCT from the admitted lease: "
+           + "\(withReservation.failures) ***")
+
+        // (D) PENDING ACKS -- a real obligation in the composition's OWN paired store.
+        let obligation = try XCTUnwrap(AckObligation.of(msgId: msgId(0xEE, salt: 0x01),
+                                                       recipientNodeId: peer.identity.nodeId,
+                                                       identityGeneration: 1, remainingLifetimeMs: 60_000,
+                                                       state: .pending))
+        XCTAssertEqual(runtime.ackStore.insertIfAbsent(obligation), .stored,
+                       "*** the store's own insert road must store it. ***")
+        XCTAssertEqual(runtime.ackStore.countObligations(), 1, "*** and its OWN census must show the pending work. ***")
+        let withAck = StressCampaign(seed: 7, cycles: 64, owners: [owners]).run()
+        XCTAssertTrue(withAck.failures.contains {
+            $0.contains(Invariants.pendingAckWork) && $0.contains("pending ACK obligation")
+        }, "*** a real pending obligation must be named as work owed: \(withAck.failures) ***")
+
+        // (E) SESSIONS -- a real slot in the composition's OWN SessionManager.
+        let admission = SessionManager.hostAdmission(handle, direction: .outboundCentral, generation: 1)
+        XCTAssertNotNil(runtime.sessionManager.beginInitiator(admission, remoteHint: peer.identity.nodeHint),
+                        "*** the owner's own admission road must admit the relation. ***")
+        XCTAssertGreaterThan(owners.liveSessionSlots(), 0, "*** and its OWN slot census must show it. ***")
+        let withSession = StressCampaign(seed: 7, cycles: 64, owners: [owners]).run()
+        XCTAssertTrue(withSession.failures.contains {
+            $0.contains(Invariants.noLeakedSessions) && $0.contains("SessionManager")
+        }, "*** a real live slot must be named: \(withSession.failures) ***")
+
+        // (F) THE STORE'S OWN OBSERVERS beyond the composition's baseline.
+        let token = try XCTUnwrap(runtime.messageStore.registerHeldSetObserver { })
+        XCTAssertEqual(runtime.messageStore.observerCensusForTest(), storeBaseline + 1,
+                       "*** the store's OWN census must show the extra ear. ***")
+        let withObserver = StressCampaign(seed: 7, cycles: 64, owners: [owners]).run()
+        XCTAssertTrue(withObserver.failures.contains {
+            $0.contains(Invariants.noLeakedObservers) && $0.contains("store observer")
+        }, "*** a registration held beyond the baseline must be named: \(withObserver.failures) ***")
+
+        // (G) EVERY RELEASE VERB EMPTIES THE OWNERS' OWN CENSUSES -- so (B)..(F) are about RETAINED resources.
+        writer.shutdown()
+        _ = runtime.ackStore.retireObligation(obligation.msgId, obligation.recipientNodeId)
+        _ = runtime.sessionManager.retireIncarnations(ofPeerId: handle)
+        runtime.messageStore.removeHeldSetObserver(token)
+        XCTAssertEqual(owners.liveAdmittedLeases(), 0, "*** the writer's close path releases its admitted leases. ***")
+        XCTAssertEqual(owners.liveReservations(), 0, "*** and its reservations. ***")
+        XCTAssertEqual(owners.livePendingAcks(), 0, "*** the obligation retires whole. ***")
+        XCTAssertEqual(owners.liveSessionSlots(), 0, "*** the slot is retired. ***")
+        XCTAssertEqual(owners.liveStoreObservers(), 0, "*** and the withdrawn ear leaves the store at its baseline. ***")
+        let released = StressCampaign(seed: 7, cycles: 64, owners: [owners]).run()
+        XCTAssertFalse(released.failures.contains { $0.contains("REAL owner") },
+                       "*** every owner released: the selfsame campaign must accuse NOBODY: \(released.failures) ***")
+    }
+}
+
+/// *The driver's REAL owners, read through their OWN evidence hooks -- never a copy the court keepeth. `liveObservers`
+/// is deliberately LEFT AT ITS DEFAULT, because THIS adapter carrieth no owner of that kind: the live registration
+/// liveth in the store, which is why the STORE's own `observerCensusForTest()` carrieth the `observers` kind below.*
+private final class DriverRealOwners: ResourceCensusSource {
+    private let runtime: MeshRuntime
+    private let writer: RecordWriter
+    private let storeObserverBaseline: Int
+    init(runtime: MeshRuntime, writer: RecordWriter, storeObserverBaseline: Int) {
+        self.runtime = runtime; self.writer = writer; self.storeObserverBaseline = storeObserverBaseline
+    }
+    var ownerName: String {
+        "RecordWriter/SessionManager/AckObligationStore/SqliteMessageStore owners"
+    }
+    func liveSessionSlots() -> Int { runtime.sessionManager.slotCountForTest() }
+    func liveReservations() -> Int { writer.reservedCountForTest() }
+    func liveAdmittedLeases() -> Int { writer.admittedCount() }
+    func livePendingAcks() -> Int { runtime.ackStore.countObligations() }
+    func liveStoreObservers() -> Int { max(0, runtime.messageStore.observerCensusForTest() - storeObserverBaseline) }
+    // liveObservers(): NOT overridden -- the authority's kind has no live owner census here, so it answers
+    // NOT_MEASURED and is CARRIED unmeasured. A hardcoded zero would be the false clean this seam forbids.
 }
 
 // ================================================================================================

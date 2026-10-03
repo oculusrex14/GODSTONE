@@ -1,7 +1,17 @@
 test_a_replaced_image_is_refused_by_name (test_audit_supplychain_harness.SupplyAuthorityCourt.test_a_replaced_image_is_refused_by_name)
-A sidecar beside a replaceable image cannot authorize it: the register ... ok
+*** THE REGISTER, NOT A CO-LOCATED SIDECAR, IS THE AUTHORITY. *** ... FAIL
+
+======================================================================
+FAIL: test_a_replaced_image_is_refused_by_name (test_audit_supplychain_harness.SupplyAuthorityCourt.test_a_replaced_image_is_refused_by_name)
+*** THE REGISTER, NOT A CO-LOCATED SIDECAR, IS THE AUTHORITY. ***
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/board1-rc15-work-final/wt_RS-TRUST-01-replaced-image-digest-trusted-from-sidecar/tools/readiness/tests/test_audit_supplychain_harness.py", line 336, in test_a_replaced_image_is_refused_by_name
+    with self.assertRaises(self.V.AuthorityError):
+         ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: AuthorityError not raised
 
 ----------------------------------------------------------------------
-Ran 1 test in 0.003s
+Ran 1 test in 0.016s
 
-OK
+FAILED (failures=1)

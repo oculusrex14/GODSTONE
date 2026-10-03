@@ -455,6 +455,336 @@ final class GsFinal003StartupPermitTests: XCTestCase {
             + "Observed \(counter.storesOpened), expected \(openedAfterFirst). ***")
     }
 
+    /// *** IOSR1-permit-replay-aba: A CREATE-TIME PERMIT IS BOUND TO THE GENERATION IT SAW, AND A WIPE REQUESTED
+    /// AFTER THAT OBSERVATION MUST REFUSE CONSTRUCTION -- MEASURED AT THE REAL SEAM, NOT AT THE PERMIT'S OWN PREDICATE. ***
+    ///
+    /// *THE FINDING, VERBATIM: "the production road (MeshRuntime) still mints its create-time decision over DEFERRED
+    /// seams; a court-time order over deferred seams is not production reachability."* **AND THE DEFECT THAT STOOD IN
+    /// THE PRODUCTION ROAD WAS NOT THE DEFERRAL -- the create-time seams MUST defer, because at that moment the runtime
+    /// owns no transport, no keychain handle and no database -- BUT THAT THE ROAD DROVE THE LADDER *TWICE*:**
+    /// `decideAndDrive()` to OBSERVE the estate, then a SECOND `consumeCompositionTopology()` -- which drove the ladder
+    /// again over new seams -- merely to obtain the permit. *The observation that chose the branch and the proof that
+    /// opened the store were therefore two different drives, and a request landing between them could bind construction
+    /// to a stale decision.* **THE REPAIR IS ONE CALL WHOSE TOPOLOGY *IS* THE DECISION, so the proof is the very
+    /// evidence of the drive that chose the branch -- there is no second observation to disagree with the first.**
+    ///
+    /// *** AND WHAT MAKETH THE BINDING REAL RATHER THAN DESCRIBED IS THE BOUNDARY, NOT THE ROAD:*** *this arm mints a
+    /// permit by DRIVING the estate, then -- BETWEEN the drive and the construction -- records a REAL wipe request
+    /// through the SAME durable journal, which advances the generation. `requestWipe()` is the verb the shipping panic
+    /// road travelleth, so this is the production ABA event and not a literal typed into the arm.* **The construction
+    /// boundary must then REFUSE AT THE LIVE GENERATION and open NOTHING.** *A composition that re-authorized from a
+    /// stale decision, or that compared the permit against its own number instead of the live record, would open a store
+    /// here over material that is now mid-erasure -- and the open count would move. THAT is the consumer-visible
+    /// disciminator, taken at the store-construction seam rather than read from source.*
+    func testGSFINAL003_aPermitJudgedBeforeARequestCannotConstructAfterIt() throws {
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("gf003_aba_\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { cleanup(dir) }
+        let msg = dir.appendingPathComponent("mesh.db")
+        let peer = dir.appendingPathComponent("peer.db")
+
+        let counter = PrivateOpenCounter()
+        let provider = CountingKeyProvider()
+        provider.succeeds = true
+        let engine = PinnedCountingEngine(counter: counter)
+        guard requirePinnedImage(engine, lane: "gf003 create-time ABA") else { return }
+        let factory = EncryptedStoreFactory(provider: provider, engine: engine)
+        let keychain = InMemoryKeychain()
+
+        // *** A SETTLED ESTATE AT A KNOWN GENERATION -- the precondition a permit requires, and the shape `create`
+        // itself produces BEFORE it drives (it stamps the baseline first, so the permit bindeth to the ACKNOWLEDGED
+        // generation rather than a fabricated zero). ***
+        let journal = InMemoryJournal()
+        _ = journal.writeChecked(.idle)
+        XCTAssertNotNil(journal.durableEpoch,
+                        "the settled estate must name a generation before a permit may bind to it")
+
+        // (1) *** THE OBSERVATION: A REAL DRIVE MINTS THE PERMIT AT GENERATION G. ***
+        let artifactPaths = MeshRuntime.wipeArtifactPaths(messageStoreUrl: msg, peerStoreUrl: peer)
+        let estateId = MeshRuntime.recoveryEstateId(artifactPaths: artifactPaths)
+        let authority = CrashResumableWipe(
+            store: WipeJournalDurabilityAdapter(journal: journal),
+            vault: WipeDeferredKeyVaultSeam(),
+            filesystem: WipeDeferredArtifactFileSystemSeam(),
+            runtime: WipeDeferredTransportSeam(),
+            authority: WipeDeferredIdentityAuthoritySeam())
+        guard case .normal(let permit) = StartupRecoveryBootstrap(wipe: authority, estateId: estateId)
+                .consumeCompositionTopology() else {
+            return XCTFail("a settled estate must issue the permit; the drive refused the normal road")
+        }
+        let judgedGeneration = permit.generation
+
+        // (2) *** THE WORLD MOVES BETWEEN THE OBSERVATION AND THE CONSTRUCTION: A REAL REQUEST, DURABLY RECORDED. ***
+        //
+        // *`requestWipe()` is the verb the shipping panic road travelleth, and it bumps the durable generation BEFORE
+        // it writes the committed checkpoint -- so this is the production ABA event rather than a literal typed into
+        // the arm. The create-time seams own no transport, so the ladder STOPS at `REQUESTED`, which is exactly what
+        // maketh this a request rather than an erasure.*
+        let requested = try authority.requestWipe()
+        guard case .retryLater(let at, _) = requested else {
+            return XCTFail("a create-time deferred drive must stop at REQUESTED (no transport stands yet); "
+                           + "it answered \(requested)")
+        }
+        XCTAssertEqual(at, .requested, "and it must name the rung it stopped at: \(at)")
+        let afterRequest = try XCTUnwrap(journal.durableEpoch)
+        XCTAssertNotEqual(
+            afterRequest, judgedGeneration,
+            "*** THE REQUEST MUST HAVE MOVED THE DURABLE GENERATION (ABA): the permit was judged at "
+            + "\(judgedGeneration) and the record now stands at \(afterRequest). A journal that did not advance "
+            + "would make this arm measure nothing. ***")
+
+        // (3) *** THE CONSTRUCTION BOUNDARY REFUSES A PERMIT JUDGED BEFORE THE REQUEST, AND OPENS NOTHING. ***
+        XCTAssertThrowsError(
+            _ = try MeshRuntime.createPrivateComposition(
+                messageStoreUrl: msg,
+                peerStoreUrl: peer,
+                journal: journal,
+                keychain: keychain,
+                encryptedStores: factory,
+                permit: permit),
+            "*** A PERMIT JUDGED BEFORE A WIPE REQUEST MUST NOT OPEN A STORE AFTER IT. *A composition that "
+            + "re-authorized from its stale decision would build on the key a later resume will erase.* ***")
+        XCTAssertEqual(
+            counter.storesOpened, 0,
+            "*** AND NOT ONE PRIVATE STORE MAY OPEN ON THAT REFUSAL -- counted at the real construction seam, so a "
+            + "late failure after the handle or the DEK unwrap would still be visible. Observed "
+            + "\(counter.storesOpened). ***")
+        XCTAssertFalse(
+            permit.isConsumed,
+            "*** AND THE STALE PERMIT MUST STILL BE UNSPENT: the refusal happened at the boundary's state/generation "
+            + "guard BEFORE `consumption.consume()`, so the IDLE(N+1) attempt below measures the FRESHNESS check "
+            + "rather than an already-spent one-shot slot. ***")
+
+        // (4) *** AND THE ABA CASE PROPER: THE RECORD RETURNS TO IDLE AT THE *NEW* GENERATION. ***
+        //
+        // *A request is not the only way the observation can move: a wipe that ran to its end leaves the record back
+        // at IDLE -- the SAME rung the permit was judged at, with a DIFFERENT generation. This is the "stale record
+        // that looks current" the ABA law existeth for, and it is why the boundary compares against the LIVE
+        // generation rather than the permit's own number.* **A construction boundary that trusted `permit.generation`
+        // -- or that re-authorized from the drive that minted it -- would ADMIT here and open a store over an estate
+        // the operator has since wiped; the open count would move and this arm would redden.***
+        journal.write(.idle)      // the settled rung is reached again, at the ADVANCED generation.
+        XCTAssertEqual(journal.readDurable()?.state, .idle, "the record has returned to the settled rung")
+        XCTAssertEqual(journal.readDurable()?.epoch, afterRequest,
+                       "and it carrieth the ADVANCED generation, not the one the permit was judged at")
+        XCTAssertThrowsError(
+            _ = try MeshRuntime.createPrivateComposition(
+                messageStoreUrl: msg,
+                peerStoreUrl: peer,
+                journal: journal,
+                keychain: keychain,
+                encryptedStores: factory,
+                permit: permit),
+            "*** A PERMIT JUDGED AT GENERATION N MUST NOT OPEN A SETTLED ESTATE THAT NOW STANDS AT N+1: IDLE is not "
+            + "\"safe\" by itself -- it is the generation that bindeth the proof to the record. ***")
+        XCTAssertEqual(
+            counter.storesOpened, 0,
+            "*** AND STILL NOT ONE PRIVATE STORE MAY OPEN -- the ABA refusal is taken at the SAME construction seam. "
+            + "Observed \(counter.storesOpened). ***")
+        XCTAssertFalse(
+            keychain.writes.contains(MeshIdentity.v1Tag),
+            "*** AND NO IDENTITY WAS MINted ON EITHER REFUSAL: the boundary refused BEFORE any sensitive "
+            + "construction, so `loadOrCreate` was never reached. ***")
+
+        // (5) *** THE POSITIVE CONTROL: A *FRESH* PERMIT OVER THE SETTLED RECORD OPENS BOTH STORES. ***
+        //
+        // *Without this the arm would pass on a boundary that refused EVERYTHING -- an outage mistaken for a gate.
+        // The stale permit was refused for being STALE, not because the estate is unbuildable: a permit DRIVEN NOW,
+        // over the very record the stale one named, must be admitted and both stores opened once each.* **AND IT MUST
+        // SEE THE COUNTER MOVE, or the zero assertions above are vacuous.**
+        let freshAuthority = CrashResumableWipe(
+            store: WipeJournalDurabilityAdapter(journal: journal),
+            vault: WipeDeferredKeyVaultSeam(),
+            filesystem: WipeDeferredArtifactFileSystemSeam(),
+            runtime: WipeDeferredTransportSeam(),
+            authority: WipeDeferredIdentityAuthoritySeam())
+        guard case .normal(let freshPermit) = StartupRecoveryBootstrap(wipe: freshAuthority, estateId: estateId)
+                .consumeCompositionTopology() else {
+            return XCTFail("*** A SETTLED RECORD MUST YIELD A FRESH PERMIT: the stale permit's refusal must be ABOUT "
+                           + "ITS STALENESS, not a boundary that opens nothing. ***")
+        }
+        XCTAssertNotNil(
+            try MeshRuntime.createPrivateComposition(
+                messageStoreUrl: msg,
+                peerStoreUrl: peer,
+                journal: journal,
+                keychain: keychain,
+                encryptedStores: factory,
+                permit: freshPermit),
+            "*** THE FRESH CONSTRUCTION MUST STAND: the ABA refusal above is targeted, not a wall. ***")
+        XCTAssertEqual(
+            counter.storesOpened, 2,
+            "*** AND THE COUNTER MUST OBSERVE BOTH OPENS -- so a zero above meant zero. Observed "
+            + "\(counter.storesOpened). ***")
+    }
+
+    /// *** REVIEW: THE BASELINE STAMP RACES A CONCURRENT WIPE REQUEST -- AND LOSES IT. ***
+    ///
+    /// *THE DEFECT, STATIC INTERLEAVING: `create` read the record (absent → `(.idle, nil)`) and then, OUTSIDE the
+    /// estate's one serialization point, called `writeChecked(.idle)` -- which stamps the absent record to the CURRENT
+    /// durable generation. A wipe request landing between the read and the write -- a durable `REQUESTED`, exactly
+    /// what `recordWipeRequest` writes -- was then REPLACED by a settled `IDLE`: `create` minted a permit over the
+    /// settled record and A REAL REQUEST TO WIPE WAS LOST.* **THE REPAIR IS THAT THE RE-READ AND THE STAMP ARE ONE
+    /// SERIALIZED TRANSACTION**, at the same point every wipe request and every private admission taketh, so a request
+    /// can only land BEFORE the block (seen: the stamp is skipped) or AFTER it (preserved: nothing clobbers it).*
+    ///
+    /// *** THE INSTRUMENT IS DETERMINISTIC AND USES THE REAL MEDIUM AND THE REAL REQUEST VERB. *** *The journal is a
+    /// genuinely ABSENT `FileWipeJournal`; a one-shot forwarding wrapper pauses `create` after its FIRST durable
+    /// snapshot; thread B then tries the SAME physical-authority mutex with a nonblocking probe and calls
+    /// `recordWipeRequest` -- which records the real production request and generation but performs NO recovery
+    /// effect. On the OLD code the mutex is free, so B records `REQUESTED` BEFORE `create` resumes; on the FIXED code
+    /// `create` already holdeth it, the probe returns WITHOUT running its body, and B records AFTER `create` finishes.*
+    /// **The lock probe chooses an admissible interleaving; it is NEVER the oracle -- the oracles are the durable
+    /// record and the consumer's refusal.***
+    func testGSFINAL003_anAbsentBaselineDoesNotClobberAConcurrentRequest() throws {
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("gf003_base_race_\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { cleanup(dir) }
+        let msg = dir.appendingPathComponent("mesh.db")
+        let peer = dir.appendingPathComponent("peer.db")
+        let journalURL = dir.appendingPathComponent("io.godstone.wipe.journal")
+
+        let counter = PrivateOpenCounter()
+        let provider = CountingKeyProvider()
+        provider.succeeds = true
+        let engine = PinnedCountingEngine(counter: counter)
+        guard requirePinnedImage(engine, lane: "gf003 baseline/request race") else { return }
+        let factory = EncryptedStoreFactory(provider: provider, engine: engine)
+        let keychain = InMemoryKeychain()
+
+        // *** A GENUINELY ABSENT JOURNAL -- no phase, no floor, no refusal marker. ***
+        let realJournal = FileWipeJournal(url: journalURL)
+
+        let snapshotTaken = DispatchSemaphore(value: 0)
+        let resumeCreate = DispatchSemaphore(value: 0)
+        let createFinished = DispatchSemaphore(value: 0)
+        let probeFinished = DispatchSemaphore(value: 0)
+        let journal = PausingSnapshotJournal(inner: realJournal,
+                                             snapshotTaken: snapshotTaken,
+                                             resumeCreate: resumeCreate)
+
+        // THREAD B: the OTHER authority over the SAME durable journal, with deferred seams. `recordWipeRequest`
+        // records the real production request/generation and drives NO recovery effect.
+        let requestAuthority = CrashResumableWipe(
+            store: WipeJournalDurabilityAdapter(journal: realJournal),
+            vault: WipeDeferredKeyVaultSeam(),
+            filesystem: WipeDeferredArtifactFileSystemSeam(),
+            runtime: WipeDeferredTransportSeam(),
+            authority: WipeDeferredIdentityAuthoritySeam())
+        let stateLock = NSLock()
+        var workerError: Error?
+
+        let requester = DispatchQueue(label: "gf003.baseline.requester")
+        requester.async {
+            snapshotTaken.wait()
+            // *** THE NONBLOCKING PROBE: does `create` already hold the estate's lock? ***
+            let ran: Bool
+            do {
+                ran = try PhysicalEstateAuthority.shared.trySerializedForTest {
+                    try requestAuthority.recordWipeRequest()
+                }
+            } catch {
+                stateLock.lock(); workerError = error; stateLock.unlock()
+                probeFinished.signal()
+                resumeCreate.signal()
+                return
+            }
+            resumeCreate.signal()          // release `create` -- it may hold the lock we could not take
+            if !ran {
+                // THE FIXED ORDER: `create` held the lock, so the request is recorded AFTER it finishes.
+                createFinished.wait()
+                do { _ = try requestAuthority.recordWipeRequest() }
+                catch { stateLock.lock(); workerError = error; stateLock.unlock() }
+            }
+            probeFinished.signal()
+        }
+
+        // THREAD A (this thread): the REAL `create` over the pausing wrapper.
+        var runtime: MeshRuntime?
+        var createError: Error?
+        do {
+            runtime = try MeshRuntime.create(
+                messageStoreUrl: msg,
+                peerStoreUrl: peer,
+                journal: journal,
+                keychain: keychain,
+                encryptedStores: factory)
+        } catch {
+            createError = error
+        }
+        createFinished.signal()
+
+        // BOUNDED WATCHDOGS ONLY -- never the ordering oracle.
+        XCTAssertEqual(probeFinished.wait(timeout: .now() + 30), .success,
+                       "*** THE CONCURRENT REQUESTER MUST FINISH; a timeout is a harness deadlock, not a verdict. ***")
+
+        // *** (A) THE CLEAN-START POSITIVE CONTROL: THE GENUINELY CLEAN ESTATE MUST COMPOSE. *** *A blanket refusal
+        // must not satisfy this regression, or the zeros elsewhere would be vacuous.*
+        XCTAssertNotNil(runtime, "the clean estate must compose; create answered \(String(describing: createError))")
+
+        // *** (B) THE DURABLE ORACLE: A REAL REQUEST WAS NOT LOST. ***
+        let reopened = FileWipeJournal(url: journalURL)
+        XCTAssertEqual(
+            reopened.readDurable()?.state, WipeState.requested,
+            "*** A REAL REQUEST TO WIPE WAS LOST: the durable record must carry `requested`, NOT the stamp'd settled "
+            + "estate. The old code's unchecked `writeChecked(.idle)` replaced the request at the same generation. "
+            + "Observed \(String(describing: reopened.readDurable())). ***")
+        XCTAssertNotNil(reopened.readDurable()?.epoch,
+                        "*** AND IT MUST CARRY A KNOWN GENERATION: \(String(describing: reopened.readDurable())) ***")
+        XCTAssertTrue(reopened.isReadable, "a request is a readable record, never a corrupt one")
+
+        // *** (C) THE CONSUMER ORACLE: SENSITIVE ADMISSION IS REFUSED WHILE THE REQUEST STANDS. ***
+        if let runtime {
+            XCTAssertFalse(
+                runtime.wipeAuthorityForTest().allowsSensitiveApi(),
+                "*** A RETAINED RUNTIME MUST REFUSE SENSITIVE USE ONCE A REQUEST STANDS: the gate answereth from the "
+                + "LIVE durable record, so it observeth the request whatever order it landed in. ***")
+            runtime.closeAdoptedConnectionsForTest()
+        }
+        stateLock.lock(); let failure = workerError; stateLock.unlock()
+        if let failure { XCTFail("the concurrent requester failed: \(failure)") }
+    }
+
+    /// *** A ONE-SHOT PAUSING FORWARDER: THE FIRST `readDurable()` OBTAINS THE REAL RESULT, SIGNALS, AND HOLDS. ***
+    ///
+    /// *It delegates every operation and receipt UNCHANGED to a real `FileWipeJournal`; it models ONLY the one
+    /// interleaving the race needs -- `create`'s first durable snapshot landeth, the concurrent request is given its
+    /// chance, and then `create` resumes. The pause is ARMED BEFORE it signals (so no later read can pause), and it
+    /// never holds its own lock while waiting.*
+    private final class PausingSnapshotJournal: WipeJournal, @unchecked Sendable {
+        private let inner: WipeJournal
+        private let snapshotTaken: DispatchSemaphore
+        private let resumeCreate: DispatchSemaphore
+        private let lock = NSLock()
+        private var paused = false
+
+        init(inner: WipeJournal, snapshotTaken: DispatchSemaphore, resumeCreate: DispatchSemaphore) {
+            self.inner = inner
+            self.snapshotTaken = snapshotTaken
+            self.resumeCreate = resumeCreate
+        }
+
+        func read() -> WipeState { inner.read() }
+        func write(_ s: WipeState) { inner.write(s) }
+        func clear() { inner.clear() }
+        var durableEpoch: UInt64? { inner.durableEpoch }
+        @discardableResult func bumpEpoch() -> UInt64? { inner.bumpEpoch() }
+        var isReadable: Bool { inner.isReadable }
+        @discardableResult func writeChecked(_ s: WipeState) -> DurableWriteResult { inner.writeChecked(s) }
+
+        func readDurable() -> (state: WipeState, epoch: UInt64?)? {
+            let real = inner.readDurable()      // THE REAL MEDIUM'S ANSWER FIRST
+            lock.lock(); let shouldPause = !paused; paused = true; lock.unlock()
+            if shouldPause {
+                snapshotTaken.signal()
+                resumeCreate.wait()              // hold ONLY this thread -- never the wrapper's lock
+            }
+            return real
+        }
+    }
+
     /// *** THE CENTRAL ARM: A RECOVERY ROUTE THAT CANNOT SETTLE REFUSES, AND OPENS NOTHING. ***
     ///
     /// *This is the finding's invariant, tested where it is true rather than where it deadlocks. The

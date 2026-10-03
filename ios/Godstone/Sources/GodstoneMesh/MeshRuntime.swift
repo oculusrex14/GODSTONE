@@ -416,7 +416,34 @@ public final class MeshRuntime {
         // identity minted for a private graph -- and returns with a decision taken AFTER that drive. If the estate
         // settles, the permit issues and the private graph opens; if it does not, the caller is TOLD which rung and why,
         // and ZERO private stores were opened.*
-        let createTimeDecision = StartupRecoveryBootstrap(
+        // *** ONE CONSUMING DRIVE BINDS THE VERDICT *AND* THE PERMIT. ***
+        //
+        // *The topology this call answers IS the decision: `.normal` carries the permit for the settled estate the
+        // drive observed, and `.recoveryOnly`/`.refused` carry a typed decision and NO capability. There is no second
+        // drive and no parameter through which a decision value could be handed in, so the observation that chooseth
+        // the branch cannot disagree with the proof that openeth the graph.
+        //
+        // THE SEAMS HERE DEFER EVERY EFFECT: the runtime does not yet stand, so the deferred transport stops the
+        // ladder at `REQUESTED`. This drive therefore READS the durable record rather than erasing. An outstanding
+        // estate is finished below by the LIVE pre-private recovery, which owns the estate's real transport and opens
+        // no store; a create-time drive that could advance would erase keys before the radio was quiesced.
+        //
+        // Keep baseline observation and write atomic with wipe requests.
+        // Otherwise REQUESTED can be replaced by IDLE before a fresh permit is minted.
+        // Stamp only a readable IDLE estate with no acknowledged generation.
+        try PhysicalEstateAuthority.shared.serialized {
+            guard journal.isReadable, let durable = journal.readDurable(),
+                  durable.state == .idle, durable.epoch == nil else { return }
+            let baseline = journal.writeChecked(.idle)
+            guard baseline.synchronized, baseline.epoch != nil else {
+                throw MeshRuntimeError.startupRefusedByRecovery(
+                    decision: "baseline_unsynchronized",
+                    reason: "the estate's baseline generation could not be durably synchronized (a present record's "
+                          + "history could not be established, or the medium refused); no permit was minted")
+            }
+        }
+
+        let issuingBootstrap = StartupRecoveryBootstrap(
             wipe: CrashResumableWipe(
                 store: WipeJournalDurabilityAdapter(journal: journal),
                 vault: WipeDeferredKeyVaultSeam(),
@@ -424,49 +451,12 @@ public final class MeshRuntime {
                 runtime: WipeDeferredTransportSeam(),
                 authority: WipeDeferredIdentityAuthoritySeam()),
             estateId: Self.recoveryEstateId(artifactPaths: Self.wipeArtifactPaths(
-                messageStoreUrl: messageStoreUrl, peerStoreUrl: peerStoreUrl))
-        ).decideAndDrive()
+                messageStoreUrl: messageStoreUrl, peerStoreUrl: peerStoreUrl)))
+        let createTimeTopology = issuingBootstrap.consumeCompositionTopology()
 
-        switch createTimeDecision {
-        case .cleanStart, .wipeCompleted:
-            // *** A SETTLED ESTATE: DRIVE ONCE MORE THROUGH THE BOOTSTRAP THAT ISSUES THE PERMIT. ***
-            //
-            // *The decision above came from the CREATE-TIME seams (which own no transport), so it could not have
-            // settled a pending wipe -- but the permit may be issued ONLY by `consumeCompositionTopology()`, and that
-            // road drives the ladder ITSELF with the seams its own coordinator owns.* **So the settled road is
-            // confirmed by the same bootstrap whose evidence the permit is made of, rather than by handing it a
-            // decision value -- there is no parameter through which a decision could be passed.**
-            // *** IOS-R1/R3 + IOS-FOLLOWUP-C2 + CURRENT-01: THE BASELINE IS CHECKED, HISTORY-AWARE, AND ITS PHASE IS
-            // STAMPED TO THE FLOOR. ***
-            //
-            // *A baseline that is merely VISIBLE but not synchronized would let a permit be bound to an unacknowledged
-            // generation. AND -- CURRENT-01 -- a PRESENT record with no nameable generation is HISTORY, not a first
-            // launch: `writeChecked(.idle)` then re-stamps the phase with the DURABLE FLOOR's number or refuses
-            // outright, so no recycled generation-1 baseline can be manufactured by recreating the object.*
-            if journal.durableEpoch == nil {
-                let baseline = journal.writeChecked(.idle)
-                guard baseline.synchronized, baseline.epoch != nil else {
-                    throw MeshRuntimeError.startupRefusedByRecovery(
-                        decision: "baseline_unsynchronized",
-                        reason: "the estate's baseline generation could not be durably synchronized (a present record's "
-                              + "history could not be established, or the medium refused); no permit was minted")
-                }
-            }
-            let settled = StartupRecoveryBootstrap(
-                wipe: CrashResumableWipe(
-                    store: WipeJournalDurabilityAdapter(journal: journal),
-                    vault: WipeDeferredKeyVaultSeam(),
-                    filesystem: WipeDeferredArtifactFileSystemSeam(),
-                    runtime: WipeDeferredTransportSeam(),
-                    authority: WipeDeferredIdentityAuthoritySeam()),
-                estateId: Self.recoveryEstateId(artifactPaths: Self.wipeArtifactPaths(
-                    messageStoreUrl: messageStoreUrl, peerStoreUrl: peerStoreUrl)))
-            guard case .normal(let permit) = settled.consumeCompositionTopology() else {
-                throw MeshRuntimeError.startupRefusedByRecovery(
-                    decision: settled.reportedDecision().name,
-                    reason: settled.reportedDecision().refusalReason
-                        ?? "the estate did not settle under the issuing drive")
-            }
+        switch createTimeTopology {
+        case .normal(let createTimePermit):
+            // A SETTLED ESTATE: this is the permit the single drive above minted, over the very evidence it took.
             return try createPrivateComposition(
                 messageStoreUrl: messageStoreUrl,
                 peerStoreUrl: peerStoreUrl,
@@ -474,14 +464,15 @@ public final class MeshRuntime {
                 journal: journal,
                 keychain: keychain,
                 encryptedStores: factory,
-                permit: permit
+                permit: createTimePermit
             )
-        case .corruptJournal, .terminalFailure:
-            // CORRUPT OR TERMINAL: no composition may be built at all, and the reason NAMES the state.
+        case .refused(let decision), .alreadyConsumed(let decision):
+            // CORRUPT OR TERMINAL: no composition may be built, and the refusal NAMES the state. A fresh bootstrap
+            // cannot answer `.alreadyConsumed`; it carries the same typed decision and is refused the same way.
             throw MeshRuntimeError.startupRefusedByRecovery(
-                decision: createTimeDecision.name,
-                reason: createTimeDecision.refusalReason ?? "the recovery ladder did not settle")
-        case .recoveryPending, .retryableFailure:
+                decision: decision.name,
+                reason: decision.refusalReason ?? "the recovery ladder did not settle")
+        case .recoveryOnly:
             // *** THE RECOVERY-ONLY ROAD: IT OWNS RECOVERY CAPABILITIES AND CONSTRUCTS NOTHING SENSITIVE. ***
             //
             // *A store opened now is a store opened on the key a later resume will erase -- SO NO STORE IS OPENED.
@@ -916,10 +907,11 @@ public final class MeshRuntime {
         // already paid for twice.** *So the statement is replaced by the truth:*
         //
         //   * **THE PRIVATE ROAD NO LONGER REACHES HERE WITH AN OUTSTANDING WIPE.** `MeshRuntime.create` drives a
-        //     recovery composition that owns a LIVE transport and NO store (`driveTruePrePrivateRecovery`), and only a
-        //     SETTLED decision can reach `createPrivateComposition`. So on this graph a pending wipe is not a state the
-        //     composition can be in -- it is a state the RECOVERY composition already resolved, with a live radio, and
-        //     the two permits are what enforce the order.
+        //     recovery composition that owns the estate's LIVE transport and NO store (`runRecoveryLadderInternal`
+        //     over a `DefaultRecoveryEstate`, on the `.recoveryOnly` arm), and only a SETTLED decision can reach
+        //     `createPrivateComposition`. So on this graph a pending wipe is not a state the composition can be in --
+        //     it is a state the RECOVERY composition already resolved, with a live radio, and the permits are what
+        //     enforce the order.
         //   * **WHAT REMAINS HERE IS THE ARCHIVE/HOST ROAD'S OWN MEASUREMENT, AND IT IS KEPT BECAUSE IT IS THE ONE
         //     ROAD THAT MUST STILL OPEN ITS (NON-PRIVATE) STORES DURING A PENDING WIPE** -- *that road carrieth no
         //     factory and therefore no private material, and its own pending-wipe behaviour is governed by the

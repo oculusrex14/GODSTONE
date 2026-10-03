@@ -1,25 +1,43 @@
-FREEZE: board1-court-rc -> 71571db0b947266abe5dc44735e90b205f2183a0 (tree 27005d38b20d86fa49d5630c95de6cb11cd9f298) bound to run 1 attempt 1 7/7 jobs success
-  attestation written to /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpteh34cjl/repo/docs/remediation/evidence/FREEZE_ATTESTATION_rc15.json
+FREEZE: board1-court-rc -> a6ad5788eacc2280b0c1ba1e88a16172a617794b (tree c223af0668d1ab5b57a16e5b76e374395e2806e6) bound to run 1 attempt 1 7/7 jobs success
+  attestation written to /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpicqn6bxs/repo/docs/remediation/evidence/FREEZE_ATTESTATION_rc15.json
   auditor block stays NULL: the terminal builder verdict is READY_FOR_EXTERNAL_REAUDIT, NEVER VERIFIED_FIXED
-/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpteh34cjl/repo/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpteh34cjl/repo/ci/mutations.py'>
+FREEZE: board1-court-rc -> a6ad5788eacc2280b0c1ba1e88a16172a617794b (tree c223af0668d1ab5b57a16e5b76e374395e2806e6) bound to run 1 attempt 1 7/7 jobs success
+  attestation written to /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpicqn6bxs/repo/docs/remediation/evidence/FREEZE_ATTESTATION_rc15.json
+  auditor block stays NULL: the terminal builder verdict is READY_FOR_EXTERNAL_REAUDIT, NEVER VERIFIED_FIXED
+/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpicqn6bxs/repo/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpicqn6bxs/repo/ci/mutations.py'>
   return hashlib.sha256(open(path, "rb").read()).hexdigest()
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpteh34cjl/repo/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpteh34cjl/repo/ci/mutations.py'>
+/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpicqn6bxs/repo/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpicqn6bxs/repo/ci/mutations.py'>
   return hashlib.sha256(open(path, "rb").read()).hexdigest()
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpteh34cjl/repo/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpteh34cjl/repo/ci/mutations.py'>
+/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpicqn6bxs/repo/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpicqn6bxs/repo/ci/mutations.py'>
   return hashlib.sha256(open(path, "rb").read()).hexdigest()
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-test_a_manifest_bound_to_another_candidate_is_refused_by_the_freeze (test_board1_gate_manifest.AttestationBindingTests.test_a_manifest_bound_to_another_candidate_is_refused_by_the_freeze) ... /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpteh34cjl/repo/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpteh34cjl/repo/ci/mutations.py'>
+test_a_manifest_bound_to_another_candidate_is_refused_by_the_freeze (test_board1_gate_manifest.AttestationBindingTests.test_a_manifest_bound_to_another_candidate_is_refused_by_the_freeze)
+*** A FREEZE MAY NOT BIND A MANIFEST WHOSE CANDIDATE IS NOT THE TAG'S OWN PEEL. *** ... /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpicqn6bxs/repo/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpicqn6bxs/repo/ci/mutations.py'>
   return hashlib.sha256(open(path, "rb").read()).hexdigest()
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpteh34cjl/repo/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpteh34cjl/repo/ci/mutations.py'>
+/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpicqn6bxs/repo/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpicqn6bxs/repo/ci/mutations.py'>
   return hashlib.sha256(open(path, "rb").read()).hexdigest()
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-::error::/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpteh34cjl/repo/docs/remediation/evidence/FREEZE_ATTESTATION_rc15.json already EXISTETH -- an attestation is written ONCE. Refusing to overwrite it (even malformed bytes are left untouched: a reader must be able to see exactly what was written first)
-ok
+/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpicqn6bxs/repo/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpicqn6bxs/repo/ci/mutations.py'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+FAIL
+
+======================================================================
+FAIL: test_a_manifest_bound_to_another_candidate_is_refused_by_the_freeze (test_board1_gate_manifest.AttestationBindingTests.test_a_manifest_bound_to_another_candidate_is_refused_by_the_freeze)
+*** A FREEZE MAY NOT BIND A MANIFEST WHOSE CANDIDATE IS NOT THE TAG'S OWN PEEL. ***
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/board1-rc15-work-final/wt_T86-B1M17-foreign-candidate-manifest-is-bound/tools/readiness/tests/test_board1_gate_manifest.py", line 752, in test_a_manifest_bound_to_another_candidate_is_refused_by_the_freeze
+    self.assertNotEqual(rc, 0,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^
+                        "a tag that peels to another commit than the manifest's stated sha must be refused")
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 0 == 0 : a tag that peels to another commit than the manifest's stated sha must be refused
 
 ----------------------------------------------------------------------
-Ran 1 test in 4.474s
+Ran 1 test in 4.453s
 
-OK
+FAILED (failures=1)
