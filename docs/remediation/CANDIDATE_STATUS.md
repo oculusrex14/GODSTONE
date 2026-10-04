@@ -25,7 +25,18 @@
 > installation postcondition correctly refused; the two registry needles were then completed to whole lines so post-find=0,
 > with NO harness weakening), and the selected two-rod three-phase qualification on `f66a1b41` **KILLED both** with green
 > restorations. **These are DISTINCT runs: they are NEVER summed into one 181 campaign and are NOT discharge proof.**
-> The final full 181 campaign + integration remains PENDING.
+> The final full 181 campaign remains PENDING.
+> **Integration stage proof (2026-10-04):** the full `--mode all` integration now **PASSES** on clean full SHA
+> `b7bac67f018b015b0038ec11b3228bba9de59545` -- checker `python3 -B ci/check_integration_evidence.py --report
+> /tmp/board1-rc15-integration-b7bac67f/integration-report.json --require-mode all` = **PASS** (rows 10, cross 8, crash 2,
+> digests+inputs bound; 533.00s). BOTH honest directions ACCEPTED/DELIVERED the correct AUTHORED msg_id after a separate
+> durable cancel+reopen; the SIX negative variants each REFUSED at their exact stage (unauthenticated / hs2 / old-session);
+> the macOS SIGKILL campaign rc 0 with two fresh recoveries on the actual Android TestExecutor; natural `bye` on BOTH
+> workers with command EOF (the 120s oracle unchanged). The coordinator fix `b7` centralizes `Worker.send('bye')` to close
+> the command FIFO ONCE (idempotent `Fifo.close`), reply pipe unchanged, with NO new APIs and NO source-worker change.
+> Source pre/post `ad11a88866de38fc47284a6e71d2719b56addd3ae50fcf0e95768f8808146419`. **REMAINING: the current source-family
+> reseal (Android 7 lanes, host, UI+sim) and the final full 181 campaign; ALL 35 obligations stay OPEN and none is
+> discharged.**
 > Compiler refusal is a catch only for the explicitly declared permit type-enforcement control;
 > ordinary compile errors, missing execution, skipped cases and timeouts remain non-catches.
 > The simulator stock-SQLite oracle now stages the resolved device's runtime image, validates its export
