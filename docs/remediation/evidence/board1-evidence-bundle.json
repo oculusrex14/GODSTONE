@@ -11683,7 +11683,7 @@
    }
   ],
   "records_sha256": "1a2447e1ca66badb46ea762ceb6f4b8deeeaee1e296e9d307314e424f91d2ac6",
-  "source_sha256": "8ff7279bf8dfb7aea487e687fee7ea16d509d6931e842811ee4304f0ea131594",
+  "source_sha256": "8a194e106a199d45523bd733c34be9af3e4884c2d159aedb64df14419a6948b7",
   "historical_anchor_commit": "4c0569eef6f79871afc4108346e34f461f241cd4",
   "problems": []
  },
@@ -13771,5 +13771,5 @@
  ],
  "external_problems": [],
  "notes": "digests cover every TRACKED file under docs/remediation/evidence, which a clean clone carries; a file present but untracked is named in `untracked_present` and never digested. The out-of-repository builder evidence root is DECLARED in historical_root_declared and is NEVER required: its absence defers historical arms rather than failing the internal gate, and its presence can never make an internal court green because no internal court reads it. Historical digests are read at the immutable rc14 anchor.",
- "document_sha256": "21a8d67e0b302d008788d28b1d0623b34ce0e0c07977e434864c2e4922275b18"
+ "document_sha256": "72ef3a67f2386f7d71f1500bc52c2b6ab26f0d3435f070da160822223b95a089"
 }
