@@ -4,7 +4,7 @@ test_an_excluded_binary_resource_is_refused (test_audit_supplychain_harness.IosC
 FAIL: test_an_excluded_binary_resource_is_refused (test_audit_supplychain_harness.IosContentInventoryCourt.test_an_excluded_binary_resource_is_refused)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/private/tmp/board1-rc15-work-final/wt_RS-IOS-03-excluded-resource-pattern-asleep/tools/readiness/tests/test_audit_supplychain_harness.py", line 383, in test_an_excluded_binary_resource_is_refused
+  File "/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_RS-IOS-03-excluded-resource-pattern-asleep/tools/readiness/tests/test_audit_supplychain_harness.py", line 383, in test_an_excluded_binary_resource_is_refused
     self.assertEqual("FAIL", report["verdict"])
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 'FAIL' != 'PASS'

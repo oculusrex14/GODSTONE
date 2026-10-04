@@ -4,7 +4,7 @@ test_a_skipped_internal_inspection_is_refused (test_audit_supplychain_harness.Re
 FAIL: test_a_skipped_internal_inspection_is_refused (test_audit_supplychain_harness.ReleaseProofCourt.test_a_skipped_internal_inspection_is_refused)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/private/tmp/board1-rc15-work-final/wt_RS-PROOF-01-fabricated-internal-verdict-tolerated/tools/readiness/tests/test_audit_supplychain_harness.py", line 141, in test_a_skipped_internal_inspection_is_refused
+  File "/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_RS-PROOF-01-fabricated-internal-verdict-tolerated/tools/readiness/tests/test_audit_supplychain_harness.py", line 141, in test_a_skipped_internal_inspection_is_refused
     self.assertTrue(any("SKIPPED its artifact inspection" in item
     ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
                         for item in RP.verify_release_proof(document)))
@@ -12,6 +12,6 @@ Traceback (most recent call last):
 AssertionError: False is not true
 
 ----------------------------------------------------------------------
-Ran 1 test in 0.000s
+Ran 1 test in 0.001s
 
 FAILED (failures=1)

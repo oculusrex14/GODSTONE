@@ -1,20 +1,20 @@
-/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpr1yxdtkl/repo/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpr1yxdtkl/repo/ci/mutations.py'>
+/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmp9zqi_f0z/repo/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmp9zqi_f0z/repo/ci/mutations.py'>
   return hashlib.sha256(open(path, "rb").read()).hexdigest()
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpr1yxdtkl/repo/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpr1yxdtkl/repo/ci/mutations.py'>
+/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmp9zqi_f0z/repo/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmp9zqi_f0z/repo/ci/mutations.py'>
   return hashlib.sha256(open(path, "rb").read()).hexdigest()
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpr1yxdtkl/repo/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpr1yxdtkl/repo/ci/mutations.py'>
+/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmp9zqi_f0z/repo/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmp9zqi_f0z/repo/ci/mutations.py'>
   return hashlib.sha256(open(path, "rb").read()).hexdigest()
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpr1yxdtkl/repo/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpr1yxdtkl/repo/ci/mutations.py'>
+/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmp9zqi_f0z/repo/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmp9zqi_f0z/repo/ci/mutations.py'>
   return hashlib.sha256(open(path, "rb").read()).hexdigest()
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
 test_a_lane_whose_pre_and_post_digests_disagree_is_refused (test_board1_gate_manifest.ManifestContractTests.test_a_lane_whose_pre_and_post_digests_disagree_is_refused)
-*** AN INPUT THAT MOVED WHILE THE LANE RAN MAKES ITS ARTIFACTS EVIDENCE ABOUT NO REVISION. *** ... /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpr1yxdtkl/repo/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpr1yxdtkl/repo/ci/mutations.py'>
+*** AN INPUT THAT MOVED WHILE THE LANE RAN MAKES ITS ARTIFACTS EVIDENCE ABOUT NO REVISION. *** ... /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmp9zqi_f0z/repo/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmp9zqi_f0z/repo/ci/mutations.py'>
   return hashlib.sha256(open(path, "rb").read()).hexdigest()
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpr1yxdtkl/repo/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpr1yxdtkl/repo/ci/mutations.py'>
+/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmp9zqi_f0z/repo/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmp9zqi_f0z/repo/ci/mutations.py'>
   return hashlib.sha256(open(path, "rb").read()).hexdigest()
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
 FAIL
@@ -24,12 +24,12 @@ FAIL: test_a_lane_whose_pre_and_post_digests_disagree_is_refused (test_board1_ga
 *** AN INPUT THAT MOVED WHILE THE LANE RAN MAKES ITS ARTIFACTS EVIDENCE ABOUT NO REVISION. ***
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/private/tmp/board1-rc15-work-final/wt_T86-B1M9-mid-run-lane-drift-is-ignored/tools/readiness/tests/test_board1_gate_manifest.py", line 390, in test_a_lane_whose_pre_and_post_digests_disagree_is_refused
+  File "/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_T86-B1M9-mid-run-lane-drift-is-ignored/tools/readiness/tests/test_board1_gate_manifest.py", line 390, in test_a_lane_whose_pre_and_post_digests_disagree_is_refused
     self.assertTrue(any("does not match POST-RUN" in p for p in self.fx.check(doc)))
     ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: False is not true
 
 ----------------------------------------------------------------------
-Ran 1 test in 4.114s
+Ran 1 test in 4.488s
 
 FAILED (failures=1)

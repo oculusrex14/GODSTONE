@@ -13,6 +13,6 @@
    9. a verdict for an arm the sources do NOT declare (unexpected arm)                red    red    KILLED
    10. a duplicated verdict (the old guard's narrow window)                           red    green  ESCAPED
    11. roster names only simulator-runnable classes                                   clean  clean  KILLED
-   12. roster arm total equals the log's executed count                               1394   1394   KILLED
+   12. roster arm total equals the log's executed count                               1403   1403   KILLED
 
 simulator selftest: 13/14 mutations caught

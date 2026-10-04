@@ -1,21 +1,21 @@
-/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpu7fzbrbb/repo/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpu7fzbrbb/repo/ci/mutations.py'>
+/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpxdymx9ts/repo/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpxdymx9ts/repo/ci/mutations.py'>
   return hashlib.sha256(open(path, "rb").read()).hexdigest()
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpu7fzbrbb/repo/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpu7fzbrbb/repo/ci/mutations.py'>
+/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpxdymx9ts/repo/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpxdymx9ts/repo/ci/mutations.py'>
   return hashlib.sha256(open(path, "rb").read()).hexdigest()
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpu7fzbrbb/repo/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpu7fzbrbb/repo/ci/mutations.py'>
+/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpxdymx9ts/repo/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpxdymx9ts/repo/ci/mutations.py'>
   return hashlib.sha256(open(path, "rb").read()).hexdigest()
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpu7fzbrbb/repo/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpu7fzbrbb/repo/ci/mutations.py'>
+/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpxdymx9ts/repo/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpxdymx9ts/repo/ci/mutations.py'>
   return hashlib.sha256(open(path, "rb").read()).hexdigest()
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-test_a_gate_log_edited_after_binding_is_refused (test_board1_gate_manifest.ManifestContractTests.test_a_gate_log_edited_after_binding_is_refused) ... /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpu7fzbrbb/repo/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpu7fzbrbb/repo/ci/mutations.py'>
+test_a_gate_log_edited_after_binding_is_refused (test_board1_gate_manifest.ManifestContractTests.test_a_gate_log_edited_after_binding_is_refused) ... /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpxdymx9ts/repo/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpxdymx9ts/repo/ci/mutations.py'>
   return hashlib.sha256(open(path, "rb").read()).hexdigest()
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
 ok
 
 ----------------------------------------------------------------------
-Ran 1 test in 4.067s
+Ran 1 test in 4.422s
 
 OK

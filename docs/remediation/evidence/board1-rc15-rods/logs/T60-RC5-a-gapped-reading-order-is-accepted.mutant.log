@@ -4,7 +4,7 @@ test_w07_the_reading_order_is_contiguous_and_complete (test_t60.T60LayoutTest.te
 FAIL: test_w07_the_reading_order_is_contiguous_and_complete (test_t60.T60LayoutTest.test_w07_the_reading_order_is_contiguous_and_complete)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/private/tmp/board1-rc15-work-final/wt_T60-RC5-a-gapped-reading-order-is-accepted/tools/readiness/tests/test_t60.py", line 218, in test_w07_the_reading_order_is_contiguous_and_complete
+  File "/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_T60-RC5-a-gapped-reading-order-is-accepted/tools/readiness/tests/test_t60.py", line 218, in test_w07_the_reading_order_is_contiguous_and_complete
     self.assertFalse(passed2)
     ~~~~~~~~~~~~~~~~^^^^^^^^^
 AssertionError: True is not false

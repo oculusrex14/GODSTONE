@@ -2,6 +2,6 @@ test_w09_the_named_negative_each_defect_is_caught_by_name (test_t72.T72FaultsTes
 Disabling ONE capacity release or ONE retry cap must break an invariant. ... ok
 
 ----------------------------------------------------------------------
-Ran 1 test in 0.027s
+Ran 1 test in 0.026s
 
 OK

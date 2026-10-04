@@ -4,7 +4,7 @@ test_a_cached_tree_that_is_not_the_pinned_contents_is_refused (test_audit_supply
 FAIL: test_a_cached_tree_that_is_not_the_pinned_contents_is_refused (test_audit_supplychain_harness.ToolchainDownloadCourt.test_a_cached_tree_that_is_not_the_pinned_contents_is_refused)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/private/tmp/board1-rc15-work-final/wt_RS-DL-02-cached-tool-tree-digest-asleep/tools/readiness/tests/test_audit_supplychain_harness.py", line 106, in test_a_cached_tree_that_is_not_the_pinned_contents_is_refused
+  File "/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_RS-DL-02-cached-tool-tree-digest-asleep/tools/readiness/tests/test_audit_supplychain_harness.py", line 106, in test_a_cached_tree_that_is_not_the_pinned_contents_is_refused
     self.assertTrue(any("NOT the pinned archive" in item for item in problems),
     ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
                     problems)

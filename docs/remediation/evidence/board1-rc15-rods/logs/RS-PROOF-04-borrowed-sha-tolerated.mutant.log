@@ -4,7 +4,7 @@ test_a_borrowed_sha_is_refused (test_audit_supplychain_harness.ReleaseProofCourt
 FAIL: test_a_borrowed_sha_is_refused (test_audit_supplychain_harness.ReleaseProofCourt.test_a_borrowed_sha_is_refused)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/private/tmp/board1-rc15-work-final/wt_RS-PROOF-04-borrowed-sha-tolerated/tools/readiness/tests/test_audit_supplychain_harness.py", line 157, in test_a_borrowed_sha_is_refused
+  File "/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_RS-PROOF-04-borrowed-sha-tolerated/tools/readiness/tests/test_audit_supplychain_harness.py", line 157, in test_a_borrowed_sha_is_refused
     self.assertTrue(any("BORROWED" in item
     ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
                         for item in RP.verify_release_proof(document)))

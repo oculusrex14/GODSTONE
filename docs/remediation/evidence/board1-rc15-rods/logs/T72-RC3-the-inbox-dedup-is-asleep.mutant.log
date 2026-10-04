@@ -4,7 +4,7 @@ test_w03_no_duplicate_inbox_row (test_t72.T72DedupAndMalformedTest.test_w03_no_d
 FAIL: test_w03_no_duplicate_inbox_row (test_t72.T72DedupAndMalformedTest.test_w03_no_duplicate_inbox_row)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/private/tmp/board1-rc15-work-final/wt_T72-RC3-the-inbox-dedup-is-asleep/tools/readiness/tests/test_t72.py", line 87, in test_w03_no_duplicate_inbox_row
+  File "/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_T72-RC3-the-inbox-dedup-is-asleep/tools/readiness/tests/test_t72.py", line 87, in test_w03_no_duplicate_inbox_row
     self.assertTrue(result.passed, result.failures)
     ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: False is not true : ['no_duplicate_inbox: msg_id 443 entered the inbox 6 times']

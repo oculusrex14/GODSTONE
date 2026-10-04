@@ -4,7 +4,7 @@ test_w02_zero_leaked_leases_timers_sessions_after_shutdown (test_t72.T72Campaign
 FAIL: test_w02_zero_leaked_leases_timers_sessions_after_shutdown (test_t72.T72CampaignTest.test_w02_zero_leaked_leases_timers_sessions_after_shutdown)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/private/tmp/board1-rc15-work-final/wt_T72-RC1-the-shutdown-releaseth-no-lease/tools/readiness/tests/test_t72.py", line 69, in test_w02_zero_leaked_leases_timers_sessions_after_shutdown
+  File "/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_T72-RC1-the-shutdown-releaseth-no-lease/tools/readiness/tests/test_t72.py", line 69, in test_w02_zero_leaked_leases_timers_sessions_after_shutdown
     self.assertTrue(result.passed, result.failures)
     ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: False is not true : ['no_leaked_leases: 1 lease(s) leaked after shutdown', 'no_leaked_timers: 1 timer(s) leaked after shutdown', 'no_leaked_sessions: 1 session(s) leaked after shutdown']

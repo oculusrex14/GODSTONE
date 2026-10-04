@@ -4,7 +4,7 @@ test_an_edited_body_is_caught_by_its_self_digest (test_audit_supplychain_harness
 FAIL: test_an_edited_body_is_caught_by_its_self_digest (test_audit_supplychain_harness.ReleaseProofCourt.test_an_edited_body_is_caught_by_its_self_digest)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/private/tmp/board1-rc15-work-final/wt_RS-PROOF-02-record-self-digest-asleep/tools/readiness/tests/test_audit_supplychain_harness.py", line 182, in test_an_edited_body_is_caught_by_its_self_digest
+  File "/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_RS-PROOF-02-record-self-digest-asleep/tools/readiness/tests/test_audit_supplychain_harness.py", line 182, in test_an_edited_body_is_caught_by_its_self_digest
     self.assertTrue(any("does not recompute" in item
     ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
                         for item in RP.verify_release_proof(document)))

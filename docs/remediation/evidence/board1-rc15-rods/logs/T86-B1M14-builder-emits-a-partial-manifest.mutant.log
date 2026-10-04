@@ -1,20 +1,20 @@
-/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpfwm5x_rz/repo/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpfwm5x_rz/repo/ci/mutations.py'>
+/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpxiqbe34x/repo/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpxiqbe34x/repo/ci/mutations.py'>
   return hashlib.sha256(open(path, "rb").read()).hexdigest()
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpfwm5x_rz/repo/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpfwm5x_rz/repo/ci/mutations.py'>
+/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpxiqbe34x/repo/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpxiqbe34x/repo/ci/mutations.py'>
   return hashlib.sha256(open(path, "rb").read()).hexdigest()
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpfwm5x_rz/repo/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpfwm5x_rz/repo/ci/mutations.py'>
+/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpxiqbe34x/repo/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpxiqbe34x/repo/ci/mutations.py'>
   return hashlib.sha256(open(path, "rb").read()).hexdigest()
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpfwm5x_rz/repo/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpfwm5x_rz/repo/ci/mutations.py'>
+/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpxiqbe34x/repo/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpxiqbe34x/repo/ci/mutations.py'>
   return hashlib.sha256(open(path, "rb").read()).hexdigest()
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
 test_the_builder_refuses_to_emit_from_an_incomplete_gate_run (test_board1_gate_manifest.ManifestContractTests.test_the_builder_refuses_to_emit_from_an_incomplete_gate_run)
-*** A PARTIAL RUN MAY NOT EMIT A MANIFEST AT ALL. *** *The builder is the only door to a PASS document.* ... /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpfwm5x_rz/repo/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpfwm5x_rz/repo/ci/mutations.py'>
+*** A PARTIAL RUN MAY NOT EMIT A MANIFEST AT ALL. *** *The builder is the only door to a PASS document.* ... /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpxiqbe34x/repo/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpxiqbe34x/repo/ci/mutations.py'>
   return hashlib.sha256(open(path, "rb").read()).hexdigest()
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpfwm5x_rz/repo/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpfwm5x_rz/repo/ci/mutations.py'>
+/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpxiqbe34x/repo/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpxiqbe34x/repo/ci/mutations.py'>
   return hashlib.sha256(open(path, "rb").read()).hexdigest()
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
 FAIL
@@ -24,12 +24,12 @@ FAIL: test_the_builder_refuses_to_emit_from_an_incomplete_gate_run (test_board1_
 *** A PARTIAL RUN MAY NOT EMIT A MANIFEST AT ALL. *** *The builder is the only door to a PASS document.*
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/private/tmp/board1-rc15-work-final/wt_T86-B1M14-builder-emits-a-partial-manifest/tools/readiness/tests/test_board1_gate_manifest.py", line 249, in test_the_builder_refuses_to_emit_from_an_incomplete_gate_run
+  File "/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_T86-B1M14-builder-emits-a-partial-manifest/tools/readiness/tests/test_board1_gate_manifest.py", line 249, in test_the_builder_refuses_to_emit_from_an_incomplete_gate_run
     self.assertTrue(any("NO artifact at all" in p for p in ctx.exception.problems))
     ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: False is not true
 
 ----------------------------------------------------------------------
-Ran 1 test in 5.821s
+Ran 1 test in 6.245s
 
 FAILED (failures=1)

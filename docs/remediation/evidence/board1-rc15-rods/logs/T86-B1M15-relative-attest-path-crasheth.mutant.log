@@ -1,23 +1,23 @@
-FREEZE: board1-court-rc -> 29b4cefd232a5e6c2d8469e34b485327f5b260ac (tree c223af0668d1ab5b57a16e5b76e374395e2806e6) bound to run 1 attempt 1 7/7 jobs success
-  attestation written to /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmp766ffaqc/repo/docs/remediation/evidence/FREEZE_ATTESTATION_rc15.json
+FREEZE: board1-court-rc -> 9e776f46ddaf93a00d8fe0b8b923a250267fe99d (tree 2ce47056f548e3ac2c9c9ea69e790f5376386f35) bound to run 1 attempt 1 7/7 jobs success
+  attestation written to /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpp5cfarkf/repo/docs/remediation/evidence/FREEZE_ATTESTATION_rc15.json
   auditor block stays NULL: the terminal builder verdict is READY_FOR_EXTERNAL_REAUDIT, NEVER VERIFIED_FIXED
-/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmp766ffaqc/repo/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmp766ffaqc/repo/ci/mutations.py'>
+/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpp5cfarkf/repo/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpp5cfarkf/repo/ci/mutations.py'>
   return hashlib.sha256(open(path, "rb").read()).hexdigest()
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmp766ffaqc/repo/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmp766ffaqc/repo/ci/mutations.py'>
+/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpp5cfarkf/repo/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpp5cfarkf/repo/ci/mutations.py'>
   return hashlib.sha256(open(path, "rb").read()).hexdigest()
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmp766ffaqc/repo/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmp766ffaqc/repo/ci/mutations.py'>
+/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpp5cfarkf/repo/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpp5cfarkf/repo/ci/mutations.py'>
   return hashlib.sha256(open(path, "rb").read()).hexdigest()
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
 test_a_relative_attestation_path_is_resolved_and_never_crashes (test_board1_gate_manifest.AttestationBindingTests.test_a_relative_attestation_path_is_resolved_and_never_crashes)
-*** THE MEASURED CRASH: `--attest-out <repo-relative>` RAISED `ValueError` FROM `relative_to`. *** ... /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmp766ffaqc/repo/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmp766ffaqc/repo/ci/mutations.py'>
+*** THE MEASURED CRASH: `--attest-out <repo-relative>` RAISED `ValueError` FROM `relative_to`. *** ... /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpp5cfarkf/repo/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpp5cfarkf/repo/ci/mutations.py'>
   return hashlib.sha256(open(path, "rb").read()).hexdigest()
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmp766ffaqc/repo/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmp766ffaqc/repo/ci/mutations.py'>
+/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpp5cfarkf/repo/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpp5cfarkf/repo/ci/mutations.py'>
   return hashlib.sha256(open(path, "rb").read()).hexdigest()
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-::error::--attest-out docs/remediation/evidence/FREEZE_ATTESTATION_rc15.json resolveth to docs/remediation/evidence/FREEZE_ATTESTATION_rc15.json, which is OUTSIDE the repository /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmp766ffaqc/repo -- the attestation must be a tracked path a reader can find, and the post-tag allowlist cannot name a path outside the candidate's own tree
+::error::--attest-out docs/remediation/evidence/FREEZE_ATTESTATION_rc15.json resolveth to docs/remediation/evidence/FREEZE_ATTESTATION_rc15.json, which is OUTSIDE the repository /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpp5cfarkf/repo -- the attestation must be a tracked path a reader can find, and the post-tag allowlist cannot name a path outside the candidate's own tree
 FAIL
 
 ======================================================================
@@ -25,7 +25,7 @@ FAIL: test_a_relative_attestation_path_is_resolved_and_never_crashes (test_board
 *** THE MEASURED CRASH: `--attest-out <repo-relative>` RAISED `ValueError` FROM `relative_to`. ***
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/private/tmp/board1-rc15-work-final/wt_T86-B1M15-relative-attest-path-crasheth/tools/readiness/tests/test_board1_gate_manifest.py", line 784, in test_a_relative_attestation_path_is_resolved_and_never_crashes
+  File "/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_T86-B1M15-relative-attest-path-crasheth/tools/readiness/tests/test_board1_gate_manifest.py", line 784, in test_a_relative_attestation_path_is_resolved_and_never_crashes
     self.assertEqual(rc, 0,
     ~~~~~~~~~~~~~~~~^^^^^^^
                      "the canonical future attestation named RELATIVELY must be RESOLVED and written; the "
@@ -35,6 +35,6 @@ Traceback (most recent call last):
 AssertionError: 1 != 0 : the canonical future attestation named RELATIVELY must be RESOLVED and written; the mutant refuseth it as outside the repository
 
 ----------------------------------------------------------------------
-Ran 1 test in 4.239s
+Ran 1 test in 4.540s
 
 FAILED (failures=1)
