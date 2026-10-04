@@ -494,6 +494,7 @@ class Fifo:
                 pass
         os.mkfifo(path)
         self.fd = os.open(path, os.O_RDWR | os.O_NONBLOCK)
+        self._closed = False
         self._lock = threading.Lock()
         self._tail = b""
 
@@ -529,10 +530,17 @@ class Fifo:
                 self._tail += chunk
 
     def close(self) -> None:
-        try:
-            os.close(self.fd)
-        except OSError:
-            pass
+        with self._lock:
+            if self._closed:
+                self.fd = None
+                return
+            self._closed = True
+            if self.fd is not None:
+                try:
+                    os.close(self.fd)
+                except OSError:
+                    pass
+                self.fd = None
 
 
 # ---------------------------------------------------------------------------------------------------------------
@@ -836,6 +844,19 @@ class Worker:
         head.update(header)
         self.to_worker.send(Record(header=head, payload=payload))
         self.log(f"  [{self.name}] -> {kind} {header.get('label', '')} payload={len(payload)}B")
+        # *** `bye` IS THE PROTOCOL'S LAST COMMAND, SO IT CARRIETH THE COMMAND CHANNEL'S EOF WITH IT. ***
+        # *THE DEFECT THIS CLOSES, MEASURED IN THE LIVE `--mode all` RUN (ios->android honest): the coordinator
+        # holdeth the command pipe `O_RDWR`, so its WRITE half stayed OPEN after `bye`; the worker's blocked
+        # `FileInputStream.read()` therefore never reached EOF, and its CROSS-THREAD `close()` -- JVM-synchronised
+        # against the fd's own read lock because the reader thread sat in `read()` -- BLOCKED for the whole 120s
+        # grace (Gradle's own XML: `testGSINT001CrossPlatformWorker time="123.062"` against a 4s exchange; reproduced:
+        # a read-blocked `close()` hangeth while a writer standeth and returneth in 0ms once the writer half closeth).
+        # **Closing the command fd once the `bye` frame is flushed is the honest "the command stream is complete" --
+        # EOF, not a kill.** The worker's REPLY travels the SEPARATE `from_worker`/`.out` pipe, which is untouched, so
+        # this is a HALF-close of the pipe pair; `wait_exit`/grace bookkeeping and every timeout are unchanged, and the
+        # fd is NOT reopened (a reopen would race the worker's reader for the EOF and could re-block it).*
+        if kind == "bye":
+            self.to_worker.close()
 
     def wait(self, predicate: Callable[[Record], bool], timeout: float, what: str) -> Record:
         """*** BOUNDED. A missing marker, a timeout or an early exit is a NAMED REFUSAL, never a skip. ***"""
