@@ -28,9 +28,14 @@
 #      never deleted or silently replaced.
 #   5. Runs `sdkmanager --licenses` under strict status accounting: the
 #      CONSUMER's own status must be 0 (the old `|| true` swallowed a real
-#      failure), and the infinite `y` stream is supplied from the kernel
-#      (`/dev/zero`), so no userland-producer exit status can disagree with
-#      what actually happened to the licence prompt.
+#      failure), fed by a BOUNDED burst of `y` confirmations. An unbounded
+#      stream -- the historical `yes |`, and the `/dev/zero` experiment --
+#      never EOFs, the licence-prompt scanner buffers without limit and the
+#      JVM dies: measured `OutOfMemoryError: Java heap space` at
+#      `SdkManagerCli.askYesNo` on hosted attempts 1-3 AND reproduced locally
+#      with `/dev/zero` on a constrained heap. The bounded burst delivers the
+#      few confirmations the prompt consumes, EOFs cleanly, and accepted 7/7
+#      licences locally even on a constrained 48m heap.
 #   6. Retains the verified archive outside the checkout and exports its path and
 #      the exact installed tree, so the terminal gates verify the bytes actually used.
 #
@@ -111,20 +116,24 @@ fi
 
 # 5. Licences, under strict status accounting.
 # The consumer's own exit status is the authoritative signal -- measured true
-# failures (absent command 127, real sdkmanager failure 1) surface through it
-# under every input mode. The former `yes |` producer-status probe added no
-# such discrimination: SIGPIPE death is reported as 141 OR 1 depending on when
-# EPIPE arrives between write calls, a pipe-timing race that reddened a
-# provably benign exit on warm accepted-licence installs (measured: hosted
-# attempts 1+2 at 940c540b; the consumer was succeeding all along). The
-# kernel `/dev/zero` supply feeds the reader the identical `y\n` stream with
-# no userland producer whose status can mislead the accounting.
+# failures surface through it (absent command 127; the real hosted OOM death
+# exited 1 through exactly this check once the racy `yes`-slot probe was
+# retired). Supply is a BOUNDED burst: the licence prompt consumes only a
+# few confirmations, EOFs, and the JVM completes acceptance; an unbounded
+# stream (the former `yes |`, and `/dev/zero`) feeds the scanner forever and
+# exhausts the heap -- EOF never arrives, only depletion (the hosted
+# `yes exited 1` of attempts 1+2 was that same OOM death seen from the
+# producer side as the dying JVM closed the pipe). The burst EOFs cleanly
+# and any genuine post-supply refusal still reddens the step through the
+# consumer status, with the NDK-presence assert below as the validation
+# backstop.
 set +e
-"$SDKMANAGER" --licenses </dev/zero >/dev/null
-rc=("$?")
+{ i=0; while [ "$i" -lt 64 ]; do printf 'y\n'; i=$((i+1)); done; } | "$SDKMANAGER" --licenses >/dev/null
+rc=("${PIPESTATUS[@]}")
 set -e
-[ "$rc" -eq 0 ] \
-  || { echo "::error::sdkmanager --licenses exited $rc (consumer status is the authority)"; exit 1; }
+[ "${#rc[@]}" -ge 2 ] || rc=("${rc[0]:-?}" 0)
+[ "${rc[1]}" -eq 0 ] \
+  || { echo "::error::sdkmanager --licenses exited ${rc[1]:-?} (consumer status is the authority)"; exit 1; }
 
 "$SDKMANAGER" "${PACKAGES[@]}"
 VERSION="$("$SDKMANAGER" --version)"
