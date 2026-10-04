@@ -544,7 +544,7 @@ public final class LabRuntime: @unchecked Sendable {
             // *THE ESTATE IS A PARAMETER, SO THE TRUST SURFACE'S WIPE ADDRESSES THE **LAB'S** FILES: the harness the
             // closure captures is the one whose stores it erases, and `LabEstateSeam` answers those exact paths.*
             wipeHandler: { [weak harness, weak trustStore] in
-                MeshRuntime.runRecoveryLadderInternal(
+                try MeshRuntime.runRecoveryLadderInternal(
                     journal: LabRuntime.labWipeJournal(),
                     estate: LabEstateSeam(harness: harness, trustStore: trustStore),
                     requestFresh: true).outcome
@@ -647,9 +647,12 @@ public final class LabRuntime: @unchecked Sendable {
     ///
     /// *Returns the EVIDENCE-bound identity of the permit (its own `estateId`/`generation`) and whether consumption
     /// succeeded, so a caller never supplies a self-invented estate string and never falls back to a nil value.*
+    /// **AND THE DRIVE THROWETH:** *a failed inventory preparation or drive is propagated as its own error and is
+    /// NEVER converted into the `nil` (no-permit) answer, which belongs only to a legitimately non-permitting
+    /// topology.*
     @discardableResult
-    public static func mintAndConsumeLabPermit(callerEstateId: String, liveGeneration: UInt64) -> LabPermitMint? {
-        guard let permit = mintLabPermit(callerEstateId: callerEstateId) else { return nil }
+    public static func mintAndConsumeLabPermit(callerEstateId: String, liveGeneration: UInt64) throws -> LabPermitMint? {
+        guard let permit = try mintLabPermit(callerEstateId: callerEstateId) else { return nil }
         let canonicalEstate = labEstateIdentifier(root: labEstateRootURL())
         let accepted = permit.consumeForConstruction(estateId: canonicalEstate,
                                                      liveGeneration: liveGeneration) != nil
@@ -661,7 +664,9 @@ public final class LabRuntime: @unchecked Sendable {
     /// *The permit carrieth the REAL durable epoch it was judged at (`permit.generation`); a court asserting the
     /// boundary uses THAT value -- never a forged one -- so "accepted at the live generation" is a fact about the
     /// record, not about a literal typed into the arm.*
-    public static func mintLabPermit(callerEstateId: String) -> PrivateRuntimePermit? {
+    /// **IT THROWETH** *when the one-shot consuming drive propagates its own error; a non-permitting topology
+    /// (pending, corrupt, already-consumed) answereth `nil`, never an error.*
+    public static func mintLabPermit(callerEstateId: String) throws -> PrivateRuntimePermit? {
         // *A BRAND-NEW ESTATE MUST CARRY A DURABLE GENERATION BEFORE A PERMIT IS MINTED (fail-closed): the boundary
         // refuseth a permit whose generation the record does not carry, so the baseline is established first.*
         establishLabEstateBaselineIfNeeded()
@@ -672,14 +677,14 @@ public final class LabRuntime: @unchecked Sendable {
             runtime: WipeDeferredTransportSeam(),
             authority: WipeDeferredIdentityAuthoritySeam())
         let bootstrap = StartupRecoveryBootstrap(wipe: authority, estateId: callerEstateId)
-        guard case .normal(let permit) = bootstrap.consumeCompositionTopology() else { return nil }
+        guard case .normal(let permit) = try bootstrap.consumeCompositionTopology() else { return nil }
         return permit
     }
 
     /// A boolean convenience for a caller that already holdeth the permit's own estate id (e.g. read back from
     /// `mintAndConsumeLabPermit`). *It supplies NOTHING the permit did not already carry.*
-    public static func consumeLabConstructionPermit(estateId: String, liveGeneration: UInt64) -> Bool {
-        mintAndConsumeLabPermit(callerEstateId: estateId, liveGeneration: liveGeneration)?.accepted ?? false
+    public static func consumeLabConstructionPermit(estateId: String, liveGeneration: UInt64) throws -> Bool {
+        try mintAndConsumeLabPermit(callerEstateId: estateId, liveGeneration: liveGeneration)?.accepted ?? false
     }
 
     /// *** THE PRE-PRIVATE RECOVERY ROAD, OVER THE LAB'S OWN ESTATE -- THE PUBLIC DOOR A LAB VIEW USES. ***
@@ -689,12 +694,12 @@ public final class LabRuntime: @unchecked Sendable {
     /// *No composition exists in this state, so the estate POSITIVELY owns no live owner and the drain answereth
     /// `.cold` -- an honest claim rather than a dead barrier.*
     @discardableResult
-    public static func runRecoveryForOperator(requestFresh: Bool) -> RecoveryLadderOutcome {
+    public static func runRecoveryForOperator(requestFresh: Bool) throws -> RecoveryLadderOutcome {
         establishLabEstateBaselineIfNeeded()
         let estate = LabEstateSeam(harness: nil,
                                    inventory: labEstateInventory(root: labEstateRootURL()))
-        return MeshRuntime.runRecoveryLadder(journal: labWipeJournal(), estate: estate,
-                                             requestFresh: requestFresh).outcome
+        return try MeshRuntime.runRecoveryLadder(journal: labWipeJournal(), estate: estate,
+                                                 requestFresh: requestFresh).outcome
     }
 
     /// *** THE OPERATOR'S OWN RESOLUTION OF A CORRUPT RECORD: AN EXPLICIT, COMPLETE, OWNED WIPE. ***
@@ -703,11 +708,11 @@ public final class LabRuntime: @unchecked Sendable {
     /// real estate (`MeshRuntime.resolveCorruptRecoveryForOperator`, which is restricted to a genuinely corrupt
     /// record).*
     @discardableResult
-    public static func resolveCorruptRecoveryForOperator() -> RecoveryLadderOutcome {
+    public static func resolveCorruptRecoveryForOperator() throws -> RecoveryLadderOutcome {
         establishLabEstateBaselineIfNeeded()
         let estate = LabEstateSeam(harness: nil,
                                    inventory: labEstateInventory(root: labEstateRootURL()))
-        return MeshRuntime.resolveCorruptRecoveryForOperator(journal: labWipeJournal(), estate: estate).outcome
+        return try MeshRuntime.resolveCorruptRecoveryForOperator(journal: labWipeJournal(), estate: estate).outcome
     }
 
     /// *** GS-UX-001 `rendered-controls` law 3: SEED A ROTATION THAT ARRIVES *AFTER* THE SCREEN LOOKED. ***
@@ -908,8 +913,8 @@ public final class LabRuntime: @unchecked Sendable {
     /// *IT IS THE SAME ROAD `MeshRuntime.create` TAKES BEFORE IT OPENS ANY PRIVATE STORE: `runRecoveryLadderInternal`
     /// is the ONE implementation both reach, so a rung the lab observes is a rung the shipping composition would.*
     @discardableResult
-    public func beginWipe() -> RecoveryLadderOutcome {
-        let outcome = runLabRecoveryLadder(requestFresh: true)
+    public func beginWipe() throws -> RecoveryLadderOutcome {
+        let outcome = try runLabRecoveryLadder(requestFresh: true)
         Self.recordRecoveryOutcome(outcome)
         return outcome
     }
@@ -920,15 +925,15 @@ public final class LabRuntime: @unchecked Sendable {
     /// when `resume` is used for both), so this taketh the other branch: no new `REQUESTED` is written, and the ladder
     /// continueth from the rung the record carrieth. On an estate that already completed, it is idempotent.*
     @discardableResult
-    public func resumeWipe() -> RecoveryLadderOutcome {
-        let outcome = runLabRecoveryLadder(requestFresh: false)
+    public func resumeWipe() throws -> RecoveryLadderOutcome {
+        let outcome = try runLabRecoveryLadder(requestFresh: false)
         Self.recordRecoveryOutcome(outcome)
         return outcome
     }
 
     /// The lab's own ladder drive: the SAME production road, over the lab's OWN estate.
-    private func runLabRecoveryLadder(requestFresh: Bool) -> RecoveryLadderOutcome {
-        recoverLabEstate(requestFresh: requestFresh).outcome
+    private func runLabRecoveryLadder(requestFresh: Bool) throws -> RecoveryLadderOutcome {
+        try recoverLabEstate(requestFresh: requestFresh).outcome
     }
 
     /// *** THE LAB'S WIPE, DRIVEN OVER THE LAB'S OWN ESTATE -- THE SAME OWNER AND PATHS THE LAB WROTE. ***
@@ -943,8 +948,8 @@ public final class LabRuntime: @unchecked Sendable {
     /// **AND THE DEFAULT PATHS ARE NOT SILENTLY ABANDONED:** *`authorStoreURL` is the first label's composed file (or
     /// the legacy `durable.sqlite` when the lab carries no estate root), which is exactly the file the durable intent
     /// journal lives in -- so the send/relaunch journey's medium is wiped by the same operation that reports it.*
-    public func recoverLabEstate(requestFresh: Bool) -> MeshRuntime.RecoveryOnlyOutcome {
-        MeshRuntime.runRecoveryLadder(
+    public func recoverLabEstate(requestFresh: Bool) throws -> MeshRuntime.RecoveryOnlyOutcome {
+        try MeshRuntime.runRecoveryLadder(
             journal: Self.labWipeJournal(),
             estate: LabEstateSeam(harness: harness, extraPaths: labExtraPaths, trustStore: trustStore),
             requestFresh: requestFresh)

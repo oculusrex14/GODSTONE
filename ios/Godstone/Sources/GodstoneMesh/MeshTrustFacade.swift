@@ -15,11 +15,14 @@ public final class MeshTrustFacade: @unchecked Sendable {
     private var nodeIdToLabel: [Data: String] = [:]
     private var _model: TrustUXModel?
 
+    /// - Parameter wipeHandler: drives the production recovery ladder and answers with its typed outcome. It MAY
+    ///   THROW: a thrown drive is reported as a non-complete progress state carrying the ACTUAL error, never a
+    ///   fabricated outcome. Omit it and the surface reports a named, non-resumable pending state (no recovery owner).
     init(
         repository: PeerIdentityRepository,
         ownNodeId: Data,
         contacts: [(label: String, nodeId: Data)] = [],
-        wipeHandler: (() -> RecoveryLadderOutcome)? = nil,
+        wipeHandler: (() throws -> RecoveryLadderOutcome)? = nil,
         sessionInvalidator: ((Data) -> Void)? = nil
     ) {
         self.ownNodeId = ownNodeId

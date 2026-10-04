@@ -35,14 +35,14 @@ internal final class TrustAuthorityAdapter: TrustAuthorityPort {
     //     bare `.complete` could never express;
     //   * and an unwired handler is a NAMED, NON-RESUMABLE pending state rather than a silent completion: *a facade with
     //     no recovery owner has performed no wipe, and saying otherwise is the defect above.*
-    private let wipeHandler: (() -> RecoveryLadderOutcome)?
+    private let wipeHandler: (() throws -> RecoveryLadderOutcome)?
     private let sessionInvalidator: ((Data) -> Void)?
 
     internal private(set) var invalidatedSessionNodes: [Data] = []
 
     init(
         repository: PeerIdentityRepository,
-        wipeHandler: (() -> RecoveryLadderOutcome)? = nil,
+        wipeHandler: (() throws -> RecoveryLadderOutcome)? = nil,
         sessionInvalidator: ((Data) -> Void)? = nil
     ) {
         self.repository = repository
@@ -83,7 +83,7 @@ internal final class TrustAuthorityAdapter: TrustAuthorityPort {
                 lastError: "this trust surface carries no recovery owner; no wipe was performed")
             return currentWipeState
         }
-        currentWipeState = Self.progress(from: wipeHandler())
+        currentWipeState = Self.progressOrFailure(from: wipeHandler)
         return currentWipeState
     }
 
@@ -99,7 +99,7 @@ internal final class TrustAuthorityAdapter: TrustAuthorityPort {
                 lastError: "this trust surface carries no recovery owner; no wipe could be resumed")
             return currentWipeState
         }
-        currentWipeState = Self.progress(from: wipeHandler())
+        currentWipeState = Self.progressOrFailure(from: wipeHandler)
         return currentWipeState
     }
 
@@ -121,6 +121,25 @@ internal final class TrustAuthorityAdapter: TrustAuthorityPort {
             resumable: outcome.decision.permitsRecoveryConstruction,
             lastError: outcome.decision.refusalReason
         )
+    }
+
+    /// *** A DRIVE THAT THREW IS A NON-COMPLETE PROGRESS STATE CARRYING ITS OWN ERROR -- NEVER A FABRICATED OUTCOME. ***
+    ///
+    /// *The handler now throweth. A thrown failure is not a `RecoveryLadderOutcome`: the drive did not reach a rung, so
+    /// the surface may not invent one. This catch is the boundary that turns the real error into the non-complete
+    /// progress a view renders -- `blocksOrdinaryUse` stayeth true, the ACTUAL error is carried in `lastError`, and a
+    /// resume remaineth legitimate (the estate is not settled). Nothing here substitutes a typed outcome, and the
+    /// error is never discarded with `try?`.*
+    static func progressOrFailure(from handler: () throws -> RecoveryLadderOutcome) -> WipeProgressState {
+        do {
+            return progress(from: try handler())
+        } catch {
+            return .inProgress(
+                stage: "recovery-drive-failed",
+                attempt: 1,
+                resumable: true,
+                lastError: "the recovery drive failed: \(error)")
+        }
     }
 
     func invalidateSessions(for nodeId: Data) {

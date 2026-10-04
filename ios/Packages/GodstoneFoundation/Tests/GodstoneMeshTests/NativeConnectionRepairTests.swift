@@ -1426,7 +1426,7 @@ private func ncrSealedScope(estate: NCREstate, keyDomain: String, tag: String, p
         filesystem: WipeDeferredArtifactFileSystemSeam(),
         runtime: WipeDeferredTransportSeam(),
         authority: WipeDeferredIdentityAuthoritySeam())
-    guard case .normal(let permit) = StartupRecoveryBootstrap(wipe: authority, estateId: estate.estateId)
+    guard case .normal(let permit) = try StartupRecoveryBootstrap(wipe: authority, estateId: estate.estateId)
             .consumeCompositionTopology() else {
         XCTFail("a driven clean estate must issue the permit; the ladder refused the normal road")
         throw StoreKeyError.keychainUnavailable

@@ -127,6 +127,27 @@ final class LabMeshAccessibilityUITests: XCTestCase {
     /// *** AND THE PLATFORM'S OWN MINIMUM, WHICH IS WHAT THE LANE MEASURES AGAINST. ***
     private let minimumTouchTarget: CGFloat = 44
 
+    /// A coordinate-subtraction roundoff allowance: `extent = max - min`, so the error is a few ulps of each
+    /// ENDPOINT and grows with the coordinate magnitude, not with the extent. Both endpoints, doubled for the
+    /// subtraction and the comparison. Far below a physical pixel, and the same for width and height in every arm.
+    private func roundoffAllowance(min: CGFloat, max: CGFloat) -> CGFloat {
+        (min.ulp + max.ulp) * 2
+    }
+
+    /// One axis, against the platform's 44pt minimum, absorbing only the coordinate roundoff above.
+    private func assertAxisMinimum(_ extent: CGFloat, min: CGFloat, max: CGFloat, context: String) {
+        XCTAssertGreaterThanOrEqual(
+            extent + roundoffAllowance(min: min, max: max), minimumTouchTarget,
+            "*** \(context) MEASURES \(extent)pt, BELOW THE \(minimumTouchTarget)pt iOS MINIMUM. ***",
+        )
+    }
+
+    /// *** BOTH DIMENSIONS OF A CONTROL, THROUGH THE ONE STANDARD. ***
+    private func assertMinimumTouchTarget(_ frame: CGRect, context: String) {
+        assertAxisMinimum(frame.width, min: frame.minX, max: frame.maxX, context: "\(context) WIDTH")
+        assertAxisMinimum(frame.height, min: frame.minY, max: frame.maxY, context: "\(context) HEIGHT")
+    }
+
     /// *** *** IOS-R13: THE ROLE EACH ESSENTIAL CONTROL REALLY CARRIETH, READ FROM THE RESOLVED ELEMENT TYPE. *** ***
     ///
     /// *THE REVIEW'S CHARGE: "iOS rendered ROLES are not verified at all (XCUITest cannot read traits)". **XCUITest
@@ -248,16 +269,12 @@ final class LabMeshAccessibilityUITests: XCTestCase {
             }
 
             // *** AND THE MEASURED TOUCH TARGET, AGAINST THE PLATFORM'S OWN 44pt MINIMUM. ***
-            // *This is the observation a model cannot make: the frame is read from the LAID-OUT element.*
-            let frame = control.frame
-            XCTAssertGreaterThanOrEqual(
-                frame.width, minimumTouchTarget,
-                "*** '\(identifier)' MEASURES \(frame.width)x\(frame.height)pt, BELOW THE 44pt iOS MINIMUM. A control "
-                    + "smaller than the platform's minimum is a control some users cannot reliably hit. ***",
-            )
-            XCTAssertGreaterThanOrEqual(
-                frame.height, minimumTouchTarget,
-                "*** '\(identifier)' MEASURES \(frame.width)x\(frame.height)pt, BELOW THE 44pt iOS MINIMUM. ***",
+            // *The frame is read from the LAID-OUT element. The judgment is the ONE standard
+            // (`assertMinimumTouchTarget`), whose allowance is the coordinate-subtraction roundoff scaled by the
+            // frame's endpoints -- a control undersized by a real fraction of a pixel still reddens.*
+            assertMinimumTouchTarget(
+                control.frame,
+                context: "'\(identifier)'",
             )
         }
 
@@ -290,11 +307,7 @@ final class LabMeshAccessibilityUITests: XCTestCase {
             XCTAssertFalse(control.label.trimmingCharacters(in: .whitespaces).isEmpty,
                            "*** '\(identifier)' MUST CARRY A NON-EMPTY ACCESSIBLE NAME. ***")
             let frame = control.frame
-            XCTAssertGreaterThanOrEqual(
-                frame.height, minimumTouchTarget,
-                "*** '\(identifier)' MEASURES \(frame.width)x\(frame.height)pt, BELOW THE 44pt iOS MINIMUM: a "
-                    + "gesture target smaller than the platform's minimum is a hold a user cannot reliably make. ***",
-            )
+            assertAxisMinimum(frame.height, min: frame.minY, max: frame.maxY, context: "'\(identifier)' HEIGHT")
         }
     }
 
@@ -553,12 +566,7 @@ final class LabMeshAccessibilityUITests: XCTestCase {
             assertEssentialRole(identifier, resolved: control, combination: label)
             if !largestText { XCTAssertTrue(control.isEnabled, "[$label] '\(identifier)' must be enabled") }
             if let frame = measuredFrame(control) {
-                XCTAssertGreaterThanOrEqual(
-                    frame.width, minimumTouchTarget,
-                    "*** [$label] '\(identifier)' MEASURES \(frame.width)x\(frame.height)pt, BELOW 44pt. ***")
-                XCTAssertGreaterThanOrEqual(
-                    frame.height, minimumTouchTarget,
-                    "*** [$label] '\(identifier)' MEASURES \(frame.width)x\(frame.height)pt, BELOW 44pt. ***")
+                assertMinimumTouchTarget(frame, context: "[$label] '\(identifier)'")
             }
         }
         let send = app.buttons["lab.conversation.send"]
@@ -583,9 +591,8 @@ final class LabMeshAccessibilityUITests: XCTestCase {
             // *** AND THE SOS HALF'S RENDERED ROLE, IN THIS COMBINATION TOO (IOS-R13). ***
             assertEssentialRole(identifier, resolved: control, combination: label)
             if let frame = measuredFrame(control) {
-                XCTAssertGreaterThanOrEqual(
-                    frame.height, minimumTouchTarget,
-                    "*** [$label] '\(identifier)' MEASURES \(frame.width)x\(frame.height)pt, BELOW 44pt. ***")
+                assertAxisMinimum(frame.height, min: frame.minY, max: frame.maxY,
+                                  context: "[$label] '\(identifier)' HEIGHT")
             }
         }
         // *** THE RELEVANT SOS STATES: the state/announced readouts must exist and be non-empty. ***
@@ -718,15 +725,7 @@ final class LabMeshAccessibilityUITests: XCTestCase {
             XCTAssertTrue(control.isEnabled, "\(identifier) must be a journey the user can take")
             XCTAssertTrue(scrollIntoView(control, in: app),
                           "*** \(identifier) MUST BE REACHABLE BY A USER (hittable after bounded scrolling). ***")
-            let frame = control.frame
-            XCTAssertGreaterThanOrEqual(
-                frame.width, minimumTouchTarget,
-                "*** '\(identifier)' MEASURES \(frame.width)x\(frame.height)pt, BELOW THE 44pt iOS MINIMUM. ***",
-            )
-            XCTAssertGreaterThanOrEqual(
-                frame.height, minimumTouchTarget,
-                "*** '\(identifier)' MEASURES \(frame.width)x\(frame.height)pt, BELOW THE 44pt iOS MINIMUM. ***",
-            )
+            assertMinimumTouchTarget(control.frame, context: "'\(identifier)'")
         }
     }
 

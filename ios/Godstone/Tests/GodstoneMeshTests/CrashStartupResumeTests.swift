@@ -764,7 +764,7 @@ final class CrashStartupResumeTests: XCTestCase {
         // `KEY_ERASED` re-opens artifacts the ladder's own `KEYS_ERASED -> ARTIFACTS_DELETED` rung is supposed to
         // DELETE. So the arm drives that rung, over the estate whose own init BINDETH the durable inventory, and then
         // opens the stores -- WHICH IS THE ORDER ITS NAME CLAIMS.**
-        let outcome = driveSanctionedRecoveryRoad(
+        let outcome = try driveSanctionedRecoveryRoad(
             journal: journal, msgUrl: msgUrl, peerUrl: peerUrl,
             keychain: keychain, requestFresh: false)
 
@@ -848,7 +848,7 @@ final class CrashStartupResumeTests: XCTestCase {
         // "requested"]` in `artifact://9685`). `MeshRuntime.runRecoveryLadder` over an estate whose OWN init bindeth
         // its durable inventory is the road that reaches the drain -- and this call closes runtime1's live owners
         // through the estate's own invalidation hook, which is what makes runtime1 permanently unusable below.*
-        driveSanctionedRecoveryRoad(
+        try driveSanctionedRecoveryRoad(
             journal: journal, msgUrl: msgUrl, peerUrl: peerUrl,
             keychain: keychain, requestFresh: false,
             invalidateLiveOwners: { runtime1.invalidator.invalidateForWipe() })
@@ -927,7 +927,7 @@ final class CrashStartupResumeTests: XCTestCase {
         // recovery road's estate bindeth its inventory, so it really drains, erases and deletes -- closing runtime1's
         // live stores through the estate's invalidation hook so the files can go.*
         try runtime1.beginPanicWipe(keychain: keychain)
-        driveSanctionedRecoveryRoad(
+        try driveSanctionedRecoveryRoad(
             journal: journal, msgUrl: msgUrl, peerUrl: peerUrl,
             keychain: keychain, requestFresh: false,
             invalidateLiveOwners: { runtime1.invalidator.invalidateForWipe() })
@@ -975,7 +975,7 @@ final class CrashStartupResumeTests: XCTestCase {
         // really drains, erases and deletes -- and it closes this runtime's own owners through the estate's invalidation
         // hook, which is exactly the effect this arm measures (the old handle is PERMANENTLY unusable).*
         try runtime.beginPanicWipe(keychain: keychain)
-        driveSanctionedRecoveryRoad(
+        try driveSanctionedRecoveryRoad(
             journal: journal, msgUrl: msgUrl, peerUrl: peerUrl,
             keychain: keychain, requestFresh: false,
             invalidateLiveOwners: { runtime.invalidator.invalidateForWipe() })
@@ -1006,8 +1006,8 @@ final class CrashStartupResumeTests: XCTestCase {
         journal: WipeJournal, msgUrl: URL, peerUrl: URL,
         keychain: any LocalIdentityKeychain, requestFresh: Bool,
         invalidateLiveOwners: @escaping () -> Void = {}
-    ) -> MeshRuntime.RecoveryOnlyOutcome {
-        MeshRuntime.runRecoveryLadder(
+    ) throws -> MeshRuntime.RecoveryOnlyOutcome {
+        try MeshRuntime.runRecoveryLadder(
             journal: journal,
             estate: MeshRuntime.DefaultRecoveryEstate(
                 messageStoreUrl: msgUrl, peerStoreUrl: peerUrl,
@@ -1075,7 +1075,7 @@ final class CrashStartupResumeTests: XCTestCase {
         // drain checkpoint is ever written (MEASURED as journal `["idle","requested"]` in `artifact://9685`).
         // `MeshRuntime.runRecoveryLadder` over an estate that BINDETH its own durable inventory is the production road
         // that reaches the drain, and its `invalidateLiveOwners` hook closes the standing runtime's own owners. ***
-        let outcome = driveSanctionedRecoveryRoad(
+        let outcome = try driveSanctionedRecoveryRoad(
             journal: journal, msgUrl: msgUrl, peerUrl: peerUrl,
             keychain: keychain, requestFresh: false,
             invalidateLiveOwners: { runtime.invalidator.invalidateForWipe() })
@@ -1268,7 +1268,7 @@ final class CrashStartupResumeTests: XCTestCase {
         let peerUrl = FileManager.default.temporaryDirectory.appendingPathComponent("gf002_peer_\(UUID().uuidString).db")
         let journal = RecordingJournal()
 
-        let outcome = driveSanctionedRecoveryRoad(
+        let outcome = try driveSanctionedRecoveryRoad(
             journal: journal, msgUrl: msgUrl, peerUrl: peerUrl,
             keychain: InMemoryKeychain(), requestFresh: true)
 
@@ -1305,7 +1305,7 @@ final class CrashStartupResumeTests: XCTestCase {
         let peerUrl = FileManager.default.temporaryDirectory.appendingPathComponent("gf011_peer_\(UUID().uuidString).db")
         let journal = RecordingJournal()
 
-        driveSanctionedRecoveryRoad(
+        try driveSanctionedRecoveryRoad(
             journal: journal, msgUrl: msgUrl, peerUrl: peerUrl,
             keychain: InMemoryKeychain(), requestFresh: true)
 
@@ -1356,7 +1356,7 @@ final class CrashStartupResumeTests: XCTestCase {
         // because its unvouched owner registry answereth `.ownersLive`, so NO drain checkpoint was ever written and
         // this arm's own subject (which authority ran) went unmeasured. The public recovery road is the one that
         // reaches the drain.*
-        driveSanctionedRecoveryRoad(
+        try driveSanctionedRecoveryRoad(
             journal: journal, msgUrl: msgUrl, peerUrl: peerUrl,
             keychain: InMemoryKeychain(), requestFresh: true)
 

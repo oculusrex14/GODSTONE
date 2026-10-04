@@ -737,7 +737,7 @@ final class GsFinal003RecoveryTopologyTests: XCTestCase {
         // claim is "the recovery transport stands BEFORE and INDEPENDENTLY of the store graph" -- and the deferred seam
         // answereth `.notDrained` by construction, so it could only ever measure the deferral (the 107-consumer probe).
         // An estate that positively owns no live owner is the honest real seam for that claim.*
-        let outcome = MeshRuntime.runRecoveryLadderInternal(
+        let outcome = try MeshRuntime.runRecoveryLadderInternal(
             journal: journal,
             estate: OwnedArtifactEstate(
                 artifactPaths: MeshRuntime.wipeArtifactPaths(messageStoreUrl: msg, peerStoreUrl: peer),
@@ -810,7 +810,7 @@ final class GsFinal003RecoveryTopologyTests: XCTestCase {
         // *A ladder that reported work on an estate already at rest would be inventing a past; the write log is
         // the observation, because it is the only thing that can see a rung written that no rung required.*
         let writesBefore = journal.writeLog
-        let second = MeshRuntime.runRecoveryLadderInternal(
+        let second = try MeshRuntime.runRecoveryLadderInternal(
             journal: journal,
             estate: MeshRuntime.DefaultRecoveryEstate(
                 messageStoreUrl: msg,
@@ -863,7 +863,7 @@ final class GsFinal003RecoveryTopologyTests: XCTestCase {
             let peer = tempURL("rung\(rung.rawValue)_peer")
             defer { cleanup(msg, peer) }
 
-            let first = MeshRuntime.runRecoveryLadderInternal(
+            let first = try MeshRuntime.runRecoveryLadderInternal(
                 journal: journal,
                 estate: MeshRuntime.DefaultRecoveryEstate(
                     messageStoreUrl: msg,
@@ -872,7 +872,7 @@ final class GsFinal003RecoveryTopologyTests: XCTestCase {
                     dekProvider: provider),
                 requestFresh: false).outcome
             let writesAfterFirst = journal.writeLog
-            let second = MeshRuntime.runRecoveryLadderInternal(
+            let second = try MeshRuntime.runRecoveryLadderInternal(
                 journal: journal,
                 estate: MeshRuntime.DefaultRecoveryEstate(
                     messageStoreUrl: msg,
@@ -965,7 +965,7 @@ final class GsFinal003RecoveryTopologyTests: XCTestCase {
         // `issued(by: .cleanStart)` and hold a permit with no journal on the machine.* **The helper and the
         // `RecoveryRuntimePermit` type are both DELETED, so this arm now exercises the ONLY producer that
         // remains -- `consumeCompositionTopology()` over a real `CrashResumableWipe` -- one coordinator per estate.**
-        func topology(seed: WipeState?, readable: Bool = true) -> RecoveryCompositionTopology {
+        func topology(seed: WipeState?, readable: Bool = true) throws -> RecoveryCompositionTopology {
             let journal: WipeJournal
             if readable {
                 let j = RecoveryJournal()
@@ -980,18 +980,18 @@ final class GsFinal003RecoveryTopologyTests: XCTestCase {
                 filesystem: WipeDeferredArtifactFileSystemSeam(),
                 runtime: WipeDeferredTransportSeam(),
                 authority: WipeDeferredIdentityAuthoritySeam())
-            return StartupRecoveryBootstrap(wipe: authority).consumeCompositionTopology()
+            return try StartupRecoveryBootstrap(wipe: authority).consumeCompositionTopology()
         }
 
         // (a) *** A SETTLED ESTATE YIELDS THE NORMAL ROAD, AND THE PERMIT CARRIES ITS EVIDENCE. ***
-        guard case .normal(let permit) = topology(seed: nil) else {
+        guard case .normal(let permit) = try topology(seed: nil) else {
             return XCTFail("*** a clean record must yield the NORMAL road ***")
         }
         XCTAssertEqual(permit.issuedFrom, .cleanStart, "and the permit must carry WHY it was issued")
         XCTAssertTrue(permit.wasDriven, "and that a ladder was actually driven for it")
         XCTAssertNil(permit.durableRung, "an empty view at a settled estate is IDLE, reported as no rung")
 
-        guard case .normal(let completed) = topology(seed: .newIdentity) else {
+        guard case .normal(let completed) = try topology(seed: .newIdentity) else {
             return XCTFail("*** a record at the LAST rung before IDLE settles, so it too must yield the NORMAL road ***")
         }
         XCTAssertTrue(completed.wasDriven)
@@ -1002,7 +1002,7 @@ final class GsFinal003RecoveryTopologyTests: XCTestCase {
         // by which this estate can reach a store. An earlier draft answered it with a GATED private runtime, which is
         // construction PLUS a gate rather than the ZERO the requirement states.*
         for rung in [WipeState.requested, .runtimeDrained, .keyErased, .artifactsDeleted] {
-            let t = topology(seed: rung)
+            let t = try topology(seed: rung)
             guard case .recoveryOnly(let decision) = t else {
                 return XCTFail("*** rung \(rung): an outstanding wipe must yield `.recoveryOnly`, got \(t) ***")
             }
@@ -1015,7 +1015,7 @@ final class GsFinal003RecoveryTopologyTests: XCTestCase {
         }
 
         // (c) *** AN UNREADABLE ESTATE YIELDS NOTHING AT ALL, AND DEMANDS AN OPERATOR. ***
-        guard case .refused(let corrupt) = topology(seed: nil, readable: false) else {
+        guard case .refused(let corrupt) = try topology(seed: nil, readable: false) else {
             return XCTFail("*** an unreadable record must be REFUSED ENTIRELY: its own record is the gate's oracle, "
                            + "and a gate that cannot read its oracle must admit nothing ***")
         }
@@ -1034,10 +1034,10 @@ final class GsFinal003RecoveryTopologyTests: XCTestCase {
             filesystem: WipeDeferredArtifactFileSystemSeam(),
             runtime: WipeDeferredTransportSeam(),
             authority: WipeDeferredIdentityAuthoritySeam()))
-        guard case .normal = bootstrap.consumeCompositionTopology() else {
+        guard case .normal = try bootstrap.consumeCompositionTopology() else {
             return XCTFail("the first ask must issue")
         }
-        guard case .alreadyConsumed(let spent) = bootstrap.consumeCompositionTopology() else {
+        guard case .alreadyConsumed(let spent) = try bootstrap.consumeCompositionTopology() else {
             return XCTFail("*** THE SECOND ASK MUST BE REFUSED BY NAME: a permit is evidence of ONE drive, and a "
                            + "bootstrap that could be asked twice could hand one proof to two compositions. ***")
         }
@@ -1076,7 +1076,7 @@ final class GsFinal003RecoveryTopologyTests: XCTestCase {
         // *`WipeDeferredTransportSeam` is answered `.notDrained("the runtime does not yet stand")` BY DESIGN, so using
         // it here would measure the deferral instead of the pre-private recovery this arm is about (the 107-consumer
         // probe). A positively-cold estate is the honest, real seam for a graph that owns no live owner yet.*
-        let outcome = MeshRuntime.runRecoveryLadderInternal(
+        let outcome = try MeshRuntime.runRecoveryLadderInternal(
             journal: journal,
             estate: OwnedArtifactEstate(
                 artifactPaths: MeshRuntime.wipeArtifactPaths(messageStoreUrl: msg, peerStoreUrl: peer),
@@ -1176,21 +1176,21 @@ final class GsFinal003RecoveryTopologyTests: XCTestCase {
 
     /// *** IOS-R1: THE PERMIT IS ESTATE-BOUND, GENERATION-BOUND (ABA) AND ONE-SHOT AT CONSTRUCTION. ***
     func testGSFINAL003_thePermitIsEstateBoundGenerationBoundAndOneShot() throws {
-        func freshPermit() -> (PrivateRuntimePermit, UInt64) {
+        func freshPermit() throws -> (PrivateRuntimePermit, UInt64) {
             let authority = CrashResumableWipe(
                 store: WipeJournalDurabilityAdapter(journal: RecoveryJournal()),
                 vault: WipeDeferredKeyVaultSeam(),
                 filesystem: WipeDeferredArtifactFileSystemSeam(),
                 runtime: WipeDeferredTransportSeam(),
                 authority: WipeDeferredIdentityAuthoritySeam())
-            let topology = StartupRecoveryBootstrap(wipe: authority, estateId: "estate-A").consumeCompositionTopology()
+            let topology = try StartupRecoveryBootstrap(wipe: authority, estateId: "estate-A").consumeCompositionTopology()
             guard case .normal(let permit) = topology else {
                 fatalError("a clean estate must yield a permit")
             }
             return (permit, authority.durableGeneration())
         }
         // (a) ACCEPTED: same estate, same generation -> consumed.
-        let (p1, g1) = freshPermit()
+        let (p1, g1) = try freshPermit()
         XCTAssertNotNil(p1.consumeForConstruction(estateId: "estate-A", liveGeneration: g1),
                         "*** A SAME-ESTATE, CURRENT-GENERATION CONSTRUCTION MUST BE ADMITTED -- the positive "
                         + "discriminator. ***")
@@ -1198,7 +1198,7 @@ final class GsFinal003RecoveryTopologyTests: XCTestCase {
         XCTAssertNil(p1.consumeForConstruction(estateId: "estate-A", liveGeneration: g1),
                      "*** A REUSED PERMIT MUST BE REFUSED: a proof of ONE drive cannot open TWO compositions. ***")
         // (c) WRONG ESTATE.
-        let (p2, g2) = freshPermit()
+        let (p2, g2) = try freshPermit()
         XCTAssertNil(p2.consumeForConstruction(estateId: "estate-B", liveGeneration: g2),
                      "*** A WRONG-ESTATE PERMIT MUST BE REFUSED: the permit carrieth its estate. ***")
         // (d) STALE (ABA): the record moved since the permit was judged.
@@ -1575,7 +1575,7 @@ final class GsFinal003RecoveryTopologyTests: XCTestCase {
         try Data(repeating: 0x22, count: 32).write(to: peer)
         let journal = RecoveryJournal()
 
-        let driven = MeshRuntime.runRecoveryLadderInternal(
+        let driven = try MeshRuntime.runRecoveryLadderInternal(
             journal: journal,
             estate: LiveOwnerEstate(artifactPaths: MeshRuntime.wipeArtifactPaths(messageStoreUrl: msg, peerStoreUrl: peer)),
             requestFresh: true)
@@ -1615,7 +1615,7 @@ final class GsFinal003RecoveryTopologyTests: XCTestCase {
         try Data(repeating: 0x44, count: 32).write(to: peer2)
         let journal2 = RecoveryJournal()
 
-        let driven2 = MeshRuntime.runRecoveryLadderInternal(
+        let driven2 = try MeshRuntime.runRecoveryLadderInternal(
             journal: journal2,
             estate: LiveRadioEstate(artifactPaths: MeshRuntime.wipeArtifactPaths(messageStoreUrl: msg2, peerStoreUrl: peer2)),
             requestFresh: true)
@@ -1827,7 +1827,7 @@ final class GsFinal003RecoveryTopologyTests: XCTestCase {
         let keychain = RecoveryKeychain()
         _ = try MeshIdentity.generateAndStore(keychain: keychain)
 
-        let driven = MeshRuntime.runRecoveryLadderInternal(
+        let driven = try MeshRuntime.runRecoveryLadderInternal(
             journal: journal,
             estate: UndrainableEstate(
                 artifactPaths: MeshRuntime.wipeArtifactPaths(messageStoreUrl: msg, peerStoreUrl: peer),
@@ -1918,7 +1918,7 @@ final class GsFinal003RecoveryTopologyTests: XCTestCase {
     /// *The finding: adoption checked only a 4-byte hint, so a same-generation record with DIFFERENT keys (or an
     /// unrelated standing key) was adopted as the replacement. This arm drives the real keychain-backed publication
     /// record and requires: (a) a same-generation record whose full keys do NOT reproduce the standing identity is
-    /// REFUSED; (b) an unrelated standing key with no recorded intent for this generation refuses; (c) the legitimate
+    /// REFUSED; (b) a foreign standing key cannot become this generation's staged replacement; (c) the legitimate
     /// crash-after-publication road still settles on ONE identity, by full keys.*
     func testGSFINAL003_identityAdoptionDemandsTheFullReplacementKeys() throws {
         let keychain = RecoveryKeychain()
@@ -1954,24 +1954,22 @@ final class GsFinal003RecoveryTopologyTests: XCTestCase {
                      "*** A SAME-GENERATION RECORD WHOSE FULL KEYS DO NOT MATCH THE STANDING IDENTITY MUST REFUSE "
                      + "(IOS-FOLLOWUP-C7) -- the old 4-byte hint check adopted it. ***")
 
-        // (c) *** AN UNRELATED STANDING KEY WITH NO *RECORDED* INTENT CANNOT BE ADOPTED: the intent write is the
-        // gate, and a refusing keychain closes the adoption road -- the `identityAlreadyExists` catch may not fall
-        // back to "adopt whatever stands". ***
+        // (c) A new generation cannot confer provenance on a foreign standing identity.
+        // Publication, standing reads and staged promotion must use this court's SAME keychain.
+        let standingBefore = try XCTUnwrap(keychain.read(tag: MeshIdentity.v1Tag))
         _ = publication.write(WipeIdentityPublication(
             generation: 8, hint: first,
             signingPublicKeyHex: String(repeating: "22", count: 32),
             staticDhPublicKeyHex: String(repeating: "33", count: 32)))
-        let intentlessSeam = WipeIdentityAuthoritySeam(
-            regenerateIdentity: { throw MeshError.identityAlreadyExists },
+        let foreignStandingSeam = WipeIdentityAuthoritySeam(
             loadStandingIdentity: { try MeshIdentity.loadFromKeychain(keychain: keychain) },
             readPublication: { publication.read() },
             writePublication: { pub in publication.write(pub) },
-            readPublicationIntent: { nil },
-            writePublicationIntent: { _ in false })
-        XCTAssertNil(intentlessSeam.publishOrAdoptIdentity(wipeGeneration: 9),
-                     "*** AN UNRELATED STANDING KEY WITH NO RECORDED INTENT FOR THE WIPE GENERATION MUST NOT BE "
-                     + "ADOPTED AS THE REPLACEMENT: the intent write is the gate, and a refusal there closes the "
-                     + "adoption road. ***")
+            keychain: keychain)
+        XCTAssertNil(foreignStandingSeam.publishOrAdoptIdentity(wipeGeneration: 9),
+                     "A foreign standing identity must not be adopted as this generation's staged replacement.")
+        XCTAssertEqual(try keychain.read(tag: MeshIdentity.v1Tag), standingBefore,
+                       "Refusing the foreign identity must preserve its full private state.")
 
         // (d) *** AND THE LEGITIMATE CRASH ROAD STILL SETTLES ON ONE IDENTITY, BY FULL KEYS. ***
         let settled = WipeIdentityPublication(identity: try MeshIdentity.loadFromKeychain(keychain: keychain),

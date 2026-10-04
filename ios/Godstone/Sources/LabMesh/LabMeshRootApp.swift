@@ -142,13 +142,16 @@ public final class LabRuntimeHolder: ObservableObject {
         switch status.decision {
         case .cleanStart, .wipeCompleted:
             // (3) THE PERMIT: MINTED BY A DRIVE, BOUND TO THIS ESTATE, CONSUMED AT CONSTRUCTION.
-            guard LabRuntime.consumeLabConstructionPermit(estateId: estateId,
-                                                          liveGeneration: status.generation) else {
-                activeRuntime = nil
-                bootstrapWords = "private construction refused: no valid permit for this estate and generation"
-                return
-            }
             do {
+                // *** THE PERMIT IS CONSUMED INSIDE THE CONSTRUCTION BOUNDARY: a refused permit and a refused
+                // composition are the SAME non-complete outcome, and a THROWN drive (its own bind failure) is
+                // reported as the ACTUAL error rather than laundered into a refusal string. ***
+                guard try LabRuntime.consumeLabConstructionPermit(estateId: estateId,
+                                                                 liveGeneration: status.generation) else {
+                    activeRuntime = nil
+                    bootstrapWords = "private construction refused: no valid permit for this estate and generation"
+                    return
+                }
                 // *** THE PRIVATE CONSTRUCTION, OVER THE LAB'S RETAINED ESTATE ROOT. ***
                 activeRuntime = try LabRuntime.compose(estateRoot: root)
                 bootstrapWords = ""
@@ -195,7 +198,16 @@ public final class LabRuntimeHolder: ObservableObject {
             bootstrapWords = retryWords
             return retryWords
         }
-        let outcome = LabRuntime.runRecoveryForOperator(requestFresh: false)
+        let outcome: RecoveryLadderOutcome
+        do {
+            outcome = try LabRuntime.runRecoveryForOperator(requestFresh: false)
+        } catch {
+            // *A THROWN DRIVE IS RENDERED AS ITS OWN ERROR -- the resume did not reach a rung, so no outcome is
+            // fabricated and the words carry the ACTUAL failure.*
+            retryWords = "recovery retry failed: \(error)"
+            bootstrapWords = retryWords
+            return retryWords
+        }
         // *** THE RESUME'S OWN TYPED ANSWER (the durable `requestFresh: false` road), RENDERED BESIDE the re-gate. ***
         retryWords = "recovery retry: " + outcome.summaryWords
         bootstrapWords = retryWords
@@ -218,7 +230,13 @@ public final class LabRuntimeHolder: ObservableObject {
             bootstrapWords = "refused: " + status.decision.name + " does not require an operator resolution"
             return bootstrapWords
         }
-        return resolveCorruptForOperator().summaryWords
+        do {
+            return try resolveCorruptForOperator().summaryWords
+        } catch {
+            // *THE OPERATOR'S ACT THREW: it is reported as its own error, never an invented outcome.*
+            bootstrapWords = "operator resolution failed: \(error)"
+            return bootstrapWords
+        }
     }
 
     /// *** IOS-R6: THE OPERATOR'S OWN RESOLUTION OF A CORRUPT RECORD. ***
@@ -229,10 +247,10 @@ public final class LabRuntimeHolder: ObservableObject {
     /// reacheth this road only through `resolveCorrupt()`, which applies the `requiresOperator` gate; this method
     /// itself carries the DURABLE effect and is the door a court drives directly.***
     @discardableResult
-    public func resolveCorruptForOperator() -> RecoveryLadderOutcome {
+    public func resolveCorruptForOperator() throws -> RecoveryLadderOutcome {
         // *THE ESTATE IS THE LAB'S OWN INVENTORY -- enumerated STATICALLY from the root, since no composition exists
         // while the record is unreadable (`LabEstateSeam(inventory:)`).*
-        let outcome = LabRuntime.resolveCorruptRecoveryForOperator()
+        let outcome = try LabRuntime.resolveCorruptRecoveryForOperator()
         // *** THE TYPED OUTCOME OF THE OPERATOR'S OWN ACT, RENDERED -- including WHICH ARTIFACT SURVIVED, if any. ***
         operatorWipeWords = outcome.summaryWords
         bootstrapWords = "operator resolution: " + outcome.summaryWords
@@ -1178,13 +1196,23 @@ struct LabDiagnosticsView: View {
                 .accessibilityIdentifier("lab.diagnostics.privateopens")
 
             Button("Begin wipe") {
-                wipeNote = runtime.beginWipe().summaryWords
+                // *THE DRIVE MAY THROW; the rendered note carrieth the ACTUAL error rather than a fabricated outcome.*
+                do {
+                    wipeNote = try runtime.beginWipe().summaryWords
+                } catch {
+                    wipeNote = "wipe refused: \(error)"
+                }
             }
             .labTouchTarget()
             .accessibilityIdentifier("lab.diagnostics.beginwipe")
 
             Button("Resume wipe") {
-                wipeNote = runtime.resumeWipe().summaryWords
+                // *AND THE RESUME'S DRIVE MAY THROW TOO: its own error is rendered, never a fabricated outcome.*
+                do {
+                    wipeNote = try runtime.resumeWipe().summaryWords
+                } catch {
+                    wipeNote = "wipe resume refused: \(error)"
+                }
             }
             .labTouchTarget()
             .accessibilityIdentifier("lab.diagnostics.resumewipe")

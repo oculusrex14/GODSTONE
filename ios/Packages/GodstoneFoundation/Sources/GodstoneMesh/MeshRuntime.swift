@@ -443,6 +443,11 @@ public final class MeshRuntime {
             }
         }
 
+        // *** THE ESTATE'S OWN TUPLE, COMPUTED ONCE. *** *The same paths and the same derived estate identifier
+        // which the construction boundary presenteth at `beginConstruction` -- so the preparation below and the
+        // boundary's own binding declare ONE inventory, and the census the permit captureth is the settled root's.*
+        let artifactPaths = Self.wipeArtifactPaths(messageStoreUrl: messageStoreUrl, peerStoreUrl: peerStoreUrl)
+        let estateId = Self.recoveryEstateId(artifactPaths: artifactPaths)
         let issuingBootstrap = StartupRecoveryBootstrap(
             wipe: CrashResumableWipe(
                 store: WipeJournalDurabilityAdapter(journal: journal),
@@ -450,9 +455,21 @@ public final class MeshRuntime {
                 filesystem: WipeDeferredArtifactFileSystemSeam(),
                 runtime: WipeDeferredTransportSeam(),
                 authority: WipeDeferredIdentityAuthoritySeam()),
-            estateId: Self.recoveryEstateId(artifactPaths: Self.wipeArtifactPaths(
-                messageStoreUrl: messageStoreUrl, peerStoreUrl: peerStoreUrl)))
-        let createTimeTopology = issuingBootstrap.consumeCompositionTopology()
+            estateId: estateId,
+            // *** CURRENT-05c: DECLARE THE REAL INVENTORY BEFORE THE PERMIT'S CENSUS IS READ. *** *The factory is
+            // already proved non-nil above, so this bindeth the estate's ACTUAL capabilities -- its declared paths,
+            // the composition's own keychain and the factory's real physical DEK domain -- and never a defaulted
+            // domain written by hand. It runeth only after the drive settled the estate and only to bind the
+            // catalogue; a failure of the estate's own binding travelleth out of this call as its own typed error,
+            // with no permit issued, exactly as the boundary's later binding failure doth.*
+            preparePrivateInventory: {
+                _ = try PhysicalEstateAuthority.shared.bindInventory(
+                    estateId: estateId,
+                    artifactPaths: artifactPaths,
+                    keychain: keychain,
+                    keyDomain: factory.keyProviderForWipe.physicalKeyDomain)
+            })
+        let createTimeTopology = try issuingBootstrap.consumeCompositionTopology()
 
         switch createTimeTopology {
         case .normal(let createTimePermit):
@@ -485,13 +502,25 @@ public final class MeshRuntime {
             // *an earlier draft admitted a composition whose sensitive roads were merely refused -- which is
             // construction PLUS a gate, not zero construction. The requirement is zero, so the road that carries a
             // pending wipe cannot build at all.*
-            let driven = Self.runRecoveryLadderInternal(
+            // *** STRICTLY BIND THIS CONSTRUCTOR'S OWN INVENTORY BEFORE THE RECOVERY ROAD'S EVIDENCE. *** *That
+            // road minteth its OWN permit (the bootstrap inside `runRecoveryLadderLocked`), so it must be prepared
+            // from the estate's real capabilities TOO: the binding below is the same tuple, thrown -- never the
+            // unvouched fallback the estate's own initializer may take -- and the registry it returneth is handed
+            // to the estate through its existing `registry:` argument so the two halves share one vouched owner
+            // set. The estate's original binding error is what travelleth out of `create`.*
+            let vouchedRegistry = try PhysicalEstateAuthority.shared.bindInventory(
+                estateId: estateId,
+                artifactPaths: artifactPaths,
+                keychain: keychain,
+                keyDomain: factory.keyProviderForWipe.physicalKeyDomain)
+            let driven = try Self.runRecoveryLadderInternal(
                 journal: journal,
                 estate: DefaultRecoveryEstate(
                     messageStoreUrl: messageStoreUrl,
                     peerStoreUrl: peerStoreUrl,
                     keychain: keychain,
-                    dekProvider: factory.keyProviderForWipe),
+                    dekProvider: factory.keyProviderForWipe,
+                    registry: vouchedRegistry),
                 requestFresh: false
             )
             // *** THE PERMIT COMES FROM THE BOOTSTRAP THAT DROVE THE LADDER, NOT FROM THIS FUNCTION. ***
@@ -761,7 +790,7 @@ public final class MeshRuntime {
         journal: WipeJournal = FileWipeJournal.standard(),
         keychain: any LocalIdentityKeychain,
         encryptedStores: EncryptedStoreFactory? = nil,
-        driveRecovery: (StartupRecoveryBootstrap) -> RecoveryCompositionTopology
+        driveRecovery: (StartupRecoveryBootstrap) throws -> RecoveryCompositionTopology
     ) throws -> MeshRuntime {
         let authority = CrashResumableWipe(
             store: WipeJournalDurabilityAdapter(journal: journal),
@@ -769,6 +798,22 @@ public final class MeshRuntime {
             filesystem: WipeDeferredArtifactFileSystemSeam(),
             runtime: WipeDeferredTransportSeam(),
             authority: WipeDeferredIdentityAuthoritySeam())
+        // *** THE ESTATE'S OWN TUPLE, COMPUTED ONCE, AND THE PREPARATION IT DECLARETH. *** *The very paths and
+        // derived identifier the construction boundary presenteth later. The preparation existeth ONLY for a
+        // DECLARED factory: with none supplied it is nil, so a caller who named no verifying factory seeth the
+        // same classification and the same `privateStoreNotEncrypted` refusal in the same order as ever, and no
+        // inventory of ours is bound for a road that can never be admitted.*
+        let artifactPaths = Self.wipeArtifactPaths(messageStoreUrl: messageStoreUrl, peerStoreUrl: peerStoreUrl)
+        let estateId = Self.recoveryEstateId(artifactPaths: artifactPaths)
+        let preparePrivateInventory: (() throws -> Void)? = encryptedStores.map { declared -> (() throws -> Void) in
+            {
+                _ = try PhysicalEstateAuthority.shared.bindInventory(
+                    estateId: estateId,
+                    artifactPaths: artifactPaths,
+                    keychain: keychain,
+                    keyDomain: declared.keyProviderForWipe.physicalKeyDomain)
+            }
+        }
         // *** THE PERMIT IS THE GATE, AND IT COMES FROM THE BOOTSTRAP THAT DROVE THE LADDER. ***
         //
         // *There is NO `PrivateRuntimePermit.issue(_:)` anywhere in this module: an earlier draft exposed one and a
@@ -776,11 +821,14 @@ public final class MeshRuntime {
         // could write `issue(.cleanStart)` with no journal anywhere near it.* **So the caller's route closure is now
         // given the BOOTSTRAP and must return the topology that bootstrap issued** -- *the closure may DECIDE WHICH
         // SEAMS the drive uses (a live transport, a keychain, a fake in a court), and it may NOT invent the evidence,
-        // because the evidence is built only by `consumeCompositionTopology()` over that same coordinator.*
-        let topology = driveRecovery(StartupRecoveryBootstrap(
+        // because the evidence is built only by `consumeCompositionTopology()` over that same coordinator.* **The
+        // closure now throweth, and a preparation failure of the estate's own binding propagateth out of this
+        // composition as its own error -- it is never converted into a recovery refusal, which would be the
+        // decision speaking for a binding that never took place.**
+        let topology = try driveRecovery(StartupRecoveryBootstrap(
             wipe: authority,
-            estateId: Self.recoveryEstateId(artifactPaths: Self.wipeArtifactPaths(
-                messageStoreUrl: messageStoreUrl, peerStoreUrl: peerStoreUrl))))
+            estateId: estateId,
+            preparePrivateInventory: preparePrivateInventory))
         guard case .normal(let permit) = topology else {
             let decision: StartupRecoveryDecision
             switch topology {
@@ -1586,8 +1634,8 @@ public final class MeshRuntime {
         journal: WipeJournal = FileWipeJournal.standard(),
         estate: any RecoveryEstate,
         requestFresh: Bool = false
-    ) -> RecoveryOnlyOutcome {
-        runRecoveryLadderInternal(
+    ) throws -> RecoveryOnlyOutcome {
+        try runRecoveryLadderInternal(
             journal: journal,
             estate: estate,
             requestFresh: requestFresh)
@@ -1621,14 +1669,16 @@ public final class MeshRuntime {
         journal: WipeJournal,
         estate: any RecoveryEstate,
         requestFresh: Bool
-    ) -> RecoveryOnlyOutcome {
+    ) throws -> RecoveryOnlyOutcome {
         // *** IOS-FOLLOWUP-CURRENT-07: THE WHOLE DRIVE -- THE REQUEST AND EVERY RUNG IT EARNS -- RUNNETH UNDER THE
         // ONE PHYSICAL-ESTATE SERIALIZATION POINT. *** *The finding measured that a fresh request could make REQUESTED
         // durable while another composition held the global admission/construction lock. The coordinator's own
         // `serialized` now takes that lock too, and the wrapper takes it once for the WHOLE transaction so request and
-        // drive cannot be split by another owner's construction.*
-        PhysicalEstateAuthority.shared.serialized {
-            runRecoveryLadderLocked(journal: journal, estate: estate, requestFresh: requestFresh)
+        // drive cannot be split by another owner's construction.* **The drive's evidence issuance now runneth inside
+        // that same section, so the estate's inventory preparation, its census capture and this single drive are one
+        // transaction; a preparation that throweth leaveth the estate's own error to the caller and issues nothing.**
+        try PhysicalEstateAuthority.shared.serialized {
+            try runRecoveryLadderLocked(journal: journal, estate: estate, requestFresh: requestFresh)
         }
     }
 
@@ -1636,7 +1686,7 @@ public final class MeshRuntime {
         journal: WipeJournal,
         estate: any RecoveryEstate,
         requestFresh: Bool
-    ) -> RecoveryOnlyOutcome {
+    ) throws -> RecoveryOnlyOutcome {
         let adapter = WipeJournalDurabilityAdapter(journal: journal)
         let realPaths = estate.artifactPaths
         // *** IOS-FOLLOWUP-CURRENT-06: THE DELETION SCOPE IS THE AUTHORITY'S UNION JOINED WITH THIS ESTATE'S OWN
@@ -1706,7 +1756,7 @@ public final class MeshRuntime {
         // *** AND THE ONE-SHOT CONSUMING ROAD IS WHAT DRIVES AND ISSUES: it taketh the evidence itself, so the permit
         // this returns (when the estate settled) is made of a drive rather than of a value somebody handed in.***
         let bootstrap = StartupRecoveryBootstrap(wipe: authority, estateId: estateId)
-        let topology = bootstrap.consumeCompositionTopology()
+        let topology = try bootstrap.consumeCompositionTopology()
         let decision = bootstrap.reportedDecision()
         // *** THE RUNGS ARE READ AFTER THE DRIVE, FROM THE DURABLE ADAPTER RATHER THAN FROM MEMORY. *** *A ladder that
         // reports where it THINKS it stands is the register-instead-of-truth defect; this asks the same adapter the next
@@ -1731,17 +1781,17 @@ public final class MeshRuntime {
     internal static func resolveCorruptRecoveryForOperator(
         journal: WipeJournal = FileWipeJournal.standard(),
         estate: any RecoveryEstate
-    ) -> RecoveryOnlyOutcome {
+    ) throws -> RecoveryOnlyOutcome {
         // *** IOS-FOLLOWUP-CURRENT-07: the operator's resolution is ONE transaction under the same authority lock. ***
-        PhysicalEstateAuthority.shared.serialized {
-            resolveCorruptRecoveryForOperatorLocked(journal: journal, estate: estate)
+        try PhysicalEstateAuthority.shared.serialized {
+            try resolveCorruptRecoveryForOperatorLocked(journal: journal, estate: estate)
         }
     }
 
     private static func resolveCorruptRecoveryForOperatorLocked(
         journal: WipeJournal,
         estate: any RecoveryEstate
-    ) -> RecoveryOnlyOutcome {
+    ) throws -> RecoveryOnlyOutcome {
         let adapter = WipeJournalDurabilityAdapter(journal: journal)
         let realPaths = estate.artifactPaths
         // *** IOS-FOLLOWUP-CURRENT-06: same union-consumed deletion scope as the ladder wrapper. ***
@@ -1808,7 +1858,7 @@ public final class MeshRuntime {
         }
         // *** AND THE PERMIT COMETH ONLY FROM THE DRIVING BOOTSTRAP, AFTER A PERFORMED RESOLUTION. ***
         let bootstrap = StartupRecoveryBootstrap(wipe: authority, estateId: estateId)
-        let topology = bootstrap.consumeCompositionTopology()
+        let topology = try bootstrap.consumeCompositionTopology()
         let decision = bootstrap.reportedDecision()
         let remaining = deleteScope.keys.sorted().filter { logicalName in
             guard let url = deleteScope[logicalName] else { return false }

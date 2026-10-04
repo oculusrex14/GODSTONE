@@ -394,7 +394,10 @@ public struct RecoveryLadderOutcome: Sendable, Equatable {
 /// *** THE RECOVERY/BOOTSTRAP GRAPH: WHAT DRIVES THE LADDER *BEFORE* ANY PRIVATE STORE EXISTS. ***
 ///
 /// This type exists so the decision above can be REACHED during a pending wipe. It owns the journal
-/// and the wipe coordinator and NOTHING ELSE -- no identity, no message store, no peer store --
+/// and the wipe coordinator, and the private composition road may hand it the estate's DECLARED
+/// INVENTORY BINDING (catalogue paths, keychain tag, DEK domain) to declare before a permit issueth --
+/// which is a catalogue act alone: it openeth no identity, fetcheth no DEK, toucheth no engine and
+/// installeth no listener. It owneth no message store, no peer store and no ordinary identity,
 /// because *a graph that needs those in order to decide whether they may be opened can never
 /// decide "no".*
 ///
@@ -409,14 +412,32 @@ public final class StartupRecoveryBootstrap {
     /// *** IOS-R1: THE ESTATE THIS BOOTSTRAP DRIVETH OVER. *** *The permit it issueth carrieth this, so it cannot be
     /// presented against another estate.*
     private let estateId: String
+    /// *** CURRENT-05c: THE ESTATE'S OWN INVENTORY PREPARATION, SUPPLIED BY THE PRIVATE COMPOSITION ROAD. ***
+    ///
+    /// *The road that minteth a permit for a private composition must first declare the estate's REAL inventory --
+    /// the same paths, keychain and DEK domain the construction boundary later bindeth -- so the revision captured
+    /// below is the settled root's own, and NOT a placeholder that a later alias resolution displaceth for the
+    /// shared capability root (the mismatch that refused settled estates which had done nothing wrong). It is
+    /// OPTIONAL: a bootstrap created without it behaveth exactly as it didi. It runeth ONLY on a durably settled
+    /// drive, after the acknowledged snapshot hath been proved and BEFORE the census revision is read, and it MAY
+    /// THROW: a failed preparation spendeth this bootstrap WITHOUT issuing evidence or a permit, and the ORIGINAL
+    /// error travelleth out of this call unchanged.*
+    private let preparePrivateInventory: (() throws -> Void)?
 
     /// - Parameter wipe: the journal-bound coordinator. It answers from the DURABLE record, so
     ///   this graph reads truth rather than a cached flag.
     /// - Parameter estateId: the estate the issued permit is bound to; a caller that omits it getteth an empty
     ///   estate, which no construction boundary accepts.
-    public init(wipe: CrashResumableWipe, estateId: String = "") {
+    /// - Parameter preparePrivateInventory: the private composition road's declared inventory binding (its real
+    ///   paths, keychain and DEK domain), executed on a SETTLED drive before the evidence captureth the census
+    ///   revision, so the permit is bound to the estate's own settled root. The recovery and lab roads omit it and
+    ///   bind through their own estates. A throwing preparation propagate th the original error and leaveth this
+    ///   bootstrap spent, with no evidence and no permit issued.
+    public init(wipe: CrashResumableWipe, estateId: String = "",
+                preparePrivateInventory: (() throws -> Void)? = nil) {
         self.wipe = wipe
         self.estateId = estateId
+        self.preparePrivateInventory = preparePrivateInventory
     }
 
     /// The typed decision produced by the last `decideAndDrive()` (or the direct drive below). Retained so the
@@ -436,12 +457,17 @@ public final class StartupRecoveryBootstrap {
     ///
     /// **AND IT IS ONE-SHOT.** *A second call answers `.alreadyConsumed`, so the same proof cannot open two
     /// compositions and a permit cannot survive an estate that has since changed. The evidence carrieth the durable
-    /// rung, so an audit may compare it against the journal it was issued for.*
+    /// rung, so an audit may compare it against the journal it was issued for.* **AND A FAILING PREPARATION
+    /// SPENDETH THE ATTEMPT:** *when the declared inventory preparation throweth, this call propagate th THAT original
+    /// error, issueth NEITHER evidence NOR a permit, and deliberately doth NOT restore the one-shot slot -- a spent
+    /// drive is a spent drive, and replaying a refused road is not a second chance.*
     ///
     /// **NO ROAD HERE OPENS A STORE OR MINTS AN ORDINARY IDENTITY:** *the decision is taken, and a SETTLED one yields
-    /// the permit; every other outcome yields a value that carrieth no capability at all.*
-    public func consumeCompositionTopology() -> RecoveryCompositionTopology {
-        PhysicalEstateAuthority.shared.serialized {
+    /// the permit; every other outcome yields a value that carrieth no capability at all. The settled road's
+    /// preparation is a catalogue binding only -- declared inventory, never an identity load, a DEK fetch, an engine
+    /// touch or a listener.*
+    public func consumeCompositionTopology() throws -> RecoveryCompositionTopology {
+        try PhysicalEstateAuthority.shared.serialized {
             consumeLock.lock()
             defer { consumeLock.unlock() }
             if consumed { return .alreadyConsumed(lastDecision) }
@@ -454,6 +480,16 @@ public final class StartupRecoveryBootstrap {
                     lastDecision = .terminalFailure(reason: "settled generation was not durably acknowledged")
                     return .refused(lastDecision)
                 }
+                // *** CURRENT-05c: DECLARE THE ESTATE'S REAL INVENTORY BEFORE THE CAPTURE BELOW. *** *The revision
+                // which the next line readeth is this estate's own census reading. For an estate never bound before,
+                // the alias map answereth with a fresh placeholder there, while the construction boundary later findeth
+                // the shared capability root instead -- so the two reading were never of one ledger. The road's
+                // declared preparation bindeth the SAME inventory that boundary will bind, under this same
+                // serialization point and inside this single drive, so what is captured is the settled root's own
+                // revision. A failure here is the estate's own binding failure: it travelleth out unchanged, the
+                // revocation guard and the construction boundary are not touched, and NEITHER evidence NOR a permit
+                // issueth from a spent preparation.*
+                try preparePrivateInventory?()
                 let revision = PhysicalEstateAuthority.shared.revision(for: estateId)
                 let evidence = RecoveryEvidence(decision: decision, durableRung: nil, droveTheLadder: true,
                     estateId: estateId, generation: snapshot,

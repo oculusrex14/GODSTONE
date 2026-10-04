@@ -1266,7 +1266,7 @@ final class GsStress001RealRuntimeDriverTests: XCTestCase {
                 // the runtime whose stores the checkpoint had just CLOSED -- so every later cycle wrote through a
                 // closed handle. The reopen returns the owner it built, and the loop adopts it (with its inbox and a
                 // cleared writer cache, since a fresh owner holdeth no writer).*
-                let (report, reopened) = try reopenCheckpoint(e, previous: runtime)
+                let (report, reopened) = try reopenCheckpoint(e, previous: runtime, factory: factory)
                 checkpoints[cycle + 1] = report
                 runtime = reopened
                 inbox = try XCTUnwrap(runtime.meshNode.recipientInbox)
@@ -1284,7 +1284,7 @@ final class GsStress001RealRuntimeDriverTests: XCTestCase {
         // census read BELOW addressed the CLOSED former owner while the freshly built owner leaked. A reopen
         // answereth with the NEW owner, and this arm now ADOPTS it: the durable bytes are read from the owner the
         // reopen built, and the estate is closed through THAT owner's own close path.*
-        let (finalReport, finalRuntime) = try reopenCheckpoint(e, previous: runtime)
+        let (finalReport, finalRuntime) = try reopenCheckpoint(e, previous: runtime, factory: factory)
         checkpoints[cycles] = finalReport
         runtime = finalRuntime
 
@@ -1395,7 +1395,8 @@ final class GsStress001RealRuntimeDriverTests: XCTestCase {
 
     /// *** THE FULL-GRAPH REOPEN: the same files, a NEW owner; the owners must be the ones the composition builds and
     /// the durable rows must have survived their owner.***
-    private func reopenCheckpoint(_ e: Estate, previous: MeshRuntime) throws -> (String, MeshRuntime) {
+    private func reopenCheckpoint(_ e: Estate, previous: MeshRuntime,
+                                  factory: StressManagerFactory) throws -> (String, MeshRuntime) {
         let heldBefore = previous.messageStore.allHeldMsgIds()
         let anchorsBefore = heldBefore.map { ($0, previous.messageStore.receiptAnchorForTest($0)) }
         let framesBefore = previous.ackStore.countFrames()
@@ -1407,6 +1408,8 @@ final class GsStress001RealRuntimeDriverTests: XCTestCase {
         previous.peerIdentityStore.close()
 
         let opened = try openRuntime(e)
+        // A reopen is a new transport owner: install its facade BEFORE lifecycle.start builds an epoch.
+        opened.meshNode.ble.testManagerFactoryOverride = factory
         var report = "intact"
         if opened.meshNode.sessions !== opened.sessionManager { report = "the node's session owner is not the runtime's" }
         if opened.identity.nodeId != identityBefore { report = "the identity changed across the reopen" }

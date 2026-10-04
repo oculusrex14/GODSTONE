@@ -145,7 +145,7 @@ final class LabMeshAppTests: XCTestCase {
                       "and the held frame itself must be on disk")
 
         // (3) THE WIPE JOURNEY: the production ladder must COMPLETE over the lab's OWN inventory.
-        let outcome = lab.beginWipe()
+        let outcome = try lab.beginWipe()
         XCTAssertTrue(outcome.isComplete,
                       "*** THE WIPE MUST REACH A TERMINAL OVER THE LAB'S OWN ESTATE (no artifact surviving); "
                           + "observed: \(outcome.summaryWords) ***")
@@ -161,7 +161,7 @@ final class LabMeshAppTests: XCTestCase {
     func testTheLabPermitBoundaryRefusesAForeignOrStaleEstateAndAcceptsTheLiveOne() throws {
         // *A CLEAN LAB ESTATE: the permit road requires the record to stand where the permit was judged.*
         LabRuntime.resetLabEstateForTest()
-        guard let permit = LabRuntime.mintLabPermit(callerEstateId: LabRuntime.labEstateIdentifier(root: LabRuntime.labEstateRootURL())) else {
+        guard let permit = try LabRuntime.mintLabPermit(callerEstateId: LabRuntime.labEstateIdentifier(root: LabRuntime.labEstateRootURL())) else {
             return XCTFail("a settled lab estate must mint a permit")
         }
         // THE REAL DURABLE GENERATION THE PERMIT WAS JUDGED AT -- never a forged literal.
@@ -180,14 +180,14 @@ final class LabMeshAppTests: XCTestCase {
             "*** A PERMIT'S ONE-SHOT SLOT MUST BE SPENT: copying/reusing it cannot buy a second construction. ***",
         )
         // (3) A FRESH PERMIT FOR A DIFFERENT ESTATE IS REFUSED AGAINST THIS ONE, AND (4) A MOVED RECORD (ABA) TOO.
-        guard let other = LabRuntime.mintLabPermit(callerEstateId: realEstate + "|foreign") else {
+        guard let other = try LabRuntime.mintLabPermit(callerEstateId: realEstate + "|foreign") else {
             return XCTFail("a second mint must succeed")
         }
         XCTAssertNil(
             other.consumeForConstruction(estateId: realEstate, liveGeneration: other.generation),
             "*** A PERMIT IS A JUDGEMENT ABOUT ONE ESTATE: a permit minted for another id must not admit this one. ***",
         )
-        guard let aba = LabRuntime.mintLabPermit(callerEstateId: realEstate) else {
+        guard let aba = try LabRuntime.mintLabPermit(callerEstateId: realEstate) else {
             return XCTFail("a third mint must succeed")
         }
         XCTAssertNil(
@@ -196,11 +196,11 @@ final class LabMeshAppTests: XCTestCase {
         )
         // (5) AND THE PRODUCTION HELPER REFUSES A FOREIGN ESTATE AND ACCEPTS THE MATCHING ONE:
         XCTAssertFalse(
-            LabRuntime.consumeLabConstructionPermit(estateId: realEstate + "|foreign", liveGeneration: realGeneration),
+            try LabRuntime.consumeLabConstructionPermit(estateId: realEstate + "|foreign", liveGeneration: realGeneration),
             "*** THE PRODUCTION HELPER REFUSES A FOREIGN ESTATE. ***"
         )
         XCTAssertTrue(
-            LabRuntime.consumeLabConstructionPermit(estateId: realEstate, liveGeneration: realGeneration),
+            try LabRuntime.consumeLabConstructionPermit(estateId: realEstate, liveGeneration: realGeneration),
             "*** AND ACCEPTS THE LIVE SAME-ESTATE RECORD. ***"
         )
     }
@@ -323,5 +323,47 @@ final class LabMeshAppTests: XCTestCase {
         // And a truly unknown node id maps to nothing (the refusal direction).
         XCTAssertEqual(lab.boundSessionPeers(forNodeId: Data(repeating: 0x7F, count: 16)), 0,
                        "an unknown node id must map to no peer -- a mapping that answered everything would be no map")
+    }
+
+    /// *** *** THE THROWING DRIVE BOUNDARY: A FAILED DRIVE MUST NOT LOOK COMPLETE. *** ***
+    ///
+    /// *The wipe handler now throweth, and the adapter is the boundary that turns a thrown failure into a NON-complete
+    /// progress state carrying the ACTUAL error -- never a fabricated `RecoveryLadderOutcome`, never a swallowed
+    /// `try?`, and never a `nil`/`false` that a surface could mistake for a mere refusal. **AND THE POSITIVE CONTROL
+    /// STANDS BESIDE IT:** a handler that really settled still renders `.complete`, so the refusal arm cannot be
+    /// satisfied by an adapter that could never report success.*
+    func testTheThrowingWipeDriveRendersNonCompleteWithTheActualError() throws {
+        struct DriveFailed: Error { let reason: String }
+        let dir = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("godstone-lab-wipe-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let store = try SqlitePeerIdentityStore(url: dir.appendingPathComponent("trust.db"))
+        defer { store.close() }
+        let repo = PeerIdentityRepository(store: store)
+
+        // (1) A DRIVE THAT THREW: non-complete, carrying the ACTUAL error, still blocking ordinary use.
+        let throwing = TrustAuthorityAdapter(repository: repo, wipeHandler: {
+            throw DriveFailed(reason: "the estate's inventory could not be bound")
+        })
+        let failed = throwing.beginWipe()
+        XCTAssertNotEqual(failed, .complete,
+                          "*** A DRIVE THAT THREW MUST NOT BE RENDERED COMPLETE. ***")
+        if case .inProgress(_, _, let resumable, let error) = failed {
+            XCTAssertTrue(resumable, "the estate is not settled, so a resume remaineth legitimate")
+            XCTAssertTrue(error?.contains("could not be bound") == true,
+                          "*** THE ACTUAL ERROR MUST BE CARRIED -- observed: \(String(describing: error)) ***")
+            XCTAssertTrue(failed.blocksOrdinaryUse, "and an unfinished wipe must block ordinary use")
+        } else {
+            XCTFail("a thrown drive must be in progress, got \(failed)")
+        }
+        XCTAssertEqual(throwing.resumeWipe(), failed,
+                       "the resume road carries the same non-complete state rather than a second fabricated answer")
+
+        // (2) THE POSITIVE CONTROL: a handler that really settled still renders complete.
+        let completeOutcome = RecoveryLadderOutcome(decision: .wipeCompleted, rungs: [], artifactsRemaining: [])
+        let settled = TrustAuthorityAdapter(repository: repo, wipeHandler: { completeOutcome })
+        XCTAssertEqual(settled.beginWipe(), .complete,
+                       "*** A SETTLED DRIVE MUST STILL RENDER COMPLETE, or the arm above is vacuous. ***")
     }
 }

@@ -978,6 +978,13 @@ jobs:
           brew install xcodegen
           export ANDROID_HOME="${ANDROID_HOME:-$HOME/Library/Android/sdk}"
           bash tools/supplychain/provision_android_cmdline_tools.sh
+          sqlcipher_stage="$RUNNER_TEMP/board1-sqlcipher-macos"
+          tools/supplychain/build_sqlcipher_simulator.sh --mode macos --out "$sqlcipher_stage"
+          python3 tools/supplychain/verify_sqlcipher_artifact.py --mode macos --dir "$sqlcipher_stage" \
+            --emit-swift "$sqlcipher_stage/SQLCipherTrustedExpectation.swift"
+          cp "$sqlcipher_stage/SQLCipherTrustedExpectation.swift" \
+            ios/Godstone/Sources/GodstoneMesh/SQLCipherTrustedExpectation.swift
+          python3 scripts/sync_ios_foundation_package.py
           echo "ANDROID_HOME=$ANDROID_HOME" >> "$GITHUB_ENV"
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:

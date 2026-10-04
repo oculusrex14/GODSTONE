@@ -690,7 +690,7 @@ private func t30Scope(msgPath: String, tag: String, keyDomain: String) throws ->
         filesystem: WipeDeferredArtifactFileSystemSeam(),
         runtime: WipeDeferredTransportSeam(),
         authority: WipeDeferredIdentityAuthoritySeam())
-    guard case .normal(let permit) = StartupRecoveryBootstrap(wipe: authority, estateId: estateId)
+    guard case .normal(let permit) = try StartupRecoveryBootstrap(wipe: authority, estateId: estateId)
             .consumeCompositionTopology() else {
         XCTFail("*** '\(laneName(msgPath))': a driven clean estate must issue the permit; the ladder refused for "
                 + "estate '\(estateId)' ***")

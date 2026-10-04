@@ -254,7 +254,7 @@ final class GsFinal003StartupPermitTests: XCTestCase {
     /// so it is asserted by COMPILATION: a court that tried to write `PrivateRuntimePermit.issue(...)` would fail the
     /// whole test target to build, which this programme's own round-471 law names as a real failure rather than a
     /// green.***
-    func testGSFINAL003_thePermitIsIssuedOnlyByDrivingTheLadder() {
+    func testGSFINAL003_thePermitIsIssuedOnlyByDrivingTheLadder() throws {
         let journal = InMemoryJournal()
         let authority = CrashResumableWipe(
             store: WipeJournalDurabilityAdapter(journal: journal),
@@ -264,7 +264,7 @@ final class GsFinal003StartupPermitTests: XCTestCase {
             authority: WipeDeferredIdentityAuthoritySeam())
 
         // (1) *** A CLEAN ESTATE: the drive settles, and the bootstrap issues a permit CARRYING ITS EVIDENCE. ***
-        let clean = StartupRecoveryBootstrap(wipe: authority).consumeCompositionTopology()
+        let clean = try StartupRecoveryBootstrap(wipe: authority).consumeCompositionTopology()
         guard case .normal(let permit) = clean else {
             return XCTFail("a clean estate must yield the settled permit, got \(clean)")
         }
@@ -276,13 +276,13 @@ final class GsFinal003StartupPermitTests: XCTestCase {
         // *A proof of one drive must not open two compositions, and it must not survive an estate that has since
         // changed -- so the second ask is answered BY NAME rather than with a refusal that would read like a corrupt
         // record.*
-        let second = StartupRecoveryBootstrap(wipe: authority).consumeCompositionTopology()
+        let second = try StartupRecoveryBootstrap(wipe: authority).consumeCompositionTopology()
         guard case .normal = second else {
             return XCTFail("a fresh bootstrap over a clean estate issues its own permit, got \(second)")
         }
         let bootstrap = StartupRecoveryBootstrap(wipe: authority)
-        _ = bootstrap.consumeCompositionTopology()
-        if case .alreadyConsumed = bootstrap.consumeCompositionTopology() {
+        _ = try bootstrap.consumeCompositionTopology()
+        if case .alreadyConsumed = try bootstrap.consumeCompositionTopology() {
             // EXPECTED.
         } else {
             XCTFail("*** THE CONSUMING ROAD MUST BE ONE-SHOT: a spent bootstrap may not reissue its evidence. ***")
@@ -297,7 +297,7 @@ final class GsFinal003StartupPermitTests: XCTestCase {
             filesystem: WipeDeferredArtifactFileSystemSeam(),
             runtime: WipeDeferredTransportSeam(),
             authority: WipeDeferredIdentityAuthoritySeam())
-        let pending = StartupRecoveryBootstrap(wipe: pendingAuthority).consumeCompositionTopology()
+        let pending = try StartupRecoveryBootstrap(wipe: pendingAuthority).consumeCompositionTopology()
         guard case .recoveryOnly(let decision) = pending else {
             return XCTFail(
                 "*** A PENDING WIPE MUST YIELD `.recoveryOnly` -- A DECISION AND NO PERMIT. *An earlier draft answered "
@@ -314,7 +314,7 @@ final class GsFinal003StartupPermitTests: XCTestCase {
             filesystem: WipeDeferredArtifactFileSystemSeam(),
             runtime: WipeDeferredTransportSeam(),
             authority: WipeDeferredIdentityAuthoritySeam())
-        let corrupt = StartupRecoveryBootstrap(wipe: corruptAuthority).consumeCompositionTopology()
+        let corrupt = try StartupRecoveryBootstrap(wipe: corruptAuthority).consumeCompositionTopology()
         guard case .refused(let corruptDecision) = corrupt else {
             return XCTFail("an unreadable record must refuse the whole road, got \(corrupt)")
         }
@@ -421,7 +421,16 @@ final class GsFinal003StartupPermitTests: XCTestCase {
             filesystem: WipeDeferredArtifactFileSystemSeam(),
             runtime: WipeDeferredTransportSeam(),
             authority: WipeDeferredIdentityAuthoritySeam())
-        guard case .normal(let permit) = StartupRecoveryBootstrap(wipe: authority, estateId: estateId)
+        // *** THE COURT PREPARES WHAT PRODUCTION PREPARETH. *** *The same tuple the construction boundary
+        // presenteth below -- the estate's declared paths, this keychain instance, the factory's real DEK domain --
+        // so the permit is issued against the estate's OWN settled root, exactly as `MeshRuntime.create` doth.*
+        guard case .normal(let permit) = try StartupRecoveryBootstrap(
+                wipe: authority, estateId: estateId,
+                preparePrivateInventory: {
+                    _ = try PhysicalEstateAuthority.shared.bindInventory(
+                        estateId: estateId, artifactPaths: artifactPaths, keychain: keychain,
+                        keyDomain: factory.keyProviderForWipe.physicalKeyDomain)
+                })
                 .consumeCompositionTopology() else {
             return XCTFail("a settled estate must issue the permit; the drive refused the normal road")
         }
@@ -509,7 +518,14 @@ final class GsFinal003StartupPermitTests: XCTestCase {
             filesystem: WipeDeferredArtifactFileSystemSeam(),
             runtime: WipeDeferredTransportSeam(),
             authority: WipeDeferredIdentityAuthoritySeam())
-        guard case .normal(let permit) = StartupRecoveryBootstrap(wipe: authority, estateId: estateId)
+        // *** THE COURT PREPARES WHAT PRODUCTION PREPARETH (the estate's own declared tuple). ***
+        guard case .normal(let permit) = try StartupRecoveryBootstrap(
+                wipe: authority, estateId: estateId,
+                preparePrivateInventory: {
+                    _ = try PhysicalEstateAuthority.shared.bindInventory(
+                        estateId: estateId, artifactPaths: artifactPaths, keychain: keychain,
+                        keyDomain: factory.keyProviderForWipe.physicalKeyDomain)
+                })
                 .consumeCompositionTopology() else {
             return XCTFail("a settled estate must issue the permit; the drive refused the normal road")
         }
@@ -599,7 +615,14 @@ final class GsFinal003StartupPermitTests: XCTestCase {
             filesystem: WipeDeferredArtifactFileSystemSeam(),
             runtime: WipeDeferredTransportSeam(),
             authority: WipeDeferredIdentityAuthoritySeam())
-        guard case .normal(let freshPermit) = StartupRecoveryBootstrap(wipe: freshAuthority, estateId: estateId)
+        // *** AND THE FRESH PERMIT IS PREPARED THE SAME WAY -- the stale one was refused for STALENESS, not shape. ***
+        guard case .normal(let freshPermit) = try StartupRecoveryBootstrap(
+                wipe: freshAuthority, estateId: estateId,
+                preparePrivateInventory: {
+                    _ = try PhysicalEstateAuthority.shared.bindInventory(
+                        estateId: estateId, artifactPaths: artifactPaths, keychain: keychain,
+                        keyDomain: factory.keyProviderForWipe.physicalKeyDomain)
+                })
                 .consumeCompositionTopology() else {
             return XCTFail("*** A SETTLED RECORD MUST YIELD A FRESH PERMIT: the stale permit's refusal must be ABOUT "
                            + "ITS STALENESS, not a boundary that opens nothing. ***")
@@ -818,7 +841,7 @@ final class GsFinal003StartupPermitTests: XCTestCase {
                 keychain: keychain,
                 encryptedStores: factory,
                 driveRecovery: { bootstrap in
-                    let d = bootstrap.consumeCompositionTopology()
+                    let d = try bootstrap.consumeCompositionTopology()
                     return d
                 }),
             "*** GS-FINAL-003: A RECOVERY THAT CANNOT SETTLE MUST REFUSE PRIVATE CONSTRUCTION. "
@@ -891,7 +914,7 @@ final class GsFinal003StartupPermitTests: XCTestCase {
             try MeshRuntime.requireRecoveredPrivateComposition(
                 messageStoreUrl: msg, peerStoreUrl: peer, journal: journal,
                 keychain: keychain, encryptedStores: factory,
-                driveRecovery: { b in let t = b.consumeCompositionTopology(); observed = b.reportedDecision(); return t }),
+                driveRecovery: { b in let t = try b.consumeCompositionTopology(); observed = b.reportedDecision(); return t }),
             "an interrupted wipe must not enter normal private startup")
         XCTAssertEqual(observed?.allowsPrivateConstruction, false,
                        "the decision must be a refusing one, and it was: \(String(describing: observed))")
@@ -972,7 +995,7 @@ final class GsFinal003StartupPermitTests: XCTestCase {
             try MeshRuntime.requireRecoveredPrivateComposition(
                 messageStoreUrl: msg, peerStoreUrl: peer, journal: journal,
                 keychain: keychain, encryptedStores: factory,
-                driveRecovery: { b in let t = b.consumeCompositionTopology(); observed = b.reportedDecision(); return t }),
+                driveRecovery: { b in let t = try b.consumeCompositionTopology(); observed = b.reportedDecision(); return t }),
             "*** \(tag): private construction must be REFUSED. ***",
         )
         XCTAssertNotNil(observed, "the ladder must have answered rather than thrown opaquely")
@@ -1053,7 +1076,7 @@ final class GsFinal003StartupPermitTests: XCTestCase {
                 journal: journal,
                 keychain: keychain,
                 encryptedStores: factory,
-                driveRecovery: { bootstrap in let t = bootstrap.consumeCompositionTopology(); observed = bootstrap.reportedDecision(); return t }),
+                driveRecovery: { bootstrap in let t = try bootstrap.consumeCompositionTopology(); observed = bootstrap.reportedDecision(); return t }),
             "*** A PENDING WIPE MUST REFUSE PRIVATE CONSTRUCTION -- and it must be ABLE to refuse, which is only true if " +
                 "the recovery graph could answer WITHOUT a store graph. ***",
         )
@@ -1274,7 +1297,7 @@ final class GsFinal003StartupPermitTests: XCTestCase {
     /// STRONGER form of the guarantee. What can be demonstrated is the gate's own behaviour: every
     /// decision that should refuse produces `nil`, so a composition that checked
     /// `issue(decision) != nil` and proceeded regardless would be refusing nothing.*
-    func testGSFINAL003_noBlockedEstateCanYieldAPermitByAnyRoad() {
+    func testGSFINAL003_noBlockedEstateCanYieldAPermitByAnyRoad() throws {
         // *** THE MUTATION THIS REPLACES WAS A MINT, AND THE REPAIR REMOVES THE ROAD RATHER THAN THE ASSERTION. ***
         //
         // *The old arm called `PrivateRuntimePermit.issue(d)` for each blocked decision and asserted `nil`. **A REVIEW
@@ -1301,7 +1324,7 @@ final class GsFinal003StartupPermitTests: XCTestCase {
                 filesystem: WipeDeferredArtifactFileSystemSeam(),
                 runtime: WipeDeferredTransportSeam(),
                 authority: WipeDeferredIdentityAuthoritySeam())
-            let topology = StartupRecoveryBootstrap(wipe: authority).consumeCompositionTopology()
+            let topology = try StartupRecoveryBootstrap(wipe: authority).consumeCompositionTopology()
             switch topology {
             case .normal:
                 XCTFail("*** A BLOCKED ESTATE YIELDED A PERMIT. *This is the single most important assertion in the "
@@ -1326,5 +1349,217 @@ final class GsFinal003StartupPermitTests: XCTestCase {
         let j = InMemoryJournal()
         j.write(state)
         return j
+    }
+
+    // MARK: - CURRENT-05c: THE PREPARED-ROAD DISCRIMINATORS
+    //
+    // *** WHY THESE THREE ARMS EXIST, AND WHY THEY ARE PAIRED. *** *The repair moved the estate's inventory
+    // declaration INTO evidence issuance, so the census a permit carryeth is the settled root's own reading rather
+    // than a placeholder another estate's history later displacech. Two things must both stay true, and neither is
+    // proved by the other: a fresh drive over a settled record must be ADMITTED although the shared physical
+    // authority it joineth already carrieth raised history (the false refusal this repair existeth to end), and a
+    // raise that cometh AFTER the drive must still be REFUSED with nothing opened (the revocation the clause existeth
+    // to catch). An implementation that simply trusted the newest reading would answer both the wrong way -- it
+    // would wave the revoked presentation through -- so the negative arm is kept beside the positive on purpose.*
+
+    /// The court's OWN inventory-declaration failure, so arm (iii) can tell "this estate's binding could not be
+    /// declared" apart from "the recovery ladder refused", and can prove the caller receiveth the ORIGINAL error
+    /// rather than a decision speaking for a binding that never took place.
+    private struct CourtInventoryPreparationFault: Error, Equatable {
+        let note: String
+    }
+
+    /// *** (i) A SHARED PHYSICAL AUTHORITY WHOSE CENSUS WAS ALREADY RAISED MUST NOT REFUSE A FRESH DRIVE. ***
+    ///
+    /// *Two estates, one physical key authority: the SAME keychain instance and the SAME DEK domain, so the
+    /// process-global alias map resolveth both onto one owner set -- the law `rootsSharingTheKeyDomainJoinOneOwnerSet`
+    /// existeth to hold. The predecessor declares itself, carrith a live owner, and hath its own census raised; the
+    /// estate that arriveth SECOND was never declared at all, so the number its drive recorded and the number the
+    /// construction boundary consulted were formerly of TWO DIFFERENT ledgers, and a settled estate was refused for
+    /// the borrowed history of the estate that came before it. What must hold now: the second estate's fresh
+    /// presentation is ADMITTED, and both of its stores are really opened.*
+    func testGSFINAL003_aFreshSettledDriveIsAdmittedOverASharedAuthorityWhoseCensusWasAlreadyRaised() throws {
+        let sharedKeychain = InMemoryKeychain()
+        let counter = PrivateOpenCounter()
+        let provider = CountingKeyProvider()
+        provider.succeeds = true                       // a real DEK, so an admitted store can actually be keyed
+        let engine = PinnedCountingEngine(counter: counter)
+        guard requirePinnedImage(engine, lane: "gf003 prepared shared authority") else { return }
+        let factory = EncryptedStoreFactory(provider: provider, engine: engine)
+
+        // (1) *** THE PREDECESSOR ESTATE: DECLARED, OWNERSHIP LIVE, ITS OWN CENSUS RAISED. ***
+        let dirA = FileManager.default.temporaryDirectory
+            .appendingPathComponent("gf003_shared_a_\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: dirA, withIntermediateDirectories: true)
+        defer { cleanup(dirA) }
+        let pathsA = MeshRuntime.wipeArtifactPaths(
+            messageStoreUrl: dirA.appendingPathComponent("mesh.db"),
+            peerStoreUrl: dirA.appendingPathComponent("peer.db"))
+        let estateA = MeshRuntime.recoveryEstateId(artifactPaths: pathsA)
+        let sharedAuthorityRoot = try PhysicalEstateAuthority.shared.bindInventory(
+            estateId: estateA, artifactPaths: pathsA, keychain: sharedKeychain,
+            keyDomain: factory.keyProviderForWipe.physicalKeyDomain)
+        _ = sharedAuthorityRoot.register(name: "predecessor-of-the-shared-authority") { }
+        sharedAuthorityRoot.revokeAdmissions()   // the physical raise the freshness clause existeth to catch
+
+        // (2) *** THE SECOND ESTATE ARRIVETH UNDECLARED, OVER THE SAME PHYSICAL AUTHORITY. ***
+        let dirB = FileManager.default.temporaryDirectory
+            .appendingPathComponent("gf003_shared_b_\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: dirB, withIntermediateDirectories: true)
+        defer { cleanup(dirB) }
+        let msg = dirB.appendingPathComponent("mesh.db")
+        let peer = dirB.appendingPathComponent("peer.db")
+        let journal = InMemoryJournal()
+        if journal.durableEpoch == nil { journal.writeChecked(.idle) }
+        let pathsB = MeshRuntime.wipeArtifactPaths(messageStoreUrl: msg, peerStoreUrl: peer)
+        let estateB = MeshRuntime.recoveryEstateId(artifactPaths: pathsB)
+        let authorityB = CrashResumableWipe(
+            store: WipeJournalDurabilityAdapter(journal: journal),
+            vault: WipeDeferredKeyVaultSeam(),
+            filesystem: WipeDeferredArtifactFileSystemSeam(),
+            runtime: WipeDeferredTransportSeam(),
+            authority: WipeDeferredIdentityAuthoritySeam())
+        guard case .normal(let permitB) = try StartupRecoveryBootstrap(
+                wipe: authorityB, estateId: estateB,
+                preparePrivateInventory: {
+                    _ = try PhysicalEstateAuthority.shared.bindInventory(
+                        estateId: estateB, artifactPaths: pathsB, keychain: sharedKeychain,
+                        keyDomain: factory.keyProviderForWipe.physicalKeyDomain)
+                })
+                .consumeCompositionTopology() else {
+            return XCTFail("*** A FRESH DRIVE OVER A SETTLED RECORD MUST ISSUE ITS PERMIT: the shared physical "
+                           + "authority's PRIOR census history belongeth to the estates declared before it, not to "
+                           + "this estate's revocation -- refusing here is the false denial this repair endeth. ***")
+        }
+        XCTAssertNotNil(
+            try MeshRuntime.createPrivateComposition(
+                messageStoreUrl: msg, peerStoreUrl: peer, journal: journal, keychain: sharedKeychain,
+                encryptedStores: factory, permit: permitB),
+            "*** THE SECOND ESTATE'S PRESENTATION MUST BE ADMITTED. ***")
+        XCTAssertEqual(
+            counter.storesOpened, 2,
+            "*** AND BOTH OF ITS STORES MUST REALLY OPEN -- an admission that opened nothing would let every refusal "
+            + "above pass for the wrong reason. Observed \(counter.storesOpened). ***")
+    }
+
+    /// *** (ii) A RAISE THAT COMETH *AFTER* THE DRIVE MUST STILL BE REFUSED, WITH NOTHING OPENED. ***
+    ///
+    /// *The paired negative: the permit is issued over the estate's own declared root, and THEN that root's census
+    /// is raised -- which is the one thing the freshness clause was built to catch. The boundary must refuse and
+    /// open NO store, ask NO key and mint NO identity: were the check to trust the newest reading instead of what
+    /// the drive itself recorded, this revoked presentation would be admitted and the count would move.*
+    func testGSFINAL003_aRootRevokedAfterItsDriveWasIssuedIsRefusedWithNothingOpened() throws {
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("gf003_raised_after_\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { cleanup(dir) }
+        let msg = dir.appendingPathComponent("mesh.db")
+        let peer = dir.appendingPathComponent("peer.db")
+        let counter = PrivateOpenCounter()
+        let provider = CountingKeyProvider()
+        provider.succeeds = true
+        let engine = PinnedCountingEngine(counter: counter)
+        guard requirePinnedImage(engine, lane: "gf003 root raised after issuance") else { return }
+        let factory = EncryptedStoreFactory(provider: provider, engine: engine)
+        let journal = InMemoryJournal()
+        if journal.durableEpoch == nil { journal.writeChecked(.idle) }
+        let keychain = InMemoryKeychain()
+        let artifactPaths = MeshRuntime.wipeArtifactPaths(messageStoreUrl: msg, peerStoreUrl: peer)
+        let estateId = MeshRuntime.recoveryEstateId(artifactPaths: artifactPaths)
+        let authority = CrashResumableWipe(
+            store: WipeJournalDurabilityAdapter(journal: journal),
+            vault: WipeDeferredKeyVaultSeam(),
+            filesystem: WipeDeferredArtifactFileSystemSeam(),
+            runtime: WipeDeferredTransportSeam(),
+            authority: WipeDeferredIdentityAuthoritySeam())
+
+        // (1) *** THE DRIVE ISSUES OVER THE ESTATE'S OWN DECLARED ROOT. ***
+        guard case .normal(let permit) = try StartupRecoveryBootstrap(
+                wipe: authority, estateId: estateId,
+                preparePrivateInventory: {
+                    _ = try PhysicalEstateAuthority.shared.bindInventory(
+                        estateId: estateId, artifactPaths: artifactPaths, keychain: keychain,
+                        keyDomain: factory.keyProviderForWipe.physicalKeyDomain)
+                })
+                .consumeCompositionTopology() else {
+            return XCTFail("a settled estate must issue the permit; the drive refused the normal road")
+        }
+
+        // (2) *** THE PHYSICAL RAISE COMETH AFTER THAT ISSUANCE -- the revocation the clause existeth to catch. ***
+        let boundRoot = try PhysicalEstateAuthority.shared.bindInventory(
+            estateId: estateId, artifactPaths: artifactPaths, keychain: keychain,
+            keyDomain: factory.keyProviderForWipe.physicalKeyDomain)
+        boundRoot.revokeAdmissions()
+
+        XCTAssertThrowsError(
+            _ = try MeshRuntime.createPrivateComposition(
+                messageStoreUrl: msg, peerStoreUrl: peer, journal: journal, keychain: keychain,
+                encryptedStores: factory, permit: permit),
+            "*** A PERMIT CARRIED OVER A ROOT WHOSE CENSUS WAS RAISED AFTER ITS DRIVE MUST BE REFUSED AT THE "
+            + "CONSTRUCTION BOUNDARY: trusting the newest reading rather than what the drive itself recorded is "
+            + "exactly the bypass that admits a revoked estate. ***")
+        XCTAssertEqual(counter.storesOpened, 0,
+                       "*** NO PRIVATE STORE MAY OPEN ON THAT REFUSAL. Observed \(counter.storesOpened). ***")
+        XCTAssertEqual(provider.dekRequests, 0,
+                       "*** NO DEK MAY BE FETCHED: the boundary refused before either key road was reached. ***")
+        XCTAssertFalse(keychain.writes.contains(MeshIdentity.v1Tag),
+                       "*** NO IDENTITY MAY BE MINted on a revoked presentation. ***")
+    }
+
+    /// *** (iii) A FAILED INVENTORY DECLARATION IS THE CALLER'S OWN ERROR, AND THE DRIVE IS STILL SPENT. ***
+    ///
+    /// *The preparation runneth only on a durably settled drive, and it MAY FAIL: what must then reach the caller is
+    /// THAT error, not a recovery decision -- a decision speaking for a binding that never took place would let a
+    /// transient Keychain fault be laundered into an estate verdict, which is the confusion the drive's own typed
+    /// refusals exist to prevent. And the attempt is SPENT: the drive was performed, its rungs earned, and its
+    /// one-shot slot was taken before the declaration failed -- so a bootstrap that could be re-asked after a failed
+    /// binding would hand out a second chance at a road whose own inventory never stood.*
+    func testGSFINAL003_aFailedInventoryDeclarationKeepsItsOwnErrorAndSpenthTheDrive() throws {
+        let journal = InMemoryJournal()
+        if journal.durableEpoch == nil { journal.writeChecked(.idle) }
+        let artifactPaths = MeshRuntime.wipeArtifactPaths(
+            messageStoreUrl: tempURL("prepfail_msg"), peerStoreUrl: tempURL("prepfail_peer"))
+        let estateId = MeshRuntime.recoveryEstateId(artifactPaths: artifactPaths)
+        func drivingAuthority() -> CrashResumableWipe {
+            CrashResumableWipe(
+                store: WipeJournalDurabilityAdapter(journal: journal),
+                vault: WipeDeferredKeyVaultSeam(),
+                filesystem: WipeDeferredArtifactFileSystemSeam(),
+                runtime: WipeDeferredTransportSeam(),
+                authority: WipeDeferredIdentityAuthoritySeam())
+        }
+        let fault = CourtInventoryPreparationFault(note: "the court's own inventory could not be declared")
+        let bootstrap = StartupRecoveryBootstrap(
+            wipe: drivingAuthority(), estateId: estateId,
+            preparePrivateInventory: { throw fault })
+
+        // (1) *** THE CALLER RECEIVETH THE BINDING'S OWN ERROR, NOT A RECOVERY VERDICT. ***
+        XCTAssertThrowsError(
+            _ = try bootstrap.consumeCompositionTopology(),
+            "*** A FAILED INVENTORY DECLARATION MUST TRAVEL TO THE CALLER AS ITSELF. ***",
+        ) { error in
+            XCTAssertEqual(error as? CourtInventoryPreparationFault, fault,
+                           "and it must be THAT declaration's error, unchanged on the way out")
+        }
+
+        // (2) *** AND THE DRIVE IS SPENT: NO PERMIT, AND NO SECOND CHANCE AT A FAILED BINDING. ***
+        guard case .alreadyConsumed = try bootstrap.consumeCompositionTopology() else {
+            return XCTFail("*** A FAILED PREPARATION MUST STILL SPEND THE DRIVE. The rungs were earned and the "
+                          + "one-shot slot was taken before the declaration failed; a bootstrap that could be asked "
+                          + "again would hand a second chance to a road whose own inventory never stood. ***")
+        }
+
+        // (3) *** THE TARGET ROAD STILL WORKETH -- the fault was the court's declaration, not the estate's shape. ***
+        guard case .normal = try StartupRecoveryBootstrap(
+                wipe: drivingAuthority(), estateId: estateId,
+                preparePrivateInventory: {
+                    _ = try PhysicalEstateAuthority.shared.bindInventory(
+                        estateId: estateId, artifactPaths: artifactPaths, keychain: InMemoryKeychain(),
+                        keyDomain: "court.prep-fail.control.\(UUID().uuidString)")
+                })
+                .consumeCompositionTopology() else {
+            return XCTFail("*** THE SETTLED RECORD MUST STILL YIELD A PERMIT TO AN HONEST DECLARATION: the refusal "
+                          + "above was about the court's own failed binding, not about a buildable estate. ***")
+        }
     }
 }

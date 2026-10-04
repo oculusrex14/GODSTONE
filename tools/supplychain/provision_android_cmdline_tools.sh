@@ -28,14 +28,11 @@
 #      never deleted or silently replaced.
 #   5. Runs `sdkmanager --licenses` under strict status accounting: the
 #      CONSUMER's own status must be 0 (the old `|| true` swallowed a real
-#      failure), fed by a BOUNDED burst of `y` confirmations. An unbounded
-#      stream -- the historical `yes |`, and the `/dev/zero` experiment --
-#      never EOFs, the licence-prompt scanner buffers without limit and the
-#      JVM dies: measured `OutOfMemoryError: Java heap space` at
-#      `SdkManagerCli.askYesNo` on hosted attempts 1-3 AND reproduced locally
-#      with `/dev/zero` on a constrained heap. The bounded burst delivers the
-#      few confirmations the prompt consumes, EOFs cleanly, and accepted 7/7
-#      licences locally even on a constrained 48m heap.
+#      failure). Confirmations are a checked FINITE file of 64 `y\n` lines
+#      handed over on stdin; it EOFs, so the prompt consumes what it needs
+#      and the licence scanner never waits on an endless stream. `y`
+#      confirms; `/dev/zero` feeds NUL bytes -- not `y` -- which the
+#      newline-hungry scanner cannot consume.
 #   6. Retains the verified archive outside the checkout and exports its path and
 #      the exact installed tree, so the terminal gates verify the bytes actually used.
 #
@@ -75,6 +72,8 @@ DEST="${ANDROID_HOME}/cmdline-tools/${SUBDIR}"
 
 # Retain the exact input archive, including on a warm install.
 ARCHIVE="${GODSTONE_BOARD1_SDK_ARCHIVE:-$ANDROID_HOME/.godstone-downloads/$ID.zip}"
+# Reuse one cleanup-owned directory for download, extraction and licence input.
+tmp=""
 if [ ! -f "$ARCHIVE" ]; then
   [ "$VERIFY_ONLY" -eq 0 ] || { echo "::error::the retained tool archive is absent: $ARCHIVE" >&2; exit 1; }
   mkdir -p "$(dirname "$ARCHIVE")"
@@ -115,25 +114,30 @@ if [ "$VERIFY_ONLY" -eq 1 ]; then
 fi
 
 # 5. Licences, under strict status accounting.
-# The consumer's own exit status is the authoritative signal -- measured true
-# failures surface through it (absent command 127; the real hosted OOM death
-# exited 1 through exactly this check once the racy `yes`-slot probe was
-# retired). Supply is a BOUNDED burst: the licence prompt consumes only a
-# few confirmations, EOFs, and the JVM completes acceptance; an unbounded
-# stream (the former `yes |`, and `/dev/zero`) feeds the scanner forever and
-# exhausts the heap -- EOF never arrives, only depletion (the hosted
-# `yes exited 1` of attempts 1+2 was that same OOM death seen from the
-# producer side as the dying JVM closed the pipe). The burst EOFs cleanly
-# and any genuine post-supply refusal still reddens the step through the
-# consumer status, with the NDK-presence assert below as the validation
-# backstop.
+# The CONSUMER's own status is the authority: a non-zero sdkmanager exit
+# reddens the step even after a licence was accepted. Supply is a FINITE file
+# of 64 `y\n` confirmations handed to sdkmanager on stdin; it EOFs, so the
+# prompt consumes what it needs and the scanner never waits on an endless
+# stream. A checked file avoids broken-pipe producer/consumer ambiguity.
+# A file that is not EXACTLY the 64 intended lines is refused: a truncated or
+# failed write can never be mistaken for a full supply.
+licence_yes=""
+if [ -z "${tmp:-}" ]; then
+  tmp="$(mktemp -d)"
+  trap 'rm -rf "$tmp"' EXIT
+fi
+licence_yes="$tmp/licence-confirmations.txt"
+i=0
+while [ "$i" -lt 64 ]; do printf 'y\n'; i=$((i+1)); done > "$licence_yes"
+[ "$(wc -l < "$licence_yes")" -eq 64 ] \
+  || { echo "::error::the confirmation file is not the full 64 lines"; exit 1; }
+
 set +e
-{ i=0; while [ "$i" -lt 64 ]; do printf 'y\n'; i=$((i+1)); done; } | "$SDKMANAGER" --licenses >/dev/null
-rc=("${PIPESTATUS[@]}")
+"$SDKMANAGER" --licenses >/dev/null < "$licence_yes"
+consumer_status="$?"
 set -e
-[ "${#rc[@]}" -ge 2 ] || rc=("${rc[0]:-?}" 0)
-[ "${rc[1]}" -eq 0 ] \
-  || { echo "::error::sdkmanager --licenses exited ${rc[1]:-?} (consumer status is the authority)"; exit 1; }
+[ "$consumer_status" -eq 0 ] \
+  || { echo "::error::sdkmanager --licenses exited $consumer_status (consumer status is the authority)"; exit 1; }
 
 "$SDKMANAGER" "${PACKAGES[@]}"
 VERSION="$("$SDKMANAGER" --version)"

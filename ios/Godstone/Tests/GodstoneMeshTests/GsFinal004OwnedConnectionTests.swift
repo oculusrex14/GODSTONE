@@ -701,7 +701,7 @@ final class GsFinal004OwnedConnectionTests: XCTestCase {
     /// and the estate id is computed by the boundary's OWN derivation (`MeshRuntime.recoveryEstateId`), never by a
     /// hand-named constant. The tuple returneth the journal WITH the permit because the composition must be driven
     /// over the SAME settled, generation-known record the permit was judged against -- not the process default.*
-    private func drivenCleanEstateOf(messageStoreUrl: URL, peerStoreUrl: URL) -> (permit: PrivateRuntimePermit, journal: GsFinal004Journal)? {
+    private func drivenCleanEstateOf(messageStoreUrl: URL, peerStoreUrl: URL) throws -> (permit: PrivateRuntimePermit, journal: GsFinal004Journal)? {
         let artifactPaths = MeshRuntime.wipeArtifactPaths(messageStoreUrl: messageStoreUrl, peerStoreUrl: peerStoreUrl)
         let estateId = MeshRuntime.recoveryEstateId(artifactPaths: artifactPaths)   // *** THE BOUNDARY'S OWN FORMULA ***
         let journal = GsFinal004Journal()
@@ -712,7 +712,7 @@ final class GsFinal004OwnedConnectionTests: XCTestCase {
             filesystem: WipeDeferredArtifactFileSystemSeam(),
             runtime: WipeDeferredTransportSeam(),
             authority: WipeDeferredIdentityAuthoritySeam())
-        guard case .normal(let permit) = StartupRecoveryBootstrap(wipe: authority, estateId: estateId)
+        guard case .normal(let permit) = try StartupRecoveryBootstrap(wipe: authority, estateId: estateId)
                 .consumeCompositionTopology() else { return nil }
         return (permit, journal)
     }
@@ -859,7 +859,7 @@ final class GsFinal004OwnedConnectionTests: XCTestCase {
             filesystem: WipeDeferredArtifactFileSystemSeam(),
             runtime: WipeDeferredTransportSeam(),
             authority: WipeDeferredIdentityAuthoritySeam())
-        guard case .normal(let emptyPermit) = StartupRecoveryBootstrap(wipe: emptyAuthority).consumeCompositionTopology() else {
+        guard case .normal(let emptyPermit) = try StartupRecoveryBootstrap(wipe: emptyAuthority).consumeCompositionTopology() else {
             return XCTFail("the empty-estate arm needs its OWN driven permit to aim at; the ladder refused it early")
         }
         XCTAssertThrowsError(
@@ -1101,7 +1101,7 @@ private func gf004Scope(estate: GsFinal004Estate, tag: String, path: String) thr
         filesystem: WipeDeferredArtifactFileSystemSeam(),
         runtime: WipeDeferredTransportSeam(),
         authority: WipeDeferredIdentityAuthoritySeam())
-    guard case .normal(let permit) = StartupRecoveryBootstrap(wipe: authority, estateId: estate.estateId)
+    guard case .normal(let permit) = try StartupRecoveryBootstrap(wipe: authority, estateId: estate.estateId)
             .consumeCompositionTopology() else {
         XCTFail("*** gf004Scope: a driven clean estate must issue the permit; the ladder refused for estate "
                 + "'\(estate.estateId)' ***")

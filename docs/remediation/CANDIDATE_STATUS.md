@@ -99,23 +99,57 @@
 > The complete readiness roster passed: **1049 collected / 1019 required internal / 30 historical excluded**,
 > with exact identities and zero internal skips or nonpassing outcomes
 > (`/tmp/board1-rc15-prerequisite-smoke-4347d047/readiness.log` and its recorded result JSON).
-> The canonical manifest still verifies **179 semantic + 2 structural** killed/restored rows with current
-> input bindings; all ten parsed runtime lanes pass with zero failed, errored or skipped arms.
+> At that prerequisite checkpoint, the canonical manifest verified **179 semantic + 2 structural**
+> killed/restored rows with current input bindings; all ten parsed runtime lanes passed without failed or skipped arms.
 > These local prerequisite results neither replace exact-candidate integration nor authenticate hosted
 > release, terminal proof, an rc15 tag or a freeze.
-> **Hosted provisioning defect, measured and fixed:** repository-verification attempts 1–3 of the rc15 push
-> runs reddened the iOS worker-provisioning step at the licence prompt. The old `yes`-slot probe displayed
-> `yes exited 1` (attempts 1+2) only because the dying JVM closed the pipe: the **consumer itself was
-> genuinely OOM-dead on every attempt** — `java.lang.OutOfMemoryError: Java heap space` at
-> `SdkManagerCli.askYesNo`, surfaced verbatim in attempt 3's log — the unbounded supply ran the
-> licence-prompt scanner until the heap was exhausted. The `yes`-slot probe misattributed that toolchain
-> death as a provisioning abort; attempt 3's consumer-authority check exposed the real failure. Reproduced
-> locally both ways: `/dev/zero` unbounded supply on a constrained heap reproduced the exact OOM death; the
-> bounded 64-burst accepted 7/7 licences cleanly even at a 48m heap. The licence step now supplies the
-> bounded burst (the prompt consumes a few confirmations, EOFs, acceptance completes), keeps the
-> consumer's exit status as sole authority (127/1 refusals still caught), and retains the NDK-presence
-> assert as the post-consumption validation backstop. No guard loosened. Fixed script exercised warm twice
-> and cold against a fresh SDK root locally.
+> **SDK licence-input repair:** repository run 37222995728 attempts 1+2 reported `yes exited 1`.
+> That producer status alone does not establish the consumer's status or an entropy/toolchain defect.
+> The attempted `/dev/zero` replacement at `70bd34c6` supplied NUL bytes, not newline-terminated `y` answers;
+> repository run 37224515975 recorded `OutOfMemoryError: Java heap space` in `SdkManagerCli.askYesNo`.
+> The corrected script uses a checked finite file of 64 `y` lines and requires the actual consumer status to be zero;
+> no missing-status fallback fabricates success. Archive/tree pins, package installation and the NDK assertion remain.
+> Parent execution passed both fresh-root and warm-root provisioning on a constrained 64m heap (44.34s combined),
+> reporting pinned sdkmanager 12.0. A real invalid-JVM invocation refused with consumer status 1 before success exports.
+> These are local prerequisite proofs, not a hosted seven-job result or freeze.
+> **Hosted iOS court repairs:** run 37225074109 on untagged `a4a66efb` refused the Foundation and UI lanes.
+> The adoption court read its fixture keychain but omitted that keychain from staged promotion, accidentally
+> targeting the machine keychain. It now uses one owned keychain throughout; the isolated real adoption arm passed,
+> including foreign-key refusal, unchanged private state and legitimate full-key crash adoption. No RNG defect was established.
+> The stress reopen now installs the campaign's manager factory on each new owner before `lifecycle.start()`;
+> its independent **10k (157.715s)** and **30k (1092.162s)** schedules passed with unchanged seed, lengths,
+> census and bounds, under stable new-source digest `15d71a3d…`. The complete host lane passed **1533 arms /
+> 0 failures / 0 skips** (1509.48s, `/tmp/board1-rc15-final-inputs-zdu1lyse/ios-lane.log`).
+> The preceding `1ebc27ac…` host run's five startup refusals were separate failures, not a swallowed suite.
+> Source tracing located them at a pre-issuance ownership mismatch: the bootstrap captured an unbound estate
+> registry, then construction joined the real shared identity/DEK root with a different revision.
+> The selected repair prepares the exact declared inventory only after a durably settled recovery decision,
+> before evidence captures its physical revision. Preparation errors must propagate without issuing a permit;
+> corrupt/pending decisions, the bind-before-consume boundary, generation freshness and one-shot consumption remain.
+> The throwing API and genuine Mesh/Lab/UI callers are migrated. Parent execution passed the **55-arm**
+> startup/topology/store court (16.65s including compile): all five original failures now pass, as do the new
+> nonzero-shared-root admission, post-issuance revocation, and preparation-error/spent-drive transitions.
+> The new Lab error-boundary arm also passed: a thrown wipe drive remains non-complete, blocks ordinary use
+> and carries its actual error. The native family is still being re-sealed; earlier native logs are not new-source proof.
+> The UI court retains the 44pt floor and absorbs only a two-ULP-per-endpoint coordinate-roundoff bound,
+> identically for both axes and all four scale/direction rosters. A numerical control refused 0.001pt, 0.25pt and 1pt
+> undersize at four coordinate scales. Both actual simulator schemes passed **43 required arms / 0 failures / 0 skips**
+> with stable new-source digest `15d71a3d…` (778.93s,
+> `/tmp/board1-rc15-final-inputs-zdu1lyse/ios-ui-lane.log`); the rebuilt app's live Conversation surface was
+> also launched and visually observed. Human/device accessibility acceptance remains external.
+> The earlier conditional native court passed **1403 arms / 0 failures / 0 skips / 0 unfinished** at
+> source `1ebc27ac…`; the new-source native re-seal is running and is not yet credited.
+> A separate clean Android court passed all **seven** families (267.835s): app 128, core 22, mesh 1479,
+> labmesh 40, UI 168, simulator 40 and production 1479, each with zero failures, errors and skips.
+> Its packaged-byte inspector passed against the actual staged Archive; counts remain lane-specific, not aggregated.
+> **Cold terminal source reconstruction:** the terminal now verifies its pinned macOS SQLCipher image, emits
+> the existing mode-independent trusted expectation and syncs the mirror before campaign/source readers.
+> In a cold isolated source tree, missing generated constants mismatched the producer digest; actual verified
+> emission reconstructed the exact `1ebc27ac…` digest, while counterfeit generated-source drift still refused.
+> No generated-source exclusion, consumer digest re-pinning or source-hash fallback was introduced.
+> The corrected scratch-emission/placement sequence also ran in a real cold Git clone of checkpoint `a4a66efb`
+> under `CI=true` (26.55s). Its source digest exactly reproduced the authenticated checkpoint producer digest
+> `40333884…`, and the real mirror `--check` passed. This bootstrap smoke is not final-C lane or campaign proof.
 > **Supply preflight (2026-10-04):** the four preflight supply refusals are REPAIRED by the canonical existing generators
 > only (no code guard/pin/source change): the current `ios/project.yml` fingerprint is captured (`0c4a39…`), the SBOM now
 > carries 566 components including 3 SQLite 2.6.2 coordinates, and 6 CycloneDX faces are refreshed.
