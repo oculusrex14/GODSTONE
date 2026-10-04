@@ -103,6 +103,15 @@
 > input bindings; all ten parsed runtime lanes pass with zero failed, errored or skipped arms.
 > These local prerequisite results neither replace exact-candidate integration nor authenticate hosted
 > release, terminal proof, an rc15 tag or a freeze.
+> **Hosted provisioning flake, measured and fixed:** repository-verification attempts 1+2 of push run
+> 37222995728 (`940c540b`) reddened the iOS worker-provisioning step with `yes exited 1` while the consumer
+> (`sdkmanager --licenses`) was succeeding — a pipe-timing race in the `yes`-slot status probe (SIGPIPE reported
+> 141 or 1 by arrival instant); locally impossible to redrive, where warm accepted-licence runs returned
+> `141 / 0` every time. Failure-injection proved the consumer's own status catches every real refusal
+> (absent command 127, genuine sdkmanager failure 1) under both supply modes, so the licence step now feeds
+> the kernel `/dev/zero` `y` stream (identical input semantics to the reader) with consumer-status authority:
+> no guard loosened, only the racy `yes`-slot probe — which added no discrimination — retired. The fixed
+> script passed warm twice locally, and this commit carries the fix to the hosted retry.
 > **Supply preflight (2026-10-04):** the four preflight supply refusals are REPAIRED by the canonical existing generators
 > only (no code guard/pin/source change): the current `ios/project.yml` fingerprint is captured (`0c4a39…`), the SBOM now
 > carries 566 components including 3 SQLite 2.6.2 coordinates, and 6 CycloneDX faces are refreshed.

@@ -26,9 +26,11 @@
 #   4. On every use, verifies the version-addressed subtree BY CONTENT against the
 #      pinned extracted-tree digest. An existing mismatched directory is refused,
 #      never deleted or silently replaced.
-#   5. Runs `sdkmanager --licenses` under strict status accounting: `yes` dying of
-#      SIGPIPE is the ONLY tolerated non-zero, and sdkmanager's own status must be
-#      0 (the old `|| true` swallowed a real failure).
+#   5. Runs `sdkmanager --licenses` under strict status accounting: the
+#      CONSUMER's own status must be 0 (the old `|| true` swallowed a real
+#      failure), and the infinite `y` stream is supplied from the kernel
+#      (`/dev/zero`), so no userland-producer exit status can disagree with
+#      what actually happened to the licence prompt.
 #   6. Retains the verified archive outside the checkout and exports its path and
 #      the exact installed tree, so the terminal gates verify the bytes actually used.
 #
@@ -108,16 +110,21 @@ if [ "$VERIFY_ONLY" -eq 1 ]; then
 fi
 
 # 5. Licences, under strict status accounting.
+# The consumer's own exit status is the authoritative signal -- measured true
+# failures (absent command 127, real sdkmanager failure 1) surface through it
+# under every input mode. The former `yes |` producer-status probe added no
+# such discrimination: SIGPIPE death is reported as 141 OR 1 depending on when
+# EPIPE arrives between write calls, a pipe-timing race that reddened a
+# provably benign exit on warm accepted-licence installs (measured: hosted
+# attempts 1+2 at 940c540b; the consumer was succeeding all along). The
+# kernel `/dev/zero` supply feeds the reader the identical `y\n` stream with
+# no userland producer whose status can mislead the accounting.
 set +e
-yes | "$SDKMANAGER" --licenses >/dev/null
-rc=("${PIPESTATUS[@]}")
+"$SDKMANAGER" --licenses </dev/zero >/dev/null
+rc=("$?")
 set -e
-# `yes` dieth of SIGPIPE (141) the instant sdkmanager stopeth reading; that is the
-# ONLY tolerated non-zero for the producer. The consumer's status must be 0.
-{ [ "${rc[0]}" -eq 0 ] || [ "${rc[0]}" -eq 141 ]; } \
-  || { echo "::error::yes exited ${rc[0]} (only SIGPIPE/141 is tolerated)"; exit 1; }
-[ "${rc[1]}" -eq 0 ] \
-  || { echo "::error::sdkmanager --licenses exited ${rc[1]}"; exit 1; }
+[ "$rc" -eq 0 ] \
+  || { echo "::error::sdkmanager --licenses exited $rc (consumer status is the authority)"; exit 1; }
 
 "$SDKMANAGER" "${PACKAGES[@]}"
 VERSION="$("$SDKMANAGER" --version)"
