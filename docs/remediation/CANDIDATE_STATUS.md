@@ -15,14 +15,17 @@
 > ref resolve th to nothing, which is the honest pre-freeze state, never a stale rc14 authority).** **NO
 > candidate carries a valid freeze for the current tree, and no READY status is asserted.**
 > **Source reconciliation (2026-10-04):** each authored review gap now carrieth, in place, a `review_status`
-> against the current production source -- 41 `REPAIRED_STALE`, 1 `PARTIAL`, 0 `LIVE`
-> (`IOSR13-ACCESSIBILITY-ROSTER-INCOMPLETE` -- PARTIAL). A `REPAIRED_STALE` status
+> against the current production source -- 42 `REPAIRED_STALE`, 0 `PARTIAL`, 0 `LIVE`
+> (`IOSR13-ACCESSIBILITY-ROSTER-INCOMPLETE`, formerly the sole PARTIAL, is now `REPAIRED_STALE`: the iOS rendered-role
+> half is asserted in-process and the current UI run passed 43 tests / 0 failures -- LabMesh 29 accessibility 11 +
+> functional 18, LIGHT 14 -- with human acceptance remaining the existing external obligation). A `REPAIRED_STALE` status
 > settles ONLY the source half of a review's claim and does NOT discharge any obligation.
-> **Current rc15 work:** the full Board1 campaign at `a2090b59` did **not** pass:
-> 158 `KILLED`, 9 `ESCAPED`, 3 `EXEC_INVALID`, 3 `BUILD_INVALID`, and 1 `TIMEOUT`.
-> The repaired selected campaign at `23b6a92d` qualified 15 of those 16 controls with green restorations;
-> the corrected peer transaction lock mutation qualified separately at `bed99747` with a green restoration.
-> These two selected runs do not constitute a complete campaign on one revision.
+> **Current rc15 work:** the full board1 campaign on `4f84d0b6` recorded **179 `KILLED` + 2 `EXEC_INVALID`**
+> (IOS-RECOVERY-005, SH-R13 -- each retained the original find needle inside its replacement, so the strict
+> installation postcondition correctly refused; the two registry needles were then completed to whole lines so post-find=0,
+> with NO harness weakening), and the selected two-rod three-phase qualification on `f66a1b41` **KILLED both** with green
+> restorations. **These are DISTINCT runs: they are NEVER summed into one 181 campaign and are NOT discharge proof.**
+> The final full 181 campaign + integration remains PENDING.
 > Compiler refusal is a catch only for the explicitly declared permit type-enforcement control;
 > ordinary compile errors, missing execution, skipped cases and timeouts remain non-catches.
 > The simulator stock-SQLite oracle now stages the resolved device's runtime image, validates its export

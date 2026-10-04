@@ -8,7 +8,7 @@
 > GS-ARCHIVE-005, GS-FINAL-006, GS-STORE-002, AUDIT-B1-CTRL-001), ZERO DISCHARGED (every rc14-era
 > discharge is DEMOTED and its claim retained as `historical_discharge`),
 > 5 external obligations; `findings_with_internal_status_open = 10`; `verified_fixed = 0`; builder
-> status `REMEDIATION_IN_PROGRESS`; prospective candidate `production-readiness-board1-rc15`.** *No
+> status `REMEDIATION_IN_PROGRESS`; prospective candidate `production-readiness-board1-rc15`.** **Source census (2026-10-04): all 42 authored review-defect verdicts are now `REPAIRED_STALE` / 0 `PARTIAL` / 0 `LIVE` -- the former sole PARTIAL (`IOSR13-ACCESSIBILITY-ROSTER-INCOMPLETE`) is repaired in source (the current iOS UI run passed 43 tests / 0 failures, resolved-role arms in all four combination) with human VoiceOver/TalkBack acceptance staying the EXISTING external obligation.** *No
 > finding carrieth `closure_evidence`, no finding is `VERIFIED_FIXED` (only an independent audit may
 > write it), and no READY/COMPLETE claim is made.* The `PARTIAL`/`OPEN` classes in the historical
 > narrative below describe an earlier era and are superseded.

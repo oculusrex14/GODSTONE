@@ -7,9 +7,19 @@
 > `scripts/build_structured_closure.py` from the ledger's own entries, whose persisted blocks
 > `--check` re-derives field by field (counts, statuses, `structured_semantics`, prose dispositions).
 > A source-level reconciliation (2026-10-04) annotated each authored review gap, in place, with a `review_status`
-> against the current production source (41 `REPAIRED_STALE` / 1 `PARTIAL` / 0 `LIVE`); a `REPAIRED_STALE` status
+> against the current production source (42 `REPAIRED_STALE` / 0 `PARTIAL` / 0 `LIVE`); a `REPAIRED_STALE` status
 > settles ONLY the source half of a review's claim and does NOT discharge any obligation, which stays
-> OPEN until its own current-candidate production controls are authored.
+> OPEN until its own current-candidate production controls are authored. *The former sole `PARTIAL`
+> (`IOSR13-ACCESSIBILITY-ROSTER-INCOMPLETE`) is now `REPAIRED_STALE`: the internal roster/role half is repaired and
+> MEASURED (the current iOS UI run passed 43 tests / 0 failures -- LabMesh 29 accessibility 11 + functional 18, LIGHT 14 --
+> with the resolved-role arms in all four direction/scale combinations), while human VoiceOver/TalkBack acceptance stays
+> the EXISTING external obligation `gs-ux-001.human-accessibility-acceptance` (no new gap map).*
+> **Campaign state (2026-10-04):** the full board1 campaign on `4f84d0b6` recorded **179 `KILLED` + 2 `EXEC_INVALID`**
+> (IOS-RECOVERY-005, SH-R13 -- both retained the original find needle inside the replacement; the strict installation
+> postcondition correctly refused, no collisions; the two registry needles were completed to whole lines so post-find=0,
+> with NO harness weakening). The selected two-rod three-phase qualification on `f66a1b41` **KILLED both** with green
+> restorations. **These are DISTINCT runs and are NEVER summed as one 181 campaign nor read as discharge proof**; the
+> final full 181 + integration remains PENDING. **No obligation is DISCHARGED.**
 > **No terminal status -- `COMPLETE` or `READY_FOR_EXTERNAL_REAUDIT` -- may be asserted by any
 > document this repository carries: a terminal claim is admitted only in the frozen candidate's
 > AUTHENTICATED attestation, read by the A-side authority in `ci/check_candidate_binding.py`, after
