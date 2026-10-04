@@ -12,8 +12,10 @@ import sys
 import tempfile
 
 REPO = Path(__file__).resolve().parents[2]
+# Generated per-build input; the attestation binds its bytes separately.
 EXPECTED_SOURCE = "ios/Godstone/Sources/GodstoneMesh/SQLCipherTrustedExpectation.swift"
-RECIPE_FILES = ("tools/supplychain/build_sqlcipher_simulator.sh", "tools/supplychain/verify_sqlcipher_artifact.py", "docs/supplychain/SQLCIPHER.pins.json", EXPECTED_SOURCE)
+# Recipe inputs must be available in a clean checkout, before a lane emits outputs.
+RECIPE_FILES = ("tools/supplychain/build_sqlcipher_simulator.sh", "tools/supplychain/verify_sqlcipher_artifact.py", "docs/supplychain/SQLCIPHER.pins.json")
 
 
 def sha256(path: Path) -> str:
@@ -54,6 +56,7 @@ def tree_digest(root: Path) -> str:
 
 
 def recipe_digest() -> str:
+    """Hash the tracked native builder, expectation generator and pin register."""
     return digest_files({name: sha256(REPO / name) for name in RECIPE_FILES})
 
 

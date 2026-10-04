@@ -44,14 +44,15 @@ fi
 
 # 3. a driver that runs THAT section under the runner's own `set -eu`, then records that
 #    control returned to the post-run step (the digest writers / sentinel).
+# Pass the sandbox through the environment: printf %q is not portable /bin/sh.
 {
     echo 'set -eu'
-    printf 'cd %s\n' "$(printf '%q' "$SANDBOX")"
+    printf 'cd "$SANDBOX"\n'
     cat "$SANDBOX/section.sh"
-    printf 'echo post-run-reached >%s\n' "$(printf '%q' "$SANDBOX/post-run-ran")"
+    printf 'echo post-run-reached >"$SANDBOX/post-run-ran"\n'
 } >"$SANDBOX/driver.sh"
 
-( sh "$SANDBOX/driver.sh" ) >/dev/null 2>&1 || true
+( SANDBOX="$SANDBOX" sh "$SANDBOX/driver.sh" ) >/dev/null 2>&1 || true
 
 if [ -f "$SANDBOX/post-run-ran" ]; then
     echo "KEEP-ALIVE HELD: the failing command was caught and the post-run step was reached"

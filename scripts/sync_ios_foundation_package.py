@@ -15,6 +15,9 @@ generated tree and canonical, so a hand-edit or a forgotten re-sync is caught.
 The Foundation Package.swift is a hand-maintained subset (it intentionally
 omits the GodstoneLLMBridge/GodstoneLLM targets) and is NOT reconciled by the
 copy logic; its hash is recorded in SOURCE_MANIFEST.json for drift detection.
+
+Manifest membership comes from Git, not ignored lane output. Write mode includes
+new nonignored sources awaiting staging; check mode requires tracked inputs.
 """
 from __future__ import annotations
 
@@ -22,6 +25,7 @@ import argparse
 import hashlib
 import json
 import shutil
+import subprocess
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -88,13 +92,20 @@ def main() -> int:
                 target.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copyfile(path, target)
 
+    membership = ["--cached"] if args.check else ["--cached", "--others", "--exclude-standard"]
+    names = subprocess.check_output(
+        ["git", "-C", str(ROOT), "ls-files", "-z", *membership, "--",
+         PACKAGE.relative_to(ROOT).as_posix()]
+    ).decode().split("\0")
+    manifest_sources = sorted(ROOT / name for name in names
+                              if name.endswith(".swift") and is_manifest_source(ROOT / name))
+    missing = [p.relative_to(PACKAGE).as_posix() for p in manifest_sources if not p.is_file()]
+    if missing:
+        raise SystemExit("GodstoneFoundation tracked source absent: " + ", ".join(missing))
+
     manifest = {
         "schema": 1,
-        "files": {
-            p.relative_to(PACKAGE).as_posix(): digest(p)
-            for p in sorted(PACKAGE.rglob("*.swift"))
-            if is_manifest_source(p)
-        },
+        "files": {p.relative_to(PACKAGE).as_posix(): digest(p) for p in manifest_sources},
     }
     manifest_path = PACKAGE / "SOURCE_MANIFEST.json"
     if args.check:

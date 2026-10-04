@@ -47,6 +47,12 @@ the script would regenerate from canonical. This catches both:
 `SOURCE_MANIFEST.json` (SHA-256 of each generated path + bytes, including
 `Package.swift`) is the material the `--check` mode compares against.
 
+Manifest membership is Git-owned: `--check` hashes tracked Swift inputs, never
+ignored lane output such as `SQLCipherTrustedExpectation.swift`. Regeneration
+also includes new nonignored sources awaiting staging, so new source additions
+can be mirrored before committing. Stage the canonical additions, generated
+copies and manifest together; untracked inputs are refused by `--check`.
+
 ## Package.swift is hand-maintained
 
 `Package.swift` here is **not** a copy — it is a deliberately trimmed subset of

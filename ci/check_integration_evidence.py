@@ -909,7 +909,10 @@ def selftest(fixtures_root: Path | str | None = None) -> int:
     st_register, st_source, st_entry = build_provenance._register_entry("macos")
     st_expected = st_entry["expected_output"]
     st_recipe = build_provenance.recipe_digest()
-    st_expectation_sha = sha256_file(REPO / "ios/Godstone/Sources/GodstoneMesh/SQLCipherTrustedExpectation.swift")
+    # This metadata-only selftest does not build or claim a native expectation.
+    st_expectation = REPO / build_provenance.EXPECTED_SOURCE
+    st_expectation_sha = (sha256_file(st_expectation) if st_expectation.is_file()
+                          else hashlib.sha256(b"selftest expectation:" + st_recipe.encode()).hexdigest())
 
     # *** THE FIXTURE ROOT IS RESOLVED ONCE, LOUDLY. *** *An absent supplied root is a typed refusal, not a raw
     # `FileNotFoundError` from a later `read_bytes()`.*

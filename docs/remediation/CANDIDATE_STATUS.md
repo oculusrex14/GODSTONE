@@ -77,7 +77,7 @@
 > [repository verification](https://github.com/oculusrex14/GODSTONE/actions/runs/37207140743).
 > Kotlin resolution and clean-checkout prerequisites refused before terminal proof; the repository terminal job
 > was skipped. The two internal LIGHT release jobs passed, but that is not a complete release or readiness claim.
-> No rc15 tag or attestation exists. Corrected prerequisites, a newly committed candidate and its own proofs are required.
+> At this pre-freeze checkpoint, no rc15 tag or attestation exists. Corrected prerequisites, a newly committed candidate and its own proofs are required.
 > **Prepared clean-clone registry proof:** the original paths, identities and registered raw digests are retained.
 > `scripts/materialize_external_registry_proof.py --write` produced **837** staged content-addressed gzip objects;
 > its real `--check` verified **896** non-lost external references. All 837 decompressed SHA-256 values were checked,
@@ -87,6 +87,22 @@
 > The single anchored declared loss remains a loss. These historical carriers are not current runtime proof,
 > canonical mutation catches, external-gate closure, or an authenticated candidate freeze.
 > A six-class credential-pattern scan found no matches; that limited scan is not a blanket secrecy guarantee.
+> **Corrected prerequisites, pre-freeze proof only:** Foundation manifest membership now follows Git-owned
+> sources, not the presence of ignored generated SQLCipher expectation output. The real mirror `--check`,
+> 41 integration-evidence selftest cases and 12 isolated Foundation/integration fixture tests passed.
+> The shell-rod probe passed under POSIX `dash`, including both ShellRodGuardWitness controls.
+> Kotlin resolution now bounds braceless declarations, retains qualified owner identity, and confines a
+> `when` smart cast to one nominal arm and its live, unshadowed, unwritten subject binding.
+> The actual repository parity run passed **7 checks**, scanning **301 Kotlin files / 0 unresolved**;
+> its selftest legal/refusal controls and **45** resolver regressions passed. Four previously false-accepted
+> consumer cast probes now refuse the invalid member while also refusing the deliberately missing control.
+> The complete readiness roster passed: **1049 collected / 1019 required internal / 30 historical excluded**,
+> with exact identities and zero internal skips or nonpassing outcomes
+> (`/tmp/board1-rc15-prerequisite-smoke-4347d047/readiness.log` and its recorded result JSON).
+> The canonical manifest still verifies **179 semantic + 2 structural** killed/restored rows with current
+> input bindings; all ten parsed runtime lanes pass with zero failed, errored or skipped arms.
+> These local prerequisite results neither replace exact-candidate integration nor authenticate hosted
+> release, terminal proof, an rc15 tag or a freeze.
 > **Supply preflight (2026-10-04):** the four preflight supply refusals are REPAIRED by the canonical existing generators
 > only (no code guard/pin/source change): the current `ios/project.yml` fingerprint is captured (`0c4a39…`), the SBOM now
 > carries 566 components including 3 SQLite 2.6.2 coordinates, and 6 CycloneDX faces are refreshed.

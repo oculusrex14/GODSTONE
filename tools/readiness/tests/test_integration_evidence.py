@@ -16,8 +16,10 @@ THESE CASES:
 from __future__ import annotations
 
 import importlib.util
+import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 REPO = Path(__file__).resolve().parents[3]
 GATE = REPO / "ci" / "check_integration_evidence.py"
@@ -36,6 +38,37 @@ class IntegrationEvidenceAdversarialSelftest(unittest.TestCase):
     def test_the_gates_selftest_kills_every_mutation(self) -> None:
         mod = _load()
         self.assertEqual(mod.selftest(), 0, "the integration-evidence selftest reported an ESCAPED mutation")
+
+    def test_the_recipe_digest_tracks_inputs_not_generated_output(self) -> None:
+        from tools.readiness import build_provenance
+
+        inputs = {
+            "tools/supplychain/build_sqlcipher_simulator.sh": b"native builder\n",
+            "tools/supplychain/verify_sqlcipher_artifact.py": b"expectation verifier\n",
+            "docs/supplychain/SQLCIPHER.pins.json": b'{"source": "pinned"}\n',
+        }
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            for name, data in inputs.items():
+                path = root / name
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_bytes(data)
+            with patch.object(build_provenance, "REPO", root):
+                clean = build_provenance.recipe_digest()
+                expectation = root / build_provenance.EXPECTED_SOURCE
+                expectation.parent.mkdir(parents=True, exist_ok=True)
+                expectation.write_bytes(b"generated expectation\n")
+                self.assertEqual(clean, build_provenance.recipe_digest())
+                expectation.write_bytes(b"different generated expectation\n")
+                self.assertEqual(clean, build_provenance.recipe_digest())
+                expectation.unlink()
+                self.assertEqual(clean, build_provenance.recipe_digest())
+                for name, data in inputs.items():
+                    with self.subTest(input=name):
+                        path = root / name
+                        path.write_bytes(data + b"changed recipe input\n")
+                        self.assertNotEqual(clean, build_provenance.recipe_digest())
+                        path.write_bytes(data)
 
 
 class IntegrationEvidenceFixtures(unittest.TestCase):
