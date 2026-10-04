@@ -1069,16 +1069,27 @@ internal class RealTransportHostRigWorkerTest {
                     // surviving bytes.***
                     "reopen" -> {
                         reopenEstateForProof()
-                        val msgId = durableMsgId()
+                        val heldId = durableMsgId()
+                        // *** THE SENDER'S IDENTITY IS THE ONE ITS DELIVERY ROW WAS READ BY. ***
+                        // *A DELIVERED message's held frame is retired by the ACK CAS, so a HELD-frame id is empty on
+                        // the sender while its delivery row still answers; two probes must not answer one record. A
+                        // missing delivery row reports "none" and names no id -- it never claims DELIVERED.*
+                        val deliveryMsgId = if (role == "sender") trackedMsgId else null
+                        val deliveryRow = deliveryMsgId?.let { rig.deliveryRow(ENDPOINT, it) }
+                        val idFromDelivery = if (deliveryRow != null) deliveryMsgId else null
+                        val deliveryState = when {
+                            deliveryRow == null -> null
+                            DeliveryState.fromCode(deliveryRow.state) == DeliveryState.ACKNOWLEDGED_BY_RECIPIENT ->
+                                "DELIVERED"
+                            else -> "QUEUED"
+                        }
                         val cancelId = cancellationMsgId
                         val cancelRow = cancelId?.let { rig.deliveryRow(ENDPOINT, it) }
                         emit("observe", header = mapOf(
                             "reopened" to true,
-                            "durable_row" to if (msgId != null) "present" else "absent",
-                            "msg_id" to (msgId?.let { hex(it) } ?: ""),
-                            "delivery" to (trackedMsgId?.let { m ->
-                                rig.deliveryRow(ENDPOINT, m)?.let { DeliveryState.fromCode(it.state)?.name }
-                            } ?: "none"),
+                            "durable_row" to if (heldId != null) "present" else "absent",
+                            "msg_id" to (idFromDelivery ?: heldId)?.let { hex(it) } ?: "",
+                            "delivery" to (deliveryState ?: "none"),
                             "cancellation_state" to (cancelRow?.let { DeliveryState.fromCode(it.state)?.name } ?: ""),
                             "cancellation_msg_id" to (cancelId?.let { hex(it) } ?: ""),
                             "estate" to rootFor(seed).absolutePath,

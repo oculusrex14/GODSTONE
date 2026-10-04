@@ -532,10 +532,20 @@ final class GsIntegration001CrossPlatformWorkerTests: XCTestCase {
                        case .found(let rec) = rig.node(deliveryProofLabel)?.runtime.deliveryTracker.lookup(cancelId) {
                         cancelState = "\(rec.state)"
                     }
+                    // *** THE SENDER'S IDENTITY IS THE ONE ITS DELIVERY ROW WAS READ BY. ***
+                    // *A DELIVERED message's held frame is retired by the ACK CAS, so a HELD-frame id is empty on the
+                    // sender while its delivery row still answers; two probes must not answer one record. A missing
+                    // delivery row reports "none" and names no id -- it never claims DELIVERED.*
+                    let heldId = durableMsgId()
+                    let deliveryRow = trackedMsgId.flatMap { deliveryProofRow(msgId: $0) }
+                    let deliveryMsgId = deliveryRow != nil ? trackedMsgId : nil
+                    let deliveryState = deliveryRow.map {
+                        $0.state == .acknowledgedByRecipient ? "DELIVERED" : "QUEUED"
+                    }
                     emit("observe", header: ["reopened": true,
-                                             "durable_row": durableMsgId() != nil ? "present" : "absent",
-                                             "msg_id": durableMsgId().map(hex) ?? "",
-                                             "delivery": deliveryStateName(),
+                                             "durable_row": heldId != nil ? "present" : "absent",
+                                             "msg_id": (deliveryMsgId ?? heldId).map(hex) ?? "",
+                                             "delivery": deliveryState ?? "none",
                                              "cancellation_state": cancelState,
                                              "cancellation_msg_id": cancellationMsgId.map(hex) ?? "",
                                              "estate": estateRoot.path])
@@ -968,11 +978,6 @@ final class GsIntegration001CrossPlatformWorkerTests: XCTestCase {
             _ = try rig.closeAndReopen(GsIntegration001CrossPlatformWorkerTests.endpoint, as: reopenedLabel)
             proofLabel = reopenedLabel
             estateReopened = true
-        }
-
-        private func deliveryStateName() -> String {
-            guard let msgId = trackedMsgId, let row = deliveryProofRow(msgId: msgId) else { return "none" }
-            return row.state == .acknowledgedByRecipient ? "DELIVERED" : "QUEUED"
         }
 
         private func isDelivered() -> Bool {
