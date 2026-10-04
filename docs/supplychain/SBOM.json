@@ -1,5 +1,5 @@
 {
-  "built_utc": "2026-10-01T18:40:52+00:00",
+  "built_utc": "2026-10-04T09:16:42+00:00",
   "components": [
     {
       "digest": "661c298b4821edebead0c91edd2b00374d67ad7c5a1f7a91d4442633b79d6a72",
@@ -1830,6 +1830,17 @@
       "version": "2.5.2"
     },
     {
+      "digest": "621f6dbdc5dab0424514c18e1639aa1b4a73002f1c286281fc4a1fb9a5c1e94b",
+      "digest_status": "PINNED",
+      "ecosystem": "maven",
+      "lane": "android",
+      "license": "unknown",
+      "license_source": "not carried by the metadata",
+      "name": "androidx.sqlite:sqlite-bundled",
+      "supplied_by": "android/gradle/verification-metadata.xml",
+      "version": "2.6.2"
+    },
+    {
       "digest": "ed7ac6efea5b11a4ddf514d36ed0e87c80d9d22c6283b889cddce63add7b5ab2",
       "digest_status": "PINNED",
       "ecosystem": "maven",
@@ -1839,6 +1850,17 @@
       "name": "androidx.sqlite:sqlite-bundled-android",
       "supplied_by": "android/gradle/verification-metadata.xml",
       "version": "2.5.2"
+    },
+    {
+      "digest": "0ea00145fb0378c7fbf3fb2d0c805e0425e5e9e2d38dcd8776be09b4a3c21f71",
+      "digest_status": "PINNED",
+      "ecosystem": "maven",
+      "lane": "android",
+      "license": "unknown",
+      "license_source": "not carried by the metadata",
+      "name": "androidx.sqlite:sqlite-bundled-android",
+      "supplied_by": "android/gradle/verification-metadata.xml",
+      "version": "2.6.2"
     },
     {
       "digest": "518d032204065c45f20e2e0e55f8de9fcf9fccf6d6439df8f0f97b63463b9e5a",
@@ -1883,6 +1905,17 @@
       "name": "androidx.sqlite:sqlite-ktx",
       "supplied_by": "android/gradle/verification-metadata.xml",
       "version": "2.5.2"
+    },
+    {
+      "digest": "ca65ab83edfdbd996d5ce9d523fbadfda53d0ae3e9bcf4587ef04eeb86e3af7a",
+      "digest_status": "PINNED",
+      "ecosystem": "maven",
+      "lane": "android",
+      "license": "unknown",
+      "license_source": "not carried by the metadata",
+      "name": "androidx.sqlite:sqlite-ktx",
+      "supplied_by": "android/gradle/verification-metadata.xml",
+      "version": "2.6.2"
     },
     {
       "digest": "40effca0d6ee1fde32bc296897e54ebbcc4cf4aa29b0c531036cbd2a824a3c24",
@@ -2237,7 +2270,7 @@
       "version": "31.6.0"
     },
     {
-      "digest": "807a5a0c29ca128816508e81f032aa571941aff8d3c111d81b59920db4d39c44",
+      "digest": "682926cf101f021a5063911ed2caaec1408c17cc49683fd03552245187864395",
       "digest_status": "PINNED",
       "ecosystem": "maven",
       "lane": "android",
@@ -6265,7 +6298,7 @@
   ],
   "licence_census": {
     "n/a": 11,
-    "unknown": 552
+    "unknown": 555
   },
   "note": "An unknown licence is counted, never omitted: a component whose licence nobody recorded is a fact about this inventory, not a blank to be filled in later.",
   "schema": 1,
@@ -6276,6 +6309,6 @@
     "model:generation-large standeth UNPINNED (external gate NATIVE_MODELS)",
     "model:embedding-small standeth UNPINNED (external gate NATIVE_MODELS)",
     "model:embedding-base standeth UNPINNED (external gate NATIVE_MODELS)",
-    "552 component(s) carry an unknown licence; the inventory recordeth them by name rather than omitting them"
+    "555 component(s) carry an unknown licence; the inventory recordeth them by name rather than omitting them"
   ]
 }

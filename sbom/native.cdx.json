@@ -21,7 +21,7 @@
         "value": "llama.cpp/native outputs are absent and unpinned; no component of this repository's locked graph belongeth to a native face"
       }
     ],
-    "timestamp": "2026-10-01T18:40:52+00:00"
+    "timestamp": "2026-10-04T09:16:42+00:00"
   },
   "serialNumber": "urn:uuid:249e6531-699c-50d3-9232-53bec9324603",
   "specVersion": "1.5",

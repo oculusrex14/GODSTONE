@@ -6250,6 +6250,50 @@
       "version": "2.5.2"
     },
     {
+      "bom-ref": "pkg:maven/androidx.sqlite/sqlite-bundled-android@2.6.2",
+      "group": "androidx.sqlite",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "0ea00145fb0378c7fbf3fb2d0c805e0425e5e9e2d38dcd8776be09b4a3c21f71"
+        }
+      ],
+      "name": "sqlite-bundled-android",
+      "properties": [
+        {
+          "name": "godstone:ecosystem",
+          "value": "maven"
+        },
+        {
+          "name": "godstone:name",
+          "value": "androidx.sqlite:sqlite-bundled-android"
+        },
+        {
+          "name": "godstone:digest_status",
+          "value": "PINNED"
+        },
+        {
+          "name": "godstone:supplied_by",
+          "value": "android/gradle/verification-metadata.xml"
+        },
+        {
+          "name": "godstone:license_source",
+          "value": "not carried by the metadata"
+        },
+        {
+          "name": "godstone:lane",
+          "value": "android"
+        },
+        {
+          "name": "license:status",
+          "value": "unknown"
+        }
+      ],
+      "scope": "required",
+      "type": "library",
+      "version": "2.6.2"
+    },
+    {
       "bom-ref": "pkg:maven/androidx.sqlite/sqlite-bundled-jvm@2.5.2",
       "group": "androidx.sqlite",
       "hashes": [
@@ -6336,6 +6380,50 @@
       "scope": "required",
       "type": "library",
       "version": "2.5.2"
+    },
+    {
+      "bom-ref": "pkg:maven/androidx.sqlite/sqlite-bundled@2.6.2",
+      "group": "androidx.sqlite",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "621f6dbdc5dab0424514c18e1639aa1b4a73002f1c286281fc4a1fb9a5c1e94b"
+        }
+      ],
+      "name": "sqlite-bundled",
+      "properties": [
+        {
+          "name": "godstone:ecosystem",
+          "value": "maven"
+        },
+        {
+          "name": "godstone:name",
+          "value": "androidx.sqlite:sqlite-bundled"
+        },
+        {
+          "name": "godstone:digest_status",
+          "value": "PINNED"
+        },
+        {
+          "name": "godstone:supplied_by",
+          "value": "android/gradle/verification-metadata.xml"
+        },
+        {
+          "name": "godstone:license_source",
+          "value": "not carried by the metadata"
+        },
+        {
+          "name": "godstone:lane",
+          "value": "android"
+        },
+        {
+          "name": "license:status",
+          "value": "unknown"
+        }
+      ],
+      "scope": "required",
+      "type": "library",
+      "version": "2.6.2"
     },
     {
       "bom-ref": "pkg:maven/androidx.sqlite/sqlite-framework@2.5.2",
@@ -6468,6 +6556,50 @@
       "scope": "required",
       "type": "library",
       "version": "2.5.2"
+    },
+    {
+      "bom-ref": "pkg:maven/androidx.sqlite/sqlite-ktx@2.6.2",
+      "group": "androidx.sqlite",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "ca65ab83edfdbd996d5ce9d523fbadfda53d0ae3e9bcf4587ef04eeb86e3af7a"
+        }
+      ],
+      "name": "sqlite-ktx",
+      "properties": [
+        {
+          "name": "godstone:ecosystem",
+          "value": "maven"
+        },
+        {
+          "name": "godstone:name",
+          "value": "androidx.sqlite:sqlite-ktx"
+        },
+        {
+          "name": "godstone:digest_status",
+          "value": "PINNED"
+        },
+        {
+          "name": "godstone:supplied_by",
+          "value": "android/gradle/verification-metadata.xml"
+        },
+        {
+          "name": "godstone:license_source",
+          "value": "not carried by the metadata"
+        },
+        {
+          "name": "godstone:lane",
+          "value": "android"
+        },
+        {
+          "name": "license:status",
+          "value": "unknown"
+        }
+      ],
+      "scope": "required",
+      "type": "library",
+      "version": "2.6.2"
     },
     {
       "bom-ref": "pkg:maven/androidx.sqlite/sqlite@2.4.0",
@@ -7751,7 +7883,7 @@
       "hashes": [
         {
           "alg": "SHA-256",
-          "content": "807a5a0c29ca128816508e81f032aa571941aff8d3c111d81b59920db4d39c44"
+          "content": "682926cf101f021a5063911ed2caaec1408c17cc49683fd03552245187864395"
         }
       ],
       "name": "aapt2",
@@ -23426,9 +23558,9 @@
         "value": "false"
       }
     ],
-    "timestamp": "2026-10-01T18:40:52+00:00"
+    "timestamp": "2026-10-04T09:16:42+00:00"
   },
-  "serialNumber": "urn:uuid:85d71c7c-2c81-5804-8f3c-44f0a9815352",
+  "serialNumber": "urn:uuid:715bbe0d-1f88-53ea-ba3a-fbae0f9fffe4",
   "specVersion": "1.5",
   "version": 1
 }
