@@ -1,0 +1,20 @@
+test_a_finding_status_open_alone_blocks_readiness (tools.readiness.tests.test_closure_law_refuses.ReadinessRequiresBothPopulations.test_a_finding_status_open_alone_blocks_readiness)
+*The mutation: every OBLIGATION discharged, but a finding still OPEN. The law must still refuse.* ... FAIL
+test_the_status_population_is_reported_separately (tools.readiness.tests.test_closure_law_refuses.ReadinessRequiresBothPopulations.test_the_status_population_is_reported_separately) ... ok
+
+======================================================================
+FAIL: test_a_finding_status_open_alone_blocks_readiness (tools.readiness.tests.test_closure_law_refuses.ReadinessRequiresBothPopulations.test_a_finding_status_open_alone_blocks_readiness)
+*The mutation: every OBLIGATION discharged, but a finding still OPEN. The law must still refuse.*
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/board1-rc15-generator-strikes.K6oxaX/wt-op5/tools/readiness/tests/test_closure_law_refuses.py", line 646, in test_a_finding_status_open_alone_blocks_readiness
+    self.assertGreater(c["findings_with_internal_status_open"], 0,
+    ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                       "... while the STATUS population is not -- which is exactly the gap the law must see")
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 0 not greater than 0 : ... while the STATUS population is not -- which is exactly the gap the law must see
+
+----------------------------------------------------------------------
+Ran 2 tests in 1.241s
+
+FAILED (failures=1)

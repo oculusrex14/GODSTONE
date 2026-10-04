@@ -1,0 +1,17 @@
+PASS  GS-RUNTIME-001 internal obligation count: derived 2, expected 2 [gs-runtime-001.android-composition-court, gs-runtime-001.mutations]
+PASS  GS-RUNTIME-001 all internal obligations DISCHARGED: states=['DISCHARGED', 'DISCHARGED']
+PASS  GS-RUNTIME-001 internal_status derives COMPLETE: internal_status='COMPLETE' source='derived_from_obligations'
+PASS  GS-RUNTIME-001 external obligation registered: external=1
+PASS  GS-RUNTIME-001 persisted ledger carries 2 internal obligation(s): persisted=2
+PASS  GS-RUNTIME-001 persisted internal_status equals derivation: persisted='COMPLETE' derived='COMPLETE'
+PASS  GS-STORE-002 internal obligation count: derived 1, expected 1 [gs-store-002.internal-architecture]
+PASS  GS-STORE-002 all internal obligations DISCHARGED: states=['DISCHARGED']
+PASS  GS-STORE-002 internal_status derives COMPLETE: internal_status='COMPLETE' source='derived_from_obligations'
+PASS  GS-STORE-002 external obligation registered: external=1
+PASS  GS-STORE-002 persisted ledger carries 1 internal obligation(s): persisted=1
+PASS  GS-STORE-002 persisted internal_status equals derivation: persisted='COMPLETE' derived='COMPLETE'
+PASS  neither consumer finding is status-OPEN: findings_with_internal_status_open=1
+PASS  persisted structured_counts equal the derivation: drift={}
+PASS  discharged consumer obligations appear in obligations_by_state: obligations_by_state={'OPEN': 4, 'PARTIAL': 0, 'DISCHARGED': 31}
+
+consumer positive: 0 failure(s)

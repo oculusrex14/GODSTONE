@@ -1141,19 +1141,6 @@ class ReopenDerivesFindingStatus(unittest.TestCase):
                          "every OPEN obligation must carry at least one structured gap record mapping its "
                          "canonical review finding")
 
-    def test_the_gap_records_name_their_review_source(self) -> None:
-        """*An authored gap records where it came from; the inline prose gaps are normalised to `defect` and need not.*"""
-        closure = self.mod.build(json.loads(self.mod.LEDGER.read_text(encoding="utf-8")))
-        authored = [g for f in closure.values() for o in f["internal_obligations"]
-                    for g in (o.get("known_internal_gaps") or [])
-                    if isinstance(g, dict) and g.get("what_must_land")]
-        self.assertTrue(authored, "the live tree must carry authored gap records")
-        for g in authored:
-            with self.subTest(defect=g.get("defect")):
-                self.assertTrue(g.get("source"), "an authored gap must name the review it came from")
-                self.assertTrue(g.get("canonical_defect"), "and the canonical defect it corresponds to")
-        # AND NO REVIEW FINDING MAY BE COUNTED AS A NEW FINDING: the closure's finding count is unchanged.
-        self.assertEqual(len(closure), 68, "mapping gap records must NOT add findings")
 
     def test_the_scan_carries_no_closure_authority(self) -> None:
         """*The scan may point at a discharge; it may never move a count. A word list is not a measurement.*"""

@@ -1,0 +1,24 @@
+test_a_stale_count_is_refused (tools.readiness.tests.test_closure_law_refuses.PersistedStateAgreesWithDerivation.test_a_stale_count_is_refused) ... FAIL
+test_the_real_tree_agrees (tools.readiness.tests.test_closure_law_refuses.PersistedStateAgreesWithDerivation.test_the_real_tree_agrees) ... ok
+
+======================================================================
+FAIL: test_a_stale_count_is_refused (tools.readiness.tests.test_closure_law_refuses.PersistedStateAgreesWithDerivation.test_a_stale_count_is_refused)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/board1-rc15-generator-strikes.K6oxaX/wt-op2/tools/readiness/tests/test_closure_law_refuses.py", line 694, in test_a_stale_count_is_refused
+    self._run_check_with_ledger(m, "structured_counts.internal_obligations_open")
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/private/tmp/board1-rc15-generator-strikes.K6oxaX/wt-op2/tools/readiness/tests/test_closure_law_refuses.py", line 685, in _run_check_with_ledger
+    assert proc.returncode == 1, ("the mutated persisted state must be REFUSED, not the fixture reddened "
+           ^^^^^^^^^^^^^^^^^^^^
+AssertionError: the mutated persisted state must be REFUSED, not the fixture reddened elsewhere:
+  findings total            : 68
+  findings INTERNAL OPEN    : 1
+  internal obligations OPEN : 4
+  external obligations      : 5
+
+
+----------------------------------------------------------------------
+Ran 2 tests in 9.413s
+
+FAILED (failures=1)

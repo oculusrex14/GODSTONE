@@ -1,0 +1,137 @@
+candidate: 6d326118
+original_54: {'FIX_SUBMITTED': 54}
+audit_13_new: {'FIX_SUBMITTED': 13}
+internal_remaining: 0 | external_acceptance: 0
+  findings total            : 68
+  findings INTERNAL OPEN    : 0
+  internal obligations OPEN : 0
+  external obligations      : 5
+  wrote `finding_closure` + `structured_counts` into the ledger
+  findings total            : 68
+  findings INTERNAL OPEN    : 0
+  internal obligations OPEN : 0
+  external obligations      : 5
+test_r01_every_required_record_and_population_is_present (tools.readiness.tests.test_required_runs.RequiredRunsTest.test_r01_every_required_record_and_population_is_present) ... ok
+test_r02_a_finding_removed_whole_reddens (tools.readiness.tests.test_required_runs.RequiredRunsTest.test_r02_a_finding_removed_whole_reddens)
+THE DELETION THIS MANIFEST EXISTETH TO CATCH. A finding deleted whole -- claim and evidence ... ok
+test_r03_a_finding_stripped_of_logs_and_red_is_an_empty_claim (tools.readiness.tests.test_required_runs.RequiredRunsTest.test_r03_a_finding_stripped_of_logs_and_red_is_an_empty_claim) ... ok
+test_r04_a_status_this_work_may_not_set_reddens (tools.readiness.tests.test_required_runs.RequiredRunsTest.test_r04_a_status_this_work_may_not_set_reddens)
+`VERIFIED_FIXED` belongs to an INDEPENDENT AUDIT alone. If this ledger ever carrieth it, ... ok
+test_r05_a_summary_that_disagreeth_with_its_entries_reddens (tools.readiness.tests.test_required_runs.RequiredRunsTest.test_r05_a_summary_that_disagreeth_with_its_entries_reddens)
+THE ARM MUST MUTATE THE SUMMARY THE POINTER NAMES. It previously wrote ... ok
+test_r06_a_red_recorded_as_prose_is_reported_and_not_demanded_away (tools.readiness.tests.test_required_runs.RequiredRunsTest.test_r06_a_red_recorded_as_prose_is_reported_and_not_demanded_away)
+THE DISCLOSED CLASS. This ledger recordeth many REDs as PROSE, and at least one finding ... ok
+test_r07_positive_control_a_whole_record_passes (tools.readiness.tests.test_required_runs.RequiredRunsTest.test_r07_positive_control_a_whole_record_passes)
+THE POSITIVE CONTROL. A minimal, LEGAL ledger passes -- so the negative arms above are ... ok
+test_r08_a_pointer_with_no_summary_reddens (tools.readiness.tests.test_required_runs.RequiredRunsTest.test_r08_a_pointer_with_no_summary_reddens)
+*** THE NEW REFUSAL ADDED BY THE ROUND-608 REPAIR. *** A control that findeth its subject ... ok
+test_r09_a_pointer_naming_an_absent_block_reddens (tools.readiness.tests.test_required_runs.RequiredRunsTest.test_r09_a_pointer_naming_an_absent_block_reddens)
+And a pointer that names a block the ledger does not carry reddeneth too -- a dangling ... ok
+test_c01_the_real_ledger_passes (tools.readiness.tests.test_current_assessment.CurrentAssessmentTest.test_c01_the_real_ledger_passes) ... ok
+test_c02_an_asserted_count_that_disagreeth_with_the_entries_reddens (tools.readiness.tests.test_current_assessment.CurrentAssessmentTest.test_c02_an_asserted_count_that_disagreeth_with_the_entries_reddens)
+THE HEADLINE. A count written beside the entries instead of derived from them is the defect itself. ... ok
+test_c03_a_mismatched_original_baseline_is_rejected (tools.readiness.tests.test_current_assessment.CurrentAssessmentTest.test_c03_a_mismatched_original_baseline_is_rejected)
+The audit's own test: 'Reject a current assessment referring to an uninspected or mismatched candidate.' ... ok
+test_c04_a_mismatched_independent_candidate_is_rejected (tools.readiness.tests.test_current_assessment.CurrentAssessmentTest.test_c04_a_mismatched_independent_candidate_is_rejected) ... ok
+test_c05_a_finding_removed_whole_reddens (tools.readiness.tests.test_current_assessment.CurrentAssessmentTest.test_c05_a_finding_removed_whole_reddens) ... ok
+test_c06_a_verified_fixed_is_refused (tools.readiness.tests.test_current_assessment.CurrentAssessmentTest.test_c06_a_verified_fixed_is_refused)
+Only an independent audit may write it; this work writing it is a finding against this work. ... ok
+test_c07_an_illegal_status_is_refused (tools.readiness.tests.test_current_assessment.CurrentAssessmentTest.test_c07_an_illegal_status_is_refused) ... ok
+test_c08_an_absent_current_assessment_is_itself_the_defect (tools.readiness.tests.test_current_assessment.CurrentAssessmentTest.test_c08_an_absent_current_assessment_is_itself_the_defect)
+WITHOUT THE BLOCK, THE NARRATIVE SERVES AS HISTORY, CURRENT STATE AND AUTHORITY AT ONCE -- the charge. ... ok
+test_c09_a_missing_internal_external_split_reddens (tools.readiness.tests.test_current_assessment.CurrentAssessmentTest.test_c09_a_missing_internal_external_split_reddens) ... ok
+test_c10_a_missing_historical_field_reddens (tools.readiness.tests.test_current_assessment.CurrentAssessmentTest.test_c10_a_missing_historical_field_reddens) ... ok
+test_every_discharged_obligation_carries_a_typed_token (tools.readiness.tests.test_closure_law_refuses.CitationTokens.test_every_discharged_obligation_carries_a_typed_token)
+*** A DISCHARGED OBLIGATION WITH PROSE-ONLY EVIDENCE IS A STATUS THIS BUILDER MAY NOT CARRY. *** ... ok
+test_negative_cases_do_not_resolve (tools.readiness.tests.test_closure_law_refuses.CitationTokens.test_negative_cases_do_not_resolve) ... ok
+test_positive_cases_resolve (tools.readiness.tests.test_closure_law_refuses.CitationTokens.test_positive_cases_resolve) ... ok
+test_a_complete_finding_with_all_obligations_discharged_is_PERMITTED (tools.readiness.tests.test_closure_law_refuses.FindingStatusFollowsItsObligations.test_a_complete_finding_with_all_obligations_discharged_is_PERMITTED)
+*The mirror defect: a guard that refuses the state it exists to permit is not a guard.* ... ok
+test_a_finding_with_no_obligations_is_not_covered_by_the_rule (tools.readiness.tests.test_closure_law_refuses.FindingStatusFollowsItsObligations.test_a_finding_with_no_obligations_is_not_covered_by_the_rule)
+*Terminality cannot be derived from a set that does not exist, so such a finding keeps its status.* ... ok
+test_an_open_finding_with_all_obligations_discharged_is_refused (tools.readiness.tests.test_closure_law_refuses.FindingStatusFollowsItsObligations.test_an_open_finding_with_all_obligations_discharged_is_refused) ... ok
+test_both_findings_that_were_inconsistent_now_derive_coherently (tools.readiness.tests.test_closure_law_refuses.FindingStatusFollowsItsObligations.test_both_findings_that_were_inconsistent_now_derive_coherently)
+*The two MEASURED offenders -- pinned by name so a return to the old state is loud.* ... ok
+test_the_ledger_population_refuses_an_inconsistent_finding (tools.readiness.tests.test_closure_law_refuses.FindingStatusFollowsItsObligations.test_the_ledger_population_refuses_an_inconsistent_finding)
+*** THE RULE IS ENFORCED WHERE THE FINDING IS BUILT, ON AN AUTHORED SUBJECT. *** ... ok
+test_the_live_closure_carries_no_such_inconsistency (tools.readiness.tests.test_closure_law_refuses.FindingStatusFollowsItsObligations.test_the_live_closure_carries_no_such_inconsistency) ... ok
+test_an_unknown_status_is_refused (tools.readiness.tests.test_closure_law_refuses.ObligationStateMachine.test_an_unknown_status_is_refused)
+*A state this instrument does not recognise is neither terminal nor unresolved -- guessing is a false ... ok
+test_one_open_obligation_prevents_zero (tools.readiness.tests.test_closure_law_refuses.ObligationStateMachine.test_one_open_obligation_prevents_zero) ... ok
+test_one_partial_obligation_prevents_zero (tools.readiness.tests.test_closure_law_refuses.ObligationStateMachine.test_one_partial_obligation_prevents_zero)
+*** THE CASE THE OLD `== "OPEN"` FILTER GOT WRONG. *** ... ok
+test_only_all_discharged_reaches_zero (tools.readiness.tests.test_closure_law_refuses.ObligationStateMachine.test_only_all_discharged_reaches_zero) ... ok
+test_the_legal_state_set_is_explicit (tools.readiness.tests.test_closure_law_refuses.ObligationStateMachine.test_the_legal_state_set_is_explicit) ... ok
+test_the_real_map_carries_only_legal_states (tools.readiness.tests.test_closure_law_refuses.ObligationStateMachine.test_the_real_map_carries_only_legal_states) ... ok
+test_a_deleted_obligation_is_refused (tools.readiness.tests.test_closure_law_refuses.PersistedStateAgreesWithDerivation.test_a_deleted_obligation_is_refused) ... ok
+test_a_stale_count_is_refused (tools.readiness.tests.test_closure_law_refuses.PersistedStateAgreesWithDerivation.test_a_stale_count_is_refused) ... ok
+test_a_stale_obligation_status_is_refused (tools.readiness.tests.test_closure_law_refuses.PersistedStateAgreesWithDerivation.test_a_stale_obligation_status_is_refused) ... ok
+test_an_orphan_obligation_is_refused (tools.readiness.tests.test_closure_law_refuses.PersistedStateAgreesWithDerivation.test_an_orphan_obligation_is_refused) ... ok
+test_the_real_tree_agrees (tools.readiness.tests.test_closure_law_refuses.PersistedStateAgreesWithDerivation.test_the_real_tree_agrees) ... ok
+test_a_finding_status_open_alone_blocks_readiness (tools.readiness.tests.test_closure_law_refuses.ReadinessRequiresBothPopulations.test_a_finding_status_open_alone_blocks_readiness)
+*The mutation: every OBLIGATION discharged, but a finding still OPEN. The law must still refuse.* ... ok
+test_the_status_population_is_reported_separately (tools.readiness.tests.test_closure_law_refuses.ReadinessRequiresBothPopulations.test_the_status_population_is_reported_separately) ... ok
+test_a_reopened_obligation_makes_its_finding_derive_open (tools.readiness.tests.test_closure_law_refuses.ReopenDerivesFindingStatus.test_a_reopened_obligation_makes_its_finding_derive_open)
+*** THE RULE IS EXERCISED ON AN AUTHORED PAIR, SO IT KEEPS BITING AFTER EVERY DISCHARGE. *** ... ok
+test_an_unknown_finding_state_is_refused (tools.readiness.tests.test_closure_law_refuses.ReopenDerivesFindingStatus.test_an_unknown_finding_state_is_refused) ... ok
+test_every_open_obligation_carries_a_measured_gap_record (tools.readiness.tests.test_closure_law_refuses.ReopenDerivesFindingStatus.test_every_open_obligation_carries_a_measured_gap_record)
+*** THE REVIEW-SOURCE MAPPING MUST TRAVEL WITH THE OBLIGATION, BY CANONICAL IDENTITY. *** ... ok
+test_known_internal_gaps_only_while_open (tools.readiness.tests.test_closure_law_refuses.ReopenDerivesFindingStatus.test_known_internal_gaps_only_while_open)
+*An OPEN finding's live gaps must be named; a discharged finding's gap prose is HISTORY.* ... ok
+test_the_scan_carries_no_closure_authority (tools.readiness.tests.test_closure_law_refuses.ReopenDerivesFindingStatus.test_the_scan_carries_no_closure_authority)
+*The scan may point at a discharge; it may never move a count. A word list is not a measurement.* ... ok
+test_a_binding_without_the_external_identity_is_refused (tools.readiness.tests.test_closure_law_refuses.StructuredDischargeContradiction.test_a_binding_without_the_external_identity_is_refused)
+*`candidate_binding` was OPTIONAL and its external identity unconstrained; both are now mandatory.* ... ok
+test_a_court_only_reachability_contradicts_a_discharge (tools.readiness.tests.test_closure_law_refuses.StructuredDischargeContradiction.test_a_court_only_reachability_contradicts_a_discharge) ... ok
+test_a_missing_required_field_is_refused (tools.readiness.tests.test_closure_law_refuses.StructuredDischargeContradiction.test_a_missing_required_field_is_refused) ... ok
+test_a_non_prospective_attestation_path_is_refused (tools.readiness.tests.test_closure_law_refuses.StructuredDischargeContradiction.test_a_non_prospective_attestation_path_is_refused) ... ok
+test_a_non_terminal_obligation_may_not_carry_a_discharge_block (tools.readiness.tests.test_closure_law_refuses.StructuredDischargeContradiction.test_a_non_terminal_obligation_may_not_carry_a_discharge_block) ... ok
+test_a_self_referential_candidate_sha_is_refused (tools.readiness.tests.test_closure_law_refuses.StructuredDischargeContradiction.test_a_self_referential_candidate_sha_is_refused) ... ok
+test_a_terminal_obligation_with_no_semantics_is_refused (tools.readiness.tests.test_closure_law_refuses.StructuredDischargeContradiction.test_a_terminal_obligation_with_no_semantics_is_refused)
+*** THE BYPASS THE OLD CHECK PERMITTED: `if sd is None: continue` skipped every legacy discharge. *** ... ok
+test_an_embedded_candidate_identity_is_refused (tools.readiness.tests.test_closure_law_refuses.StructuredDischargeContradiction.test_an_embedded_candidate_identity_is_refused) ... ok
+test_the_authored_semantics_must_match_the_closure (tools.readiness.tests.test_closure_law_refuses.StructuredDischargeContradiction.test_the_authored_semantics_must_match_the_closure)
+*** A DISCHARGE AUTHORED FOR NON-TERMINAL WORK IS A CLAIM ABOUT WORK THAT DOES NOT EXIST. *** ... ok
+test_the_historical_attestation_cannot_discharge_the_current_candidate (tools.readiness.tests.test_closure_law_refuses.StructuredDischargeContradiction.test_the_historical_attestation_cannot_discharge_the_current_candidate) ... ok
+test_the_historical_candidate_ref_is_refused (tools.readiness.tests.test_closure_law_refuses.StructuredDischargeContradiction.test_the_historical_candidate_ref_is_refused) ... ok
+test_the_live_tree_carries_no_discharge_contradiction (tools.readiness.tests.test_closure_law_refuses.StructuredDischargeContradiction.test_the_live_tree_carries_no_discharge_contradiction) ... ok
+test_the_prospective_binding_is_admitted (tools.readiness.tests.test_closure_law_refuses.StructuredDischargeContradiction.test_the_prospective_binding_is_admitted) ... ok
+test_the_valid_baseline_carries_no_contradiction (tools.readiness.tests.test_closure_law_refuses.StructuredDischargeContradiction.test_the_valid_baseline_carries_no_contradiction)
+*Without this, every kill below could be the fixture's own defect rather than the falsifier's.* ... ok
+test_a_terminal_obligation_without_semantics_is_never_present (tools.readiness.tests.test_closure_law_refuses.StructuredSemanticsAreMeasured.test_a_terminal_obligation_without_semantics_is_never_present)
+*The mutation: a DISCHARGED obligation stripped of its block must move to `refused_controls`, not stay ... ok
+test_every_discharged_prose_hit_carries_a_disposition (tools.readiness.tests.test_closure_law_refuses.StructuredSemanticsAreMeasured.test_every_discharged_prose_hit_carries_a_disposition)
+*** A TERMINAL OBLIGATION WHOSE OWN PROSE MENTIONS A GAP CONCEPT MUST CARRY A DISPOSITION. *** ... ok
+test_internal_and_external_dependencies_are_different_populations (tools.readiness.tests.test_closure_law_refuses.StructuredSemanticsAreMeasured.test_internal_and_external_dependencies_are_different_populations)
+*An EXTERNAL obligation must never appear in the INTERNAL dependency list, and vice versa.* ... ok
+test_present_controls_carry_authored_semantics (tools.readiness.tests.test_closure_law_refuses.StructuredSemanticsAreMeasured.test_present_controls_carry_authored_semantics) ... ok
+test_the_scan_and_the_semantics_never_feed_a_count (tools.readiness.tests.test_closure_law_refuses.StructuredSemanticsAreMeasured.test_the_scan_and_the_semantics_never_feed_a_count)
+*Neither the gap-word scan nor the semantics block may move a closure count.* ... ok
+test_a_live_defect_on_a_terminal_obligation_is_refused (tools.readiness.tests.test_closure_law_refuses.TerminalHistoryMayNotHideALiveDefect.test_a_live_defect_on_a_terminal_obligation_is_refused) ... ok
+test_a_partial_defect_on_a_terminal_obligation_is_refused (tools.readiness.tests.test_closure_law_refuses.TerminalHistoryMayNotHideALiveDefect.test_a_partial_defect_on_a_terminal_obligation_is_refused) ... ok
+test_a_repaired_defect_on_a_terminal_obligation_is_permitted (tools.readiness.tests.test_closure_law_refuses.TerminalHistoryMayNotHideALiveDefect.test_a_repaired_defect_on_a_terminal_obligation_is_permitted)
+*The repaired control: a `REPAIRED_STALE` defect is HISTORY and the coverage gate carries NO problem.* ... ok
+test_an_orphan_history_id_is_still_refused (tools.readiness.tests.test_closure_law_refuses.TerminalHistoryMayNotHideALiveDefect.test_an_orphan_history_id_is_still_refused) ... ok
+test_an_unknown_review_state_on_a_terminal_obligation_is_refused (tools.readiness.tests.test_closure_law_refuses.TerminalHistoryMayNotHideALiveDefect.test_an_unknown_review_state_on_a_terminal_obligation_is_refused) ... ok
+test_an_unreconciled_defect_on_a_terminal_obligation_is_refused (tools.readiness.tests.test_closure_law_refuses.TerminalHistoryMayNotHideALiveDefect.test_an_unreconciled_defect_on_a_terminal_obligation_is_refused) ... ok
+test_a_forced_ready_status_is_refused_while_gaps_remain (tools.readiness.tests.test_closure_law_refuses.TheLawStillRefuses.test_a_forced_ready_status_is_refused_while_gaps_remain)
+*** THE LAW IS EXERCISED ON WORK THE ARM AUTHORS, SO IT KEEPETH BITING AFTER EVERY REAL DISCHARGE. *** ... ok
+test_the_live_document_is_never_written (tools.readiness.tests.test_closure_law_refuses.TheLawStillRefuses.test_the_live_document_is_never_written)
+A guard that mutates the thing it guards is the defect, not the check. ... ok
+test_verified_fixed_may_not_be_written_by_this_builder (tools.readiness.tests.test_closure_law_refuses.TheLawStillRefuses.test_verified_fixed_may_not_be_written_by_this_builder) ... ok
+test_case_0_the_unmutated_fixture_is_green (tools.readiness.tests.test_closure_state_mutations.ClosureStateMutations.test_case_0_the_unmutated_fixture_is_green)
+*** THE BASELINE, WITHOUT WHICH EVERY OTHER KILL IS UNATTRIBUTABLE. *** ... ok
+test_every_required_mutation_is_killed_for_its_own_reason (tools.readiness.tests.test_closure_state_mutations.ClosureStateMutations.test_every_required_mutation_is_killed_for_its_own_reason)
+*** EVERY MUTATION MUST BE REFUSED, AND REFUSED FOR THE REASON IT PROVOKES. *** ... ok
+test_the_campaign_is_the_required_size (tools.readiness.tests.test_closure_state_mutations.ClosureStateMutations.test_the_campaign_is_the_required_size)
+*** AT LEAST THIRTEEN MUTATIONS, EVERY ONE CARRYING AN EXPECTED CATEGORY. *** ... ok
+test_the_live_gate_accepts_the_committed_tree (tools.readiness.tests.test_closure_state_mutations.ClosureStateMutations.test_the_live_gate_accepts_the_committed_tree)
+*A campaign that reddened the real tree would prove the campaign, not the tree.* ... ok
+
+----------------------------------------------------------------------
+Ran 78 tests in 64.348s
+
+OK
+
+
+Wall time: 70.26 seconds

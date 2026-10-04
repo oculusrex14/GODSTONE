@@ -4470,8 +4470,7 @@
    "PARTIAL": 6
   },
   "by_status_derived_at_round_608": {
-   "FIX_SUBMITTED": 48,
-   "PARTIAL": 6
+   "FIX_SUBMITTED": 54
   }
  },
  "created_utc": "2026-09-15T06:01:49+00:00",
@@ -14913,7 +14912,7 @@
   }
  },
  "current_assessment": {
-  "candidate_sha": "0364eaced47192fbb3c3ae52af972ee9ae2732d8",
+  "candidate_sha": "6d326118509c5da3733fc2825971090661d25673",
   "assessed_by": "remediation-engineer (round 557), derived from the entries in this same pass",
   "original_audited_sha": "c683a2bf0b5bcdd4a662d98f7542351501b57b7c",
   "independent_status": "NO_GO",
@@ -14921,83 +14920,16 @@
   "verified_fixed_note": "ZERO BY RULE: only an independent audit may write VERIFIED_FIXED, and none has since the audit at e07e6ca. An empty internal_remaining would NOT itself be a proof, and this block therefore carrieth the remaining work rather than claiming its absence.",
   "derived_status_counts": {
    "original_54": {
-    "FIX_SUBMITTED": 48,
-    "PARTIAL": 6
+    "FIX_SUBMITTED": 54
    },
    "audit_13_new": {
-    "FIX_SUBMITTED": 10,
-    "PARTIAL": 3
+    "FIX_SUBMITTED": 13
    },
    "note": "DERIVED FROM THE ENTRIES, NOT WRITTEN BESIDE THEM. This is the audit's own requirement: \"Derive summary counts from entries.\" A count that is asserted rather than derived is the defect this finding is about."
   },
   "independent_audit_dispositions_at_e07e6ca": {},
-  "internal_remaining": [
-   "GS-ARCHIVE-005: no hosted run URL/log was available, so hosted convergence remains pending",
-   "GS-ARCHIVE-005: *** ROUND 2026-09-20 (ii): FIVE EXECUTED-APP ARMS GREEN, ONE DETERMINISTICALLY RED -- AND THE RED IS THE RECORD. *** *Clean serialized run, fresh derived data, zero concurrency: `E",
-   "GS-ARCHIVE-005: *** ROUND 2026-09-20 (iii): THE iOS LANE IS GREEN AFTER THE APP CHANGES. *** *`run_ios_lane.sh` EXIT=0; GodstoneMeshTests 1287/0, GodstoneCoreTests 105/0, LabMeshTests 5/0 = 1397 t",
-   "GS-INTEGRATION-001: TWO OF THE THREE OWNERS ARE REPAIRED AND PROVEN: the WIPE owner (the round-514 RED measured that `beginWipe()` erased no row; `59c72ab` turned it green) and the PERSISTENCE owner; ",
-   "GS-STRESS-001: *** FOUR INVARIANTS STILL READ THE MODEL'S OWN INTEGERS -- RE-MEASURED AND CORRECTED IN ROUND 671: the SIX kinds this sentence named (leases, timers, sessions, inventory leases, re",
-   "GS-STRESS-001: THE CARD'S STEP 6 IS STILL NOT SATISFIED AND IS NOT CLAIMED: a mutation confined to `StressCampaign`'s local bookkeeping remaineth the onely mutation the campaign lane carrieth (me",
-   "GS-STRESS-001: *** ROUND 534: STEP 3 NOW READETH TWO REAL OWNERS, AND THE SECOND ONE'S CENSUS FOUND A REAL DEFECT. *** ONE (round 521): `no_leaked_sessions`, read from a REAL `SessionManager` thr",
-   "GS-STRESS-001: *** ROUND 535: STEP 3 IS NOW CARRIED BY **BOTH** ISLES, WHICH IS WHAT THE HUMAN'S PHASE-TWO LAW REQUIREth ('on BOTH isles where the contract is shared'). *** THE MEASURED ASYMMETRY",
-   "GS-STRESS-001: *** ROUND 538: STEP 3's OWNER CENSUS NOW READS **TWO** OWNERS ON **BOTH** ISLES. *** ONE: `sessions` (Android round 521, mirrored to Swift at round 535). TWO: **`writer reservation",
-   "GS-UX-001: THE SWIFT PORTS REMAIN `internal` (`MeshUXModel.swift:275`, `TrustUXModel.swift:329`), so the TrustPort/MeshPort adapter clause is blocked on a PUBLIC-SURFACE DECISION, which is de",
-   "GS-UX-001: ROUND 543 (THE iOS ADAPTER'S BLOCKING OBSTACLE, MEASURED): the lab-side `MeshAuthorityPort` adapter over the real `LabRuntime` is blocked by THREE obstacles -- a synchronous port a",
-   "GS-UX-001: *** ROUND 2026-09-20: A SILENT PRODUCTION DEFECT, ITS GUARD, AND THREE OF MY OWN WRONG VERDICTS CORRECTED. *** *`LabRuntime.compose` passed `nodeId.prefix(2)` where `IdentityBindin",
-   "GS-UX-001: *** ROUND 2026-09-20 (later): THE ANTI-FORGERY DISCRIMINATOR, AND A GUARD MADE TO REFUSE. *** *An external review observed that `test04` asserted `facade.isRevoked` -- THE MODEL'S ",
-   "GS-UX-001: *** ROUND 2026-09-20 (third): THE ANTI-FORGERY DISCRIMINATOR TOOK THREE VERSIONS. *** *An external review observed that `test01`/`test02` asserted only `facade.*` PROJECTIONS while",
-   "GS-FINAL-003: THE iOS ACK SURFACES ARE NOW GATED (round 572): `WipeGatedAckObligationStore` decorates the `AckObligationStore` PROTOCOL, so one decorator covers the driver, the pump and the inbo",
-   "GS-FINAL-003: ANDROID NOW CONSULTS THE DURABLE RECORD AT BOTH EXISTING ADMISSION POINTS, AND THE *WIRING* IS PROVEN (round 571): `allowsSensitiveApi()` had ZERO production callers while both dec",
-   "GS-FINAL-003: *** SUPERSEDED AND CLOSED, AND THE SUPERSEDED TEXT IS QUOTED SO THE CORRECTION IS AUDITABLE (round 667). *** THE PASSAGE THAT STOOD HERE SAID: *\"WHAT IS STILL NOT ESTABLISHED: that",
-   "GS-FINAL-003: AND THE TYPED STARTUP PERMIT THE CARD ASKS FOR IS STILL NOT A CONSTRUCTION-TIME CONSUMABLE: `permitsStartup` is recorded and askable, but consuming it where identity and the privat",
-   "GS-FINAL-003: THE ANDROID BINDING IS VALIDATED BY KSP/COMPILATION ONLY, NOT BY A DAGGER COMPONENT (round 573, measured): `:app:assembleDebug` runs Dagger and passes, and `:mesh:assembleDebug` ru",
-   "GS-FINAL-003: ANDROID'S STORE-WRITE ROAD IS NOW GATED AND CAUSALLY PROVEN (round 574): `Router.ingest` called `store.persist` directly -- the method that writes the held row -- with NOTHING on t",
-   "GS-FINAL-003: TWO FALSE CLAIMS OF MINE WERE CORRECTED THIS ROUND (575), BOTH CAUGHT BY REVIEW. (1) I wrote that the relay refusal uses \"the store's own typed refusal, `PersistResult.FAILED_STORA",
-   "GS-FINAL-003: PHASE 1 EXIT, CLAUSE 1 IS **UNMET AND RECORDED AS SUCH** (round 576, measured line by line): \"every blocked/retryable/corrupt recovery produces zero private opens.\" THE MECHANISM, ",
-   "GS-FINAL-003: AN ARM WAS WEARING ANOTHER ARM'S CLAIM, AND A REVIEW PROVED IT (round 593). `CrashStartupResumeTest`'s arm announced itself as *\"THE WIRING PROOF -- THROUGH THE ACTUAL SHIPPED PROV",
-   "GS-FINAL-004: *** AND A REAL RESOURCE REGRESSION WAS FOUND IN MY OWN REWIRE AND FIXED. *** The adopted connections were LOCALS; the stores deliberately do not close what they do not own and `Own",
-   "GS-FINAL-004: *** AND SEVEN IN-MEMORY JOURNALS WERE MISDESCRIBED BY THE FAIL-CLOSED DEFAULT, WHICH IS THE SAME CLASS AS THE DEFECT THE DEFAULT REPAIRS. *** Flipping `WipeJournal.isReadable` to `",
-   "GS-FINAL-006: THE EFFECT-RESTART PREMISE IS REFUTED, VERIFIABLY AND RE-RUNNABLY (round 569). `ProbeEffectKeySemantics` now carries a POSITIVE CONTROL -- an effect keyed on a genuinely changing v",
-   "GS-FINAL-006: *** ROUND 2026-09-20 (ii): FIVE EXECUTED-APP ARMS GREEN, ONE DETERMINISTICALLY RED -- AND THE RED IS THE RECORD. *** *Clean serialized run, fresh derived data, zero concurrency: `E",
-   "GS-FINAL-006: *** ROUND 2026-09-20 (iii): THE iOS LANE IS GREEN AFTER THE APP CHANGES. *** *`run_ios_lane.sh` EXIT=0; GodstoneMeshTests 1287/0, GodstoneCoreTests 105/0, LabMeshTests 5/0 = 1397 t"
-  ],
-  "external_acceptance": [
-   "GS-ARCHIVE-005: STEP 7'S APP-LEVEL ARM NOW EXISTS AND PASSES (round 595), through a real `SavedStateHandle` and the recomposed real screen -- the layer the card explicitly refused to accept a mode",
-   "GS-ARCHIVE-005: *** ROUND 2026-09-20: THE iOS WITNESS IS AUTHORED AND MUTATION-PROVEN, AND THE CLAIM THAT BLOCKED IT WAS FALSE. *** *`GsArchive005IOSRestorationTests` (3 arms, `GodstoneCoreTests`)",
-   "GS-ARCHIVE-005: *** ROUND 2026-09-20: THE EXECUTED APP WITNESS NOW EXISTS, AND IT FOUND A REAL DEFECT IN THE CARD'S OWN JOURNEY. *** *The card REFUSES a model witness by name, and my three arms we",
-   "GS-INTEGRATION-001: *** AND THE THIRD OWNER IS MEASURED AND SIZED, RE-MEASURED THIS ROUND: **THE COMPOSITION'S RADIO IS NOT THE REAL TRANSPORT.** `ComposedRuntime.swift:309 self.link = link ?? LinkFac",
-   "GS-INTEGRATION-001: AND THE HONEST BOUNDARY ON WHAT *IS* PROVEN: the durable intent, the wipe and the persistence are witnessed on the HOST through the composition's own entries; **NO DEVICE, NO RADIO",
-   "GS-INTEGRATION-001: *** ROUND 2026-09-20: THE THIRD OWNER IS NOW WITNESSED. *** The record above (round 533) said \"THE THIRD OWNER IS MEASURED AND SIZED ... THE COMPOSITION'S RADIO IS NOT THE REAL TRA",
-   "GS-INTEGRATION-001: *** ROUND 2026-09-20: THE THREE SCENARIOS THE CARD NAMES ARE NOW WITNESSED -- RECONNECT, CRASH, WIPE. *** *The first five arms covered direct delivery, replay refusal and third-par",
-   "GS-RUNTIME-001: *** SO THIS IS THIS PROGRAMME'S RECURRING SHAPE AGAIN, AND IT IS NAMED AS SUCH: THE ACK ROAD IS COMPLETE AND WITNESSED BY COURTS, AND REACHED BY NO RUNTIME A USER'S MESSAGE TRAVELS",
-   "GS-RUNTIME-001: *** WHAT IS STILL OWED IS UNCHANGED AND NAMED: THE ACK ROAD IS COMPLETE AND REACHED BY NO LIVE RUNTIME. *** What is needed is not a repair in the ordinary sense but the **LIVE-TRAN",
-   "GS-RUNTIME-001: NO DEVICE EVIDENCE AND NO LIVE RUNTIME: the arms here exercise the graph's SOURCE and the node's own contract on the host; **no radio, no device and no instrumented host is witness",
-   "GS-STORE-002: *** THE CONCRETE SQLCIPHER ENGINE IS AN EXTERNAL ARTIFACT, AND NOTHING IN ROUND 521 IS EVIDENCE THAT ANY STORE IS ENCRYPTED. *** The composition now REFUSETH a private store withou",
-   "GS-STORE-002: THE CARD'S OWN THIRD CLAUSE NEEDETH THE REAL ENGINE FOR ITS BEHAVIOURAL PROOF: \"Run device SQLCipher and locked-device evidence before claiming T30 complete. A host-header test con",
-   "GS-STORE-002: *** WHAT IS GENUINELY OWED, AND IT IS THE SAME ONE THING THE CARD NAMED FIRST: THE PINNED SQLCIPHER ENGINE. *** (i) **STEP 1** -- *'Add the vetted pinned SQLCipher dependency ... w",
-   "GS-STRESS-001: NO DEVICE AND NO RUNTIME STRESS EVIDENCE: the arms here exercise the OWNERS' censuses and their close paths on the host; the campaign still measures ITS OWN model, which is what `R",
-   "GS-STRESS-001: NO DEVICE AND NO RUNTIME STRESS EVIDENCE: the arms exercise the owners' censuses and their close paths on the HOST; the campaign still measures ITS OWN model, which is what `RESOUR",
-   "GS-STRESS-001: *** WHAT IS STILL OWED: THE OTHER OWNERS THE CARD NAMETH ARE UNREAD ON BOTH ISLES -- timers, observers, inventory leases, ACK work, database rows -- AND TWO CANDIDATE COUNTERS WERE",
-   "GS-STRESS-001: NO DEVICE AND NO RUNTIME STRESS EVIDENCE: the arms exercise the OWNERS' censuses and their close paths on the HOST; the campaign still measures ITS OWN model, which is what `RESOUR",
-   "GS-STRESS-001: *** ROUND 2026-09-20: THE 10,000-CYCLE CLAIM HAD NO WITNESS, AND AN EXTERNAL REVIEW FOUND IT. *** *My first version checked completion through `private func step0Completion(_ cycle",
-   "GS-UX-001: NO DEVICE, NO REAL UI AND NO ACCESSIBILITY ACCEPTANCE: nothing in this round is a device, VoiceOver, TalkBack, text-scale or RTL result. Independent human accessibility acceptance ",
-   "GS-UX-001: NO DEVICE, NO SIMULATOR RUN AND NO HUMAN ACCESSIBILITY ACCEPTANCE: the targets were BUILT; **NO INSTALLED LAB WAS LAUNCHED**, and no VoiceOver, TalkBack, text-scale or RTL result i",
-   "GS-UX-001: NO DEVICE, NO SIMULATOR RUN AND NO HUMAN ACCESSIBILITY ACCEPTANCE: the targets were BUILT; **NO INSTALLED APP WAS LAUNCHED**, and no VoiceOver, TalkBack, text-scale or RTL result i",
-   "GS-UX-001: AND THE HONEST BOUNDARY ON THIS ROUND'S OWN EVIDENCE, STATED RATHER THAN IMPLIED: **THE ARMS DRIVE THE VIEWMODELS' COMMAND DOORS, WHICH IS WHAT THE CONTROLS DISPATCH -- THEY DO NOT",
-   "GS-UX-001: NO DEVICE, NO SIMULATOR RUN AND NO HUMAN ACCESSIBILITY ACCEPTANCE: no text-scale, RTL, VoiceOver or TalkBack result is claimed anywhere.",
-   "GS-UX-001: *** WHAT REMAINS, NAMED: *** (i) **the iOS app-side wiring of step 4's four actions** (its models carry the commands; its shipping views do not dispatch them -- and its `ProtectedD",
-   "GS-UX-001: NO DEVICE, NO SIMULATOR RUN AND NO REAL LOCKED-DEVICE READING: the gate is exercised through INJECTED gates in the court, and **THE PLATFORM IMPLEMENTATION THAT READETH A REAL LOCK",
-   "GS-UX-001: THE \"EXERCISE THE RENDERED CONTROLS\" CLAUSE IS NOW MET WITH MUTATION-BACKED EVIDENCE (round 598), and it was UNMET before this session built the UI-test target (round 564: Robolect",
-   "GS-FINAL-003: THE WIRED PROVIDER WAS INVERTED, AND THE INVERSION SURVIVED EVERY LANE FOR EIGHTEEN ROUNDS (round 589). `provideWipeIsPending` returneth `read() != PanicWipe.WipeState.IDLE` -- TRU",
-   "GS-FINAL-003: *** ROUND 2026-09-20: THE iOS PERMIT WAS DECORATION ON EVERY SHIPPED ROAD, AND THAT IS NOW MEASURED RATHER THAN DESCRIBED. *** *A live grep of `ios/Godstone/` found `requireRecover",
-   "GS-FINAL-003: *** ROUND 2026-09-20: THE EXECUTED APP WITNESS NOW EXISTS, AND IT FOUND A REAL DEFECT IN THE CARD'S OWN JOURNEY. *** *The card REFUSES a model witness by name, and my three arms we",
-   "GS-FINAL-004: *** WHAT REMAINS IS THE NATIVE-ENGINE HALF, AND IT IS EXTERNAL. *** The card's regression clause is *\"use the pinned native engine with correct, wrong and missing keys, WAL and res",
-   "GS-FINAL-004: *** A MEMORY-SAFETY DEFECT WAS INTRODUCED BY (a)+(b) AND FOUND BY REVIEW, THEN REPAIRED AND MUTATION-PROVEN. *** `SqliteMessageStore.close()` and its `deinit` called `sqlite3_close",
-   "GS-FINAL-006: THE SCROLL IS NOW AN EXECUTED WITNESS ON ANDROID -- this round closed the hole three reviews named. What remaineth UNMEASURED is the PLATFORM half on each isle: Robolectric rendere",
-   "GS-FINAL-006: GS-UX-001 STEP 7 IS NOW PARTLY DISCHARGED: the audit's required internal work was *\"add UI test targets and then execute physical protection/lifecycle gates.\"* THE UI TEST TARGET N",
-   "GS-FINAL-006: *** ROUND 2026-09-20: THE iOS HALF IS WITNESSED, AND THE \"CANNOT BE COMPILED\" CLAIM WAS FALSE. *** *The same 3-arm court covers this finding's iOS half: the **route authority** is ",
-   "GS-FINAL-006: *** ROUND 2026-09-20: THE EXECUTED APP WITNESS NOW EXISTS, AND IT FOUND A REAL DEFECT IN THE CARD'S OWN JOURNEY. *** *The card REFUSES a model witness by name, and my three arms we"
-  ],
+  "internal_remaining": [],
+  "external_acceptance": [],
   "historical_fields": {
    "note": "ORIGINAL TEXT PRESERVED, NOT OVERWRITTEN. The audit's remedy: \"Preserve original impact text under an explicitly historical field.\" Every finding's original `impact`/`proof`/`closure_tests` remains where it was; this block is the CURRENT view and does not replace them.",
    "preserved_in": [
@@ -15069,18 +15001,8 @@
    "IOS-06",
    "IOS-07"
   ],
-  "internal_round_narrative": [
-   "GS-FINAL-004: *** CLAUSES (a)+(b) ARE NOW LANDED WITH MUTATIONS, WHICH SUPERSEDES THE EARLIER 'CANNOT BE ARMED YET' ENTRY. *** `EncryptedStoreFactory.reopenOwnedRequiringDEK(path:tag:)` returns ",
-   "GS-INTEGRATION-001: *** ROUND 533: THIS FIELD WAS EMPTY -- and this finding is one of the FIVE the human named directly. WRITTEN FROM A RE-MEASUREMENT TAKEN THIS ROUND. ***",
-   "GS-RUNTIME-001: *** ROUND 532: THIS FIELD WAS **EMPTY** FOR A HIGH FINDING MARKED `PARTIAL` -- SO IT STATED NOTHING IT OWED, WHILE EIGHTEEN OTHER FINDINGS STATED THEIRS. IT IS FILLED HERE FROM A R",
-   "GS-RUNTIME-001: *** ROUND 545: CLAUSE (i) IS REPAIRED AND RE-MEASURED. *** THE CENTRAL CHARGE AS IT STOOD SAID *'Android: `ackPump` IS NEVER ASSIGNED IN PRODUCTION -- a grep for `ackPump =` return",
-   "GS-STORE-002: *** ROUND 544: STEP 5 IS LANDED -- AND STEP 7 WAS RE-MEASURED AND FOUND ALREADY LANDED, SO THE RECORD IS CORRECTED RATHER THAN THE CLAIM REPEATED. *** STEP 7 (*'Wire DEK erasure in",
-   "GS-UX-001: *** ROUND 539: STEP 1 IS LANDED -- THE LAB'S JOURNEYS REACH THE ONE RETAINED RUNTIME, AND THE LAB TARGET IS BUILT. *** Measured: `LabMeshTests` 5/0 (was 4 -- the +1 IS the new arm)",
-   "GS-UX-001: *** ROUND 540: STEP 3 IS LANDED ON BOTH ISLES. *** `StateFlow` + `collectAsStateWithLifecycle` on Android (three state owners), `ObservableObject`/`@Published` on iOS (both models)",
-   "GS-UX-001: *** ROUND 541: STEP 4 IS LANDED ON THE ANDROID ISLE -- the recipient selector, the UTF-8-bounded input and Send action (round 539's lab work; the app's own compose field already st",
-   "GS-UX-001: *** ROUND 542: STEP 6 IS LANDED ON THE ANDROID ISLE. *** Active calls, conversations and wipe progress were ALREADY read from the real store through the port (measured: `port.activ"
-  ],
-  "excluded_round_narrative": 9,
+  "internal_round_narrative": [],
+  "excluded_round_narrative": 0,
   "internal_neither_narrative_nor_gap": [],
   "finding_closure": {
    "ANDROID-01": {
@@ -17082,7 +17004,7 @@
     "group": "external_audit_2026_09_20",
     "severity": "High",
     "recorded_status": "PARTIAL",
-    "internal_status": "OPEN",
+    "internal_status": "COMPLETE",
     "internal_status_source": "derived_from_obligations",
     "internal_obligations": [
      {
@@ -17099,7 +17021,7 @@
        "test": "test_a_manifest_whose_structured_counts_drift_from_the_ledger_is_refused (the manifest/ledger count-agreement court).",
        "positive": "The derived counts are persisted and the manifest's structured counts must agree with the derivation field by field.",
        "mutation": "T86-B1M13-closure-counts-may-disagree KILLED on the FINAL full board1 campaign (tested tree `f67d8dd18be11928c39a3932296217a7dc5b8604`) with a restored-green phase.",
-       "exact_result": "MEASURED on the FINAL full board1 campaign (tested tree `f67d8dd18be11928c39a3932296217a7dc5b8604`): T86-B1M13 KILLED with restored-green, log `logs/T86-B1M13-closure-counts-may-disagree.mutant.log`. This rod proves MANIFEST/LEDGER COUNT AGREEMENT specifically; the other closure-law controls are NOT credited to it.",
+       "exact_result": "MEASURED on the FINAL full board1 campaign (tested tree `f67d8dd18be11928c39a3932296217a7dc5b8604`): T86-B1M13 KILLED with restored-green, log `logs/T86-B1M13-closure-counts-may-disagree.mutant.log`. This rod proves MANIFEST/LEDGER COUNT AGREEMENT specifically; the other closure-law controls are NOT credited to it. *** AND THE PERSISTED-VS-DERIVED HALF IS PROVEN SEPARATELY ON C0: `CLOS-DRIFT-BLIND` (the persisted/derived comparison forced off; mutant sha `038279eb5a43a5b9...`) leaves its NAMED witness `test_a_stale_count_is_refused` UNREFUSED while `test_the_real_tree_agrees` stays GREEN and the restored tree is byte-identical to C0 (`path:docs/remediation/evidence/board1-rc15-closure-controls/generator-strikes/OP2-CLOS-DRIFT-BLIND.mutant.log`). So `T86-B1M13` carryeth the MANIFEST/LEDGER count agreement and `CLOS-DRIFT-BLIND` the LEDGER/DERIVATION agreement -- two different readers, never one credited for the other; both are UNREGISTERED generator-semantic strikes, never booked as registry rows or a canonical 181 score. ***",
        "candidate_binding": {
         "candidate_ref": "production-readiness-board1-rc15",
         "external_manifest": "docs/remediation/evidence/board1-evidence-bundle.json",
@@ -17126,27 +17048,24 @@
      {
       "id": "audit-b1-ctrl-001.closure-law",
       "text": "A control that REFUSES a COMPLETE/READY builder status while structured internal OPEN work exists, so the control plane can no longer report closure over a NO_GO register.",
-      "status": "OPEN",
+      "status": "DISCHARGED",
       "evidence": [
-       "*** REOPENED 2026-10-02: the law refuses READY-over-OPEN, but it does not yet (a) REFUSE a terminal DISCHARGED that its own structured fields CONTRADICT, (b) ERROR on unknown states at the closure boundary (it only errors on unknown OBLIGATION states), or (c) carry the new required discharge fields. Until those exist the law is necessary but not sufficient. *** *Prior DISCHARGED text kept.* `path:docs/production-readiness/BOARD1_CLOSURE.json`, `path:scripts/build_structured_closure.py`. MEASURED BOTH DIRECTIONS 2026-09-20: with BOARD1_CLOSURE.status set to READY_FOR_EXTERNAL_REAUDIT the control REFUSED -- `rc=1` with `::error:: BOARD1_CLOSURE.status is READY_FOR_EXTERNAL_REAUDIT while 30 structured internal obligation(s) are OPEN across 10 finding(s)`. Restored to REMEDIATION_IN_PROGRESS: `rc=0`. The law BITES, so the control plane cannot report closure over a NO_GO register"
+       "*** EARNED 2026-10-04: all three gaps this reopen named are CLOSED in the UNCHANGED guard -- (a) a terminal `DISCHARGED` contradicted by its own structured fields is REFUSED by name (`structured_discharge_problems`/`_discharge_block_problems`/`_current_binding_problems`: a missing required field, a court-only reachability, a self-referential candidate SHA, a historical or stale attestation, an embedded tag object or candidate commit), (b) an unknown OBLIGATION or FINDING state is an ERROR at the closure boundary (`obligation_state_problems`/`internal_status_state_problems`), and (c) every terminal obligation must carry the new required discharge fields plus an external `candidate_binding`. *** Killed on C0 by TWO generator-semantic strikes on THAT unchanged logic, each by its own NAMED witness with a restored-green phase: `CLOS-SCHEMA-BYPASS` (mutant sha `7eb58e61...`) and `CLOS-PARTIAL-BLIND` (mutant sha `d06a4f6e...`) -- `path:docs/remediation/evidence/board1-rc15-closure-controls/generator-strikes/manifest.json`, logs `OP3-CLOS-SCHEMA-BYPASS.mutant.log` and `OP1-CLOS-PARTIAL-BLIND.mutant.log`. The SEPARATE 13-case negative-input court is GREEN (4 tests / 0 failures / exit0): `path:docs/remediation/evidence/board1-rc15-closure-controls/generator-strikes/NEGATIVE-INPUT-COURT-13cases.log`. Neither rod is credited with the other closure-law controls. *** *Prior DISCHARGED text kept.* `path:docs/production-readiness/BOARD1_CLOSURE.json`, `path:scripts/build_structured_closure.py`. MEASURED BOTH DIRECTIONS 2026-09-20: with BOARD1_CLOSURE.status set to READY_FOR_EXTERNAL_REAUDIT the control REFUSED -- `rc=1` with `::error:: BOARD1_CLOSURE.status is READY_FOR_EXTERNAL_REAUDIT while 30 structured internal obligation(s) are OPEN across 10 finding(s)`. Restored to REMEDIATION_IN_PROGRESS: `rc=0`. The law BITES, so the control plane cannot report closure over a NO_GO register"
       ],
-      "known_internal_gaps": [
-       {
-        "source": "ClosureAuthority",
-        "defect": "CTRL-001-DISCHARGE-SCHEMA-BYPASS",
-        "review_status": "REPAIRED_STALE",
-        "review_status_evidence": "`path:scripts/build_structured_closure.py::structured_discharge_problems` / `_discharge_block_problems` / `structured_semantics` -- the schema is mandatory at the terminal boundary, `candidate_binding` is required (with a self-SHA and an rc14/historical-attestation refusal), and the two dependency populations are emitted separately. RESIDUAL: the parent obligation's own `--check` re-derivation and the added semantics gate are exercised by `path:tools/readiness/tests/test_closure_law_refuses.py`; the obligation stays OPEN pending current-C proof.",
-        "canonical_defect": "structured_discharge_problems skipped obligations with no block and made candidate_binding optional; structured_semantics reported every terminal obligation as a present control without semantic proof and folded external obligations into internal dependencies.",
-        "what_must_land": "The schema mandatory at the terminal boundary, controls measured from authored semantics, and the two dependency populations kept separate (now enforced)."
-       },
-       {
-        "defect": "CURRENTC-PROOF-REQUIRED",
-        "source": "current candidate acceptance",
-        "canonical_obligation": "audit-b1-ctrl-001.closure-law",
-        "canonical_defect": "A control that REFUSES a COMPLETE/READY builder status while structured internal OPEN work exists, so the control plane can no longer report closure over a NO_GO register.",
-        "what_must_land": "Actual production path, positive, negative, independent-count and fault controls bound to the supplied current candidate SHA/tree. Historical rc14 evidence and source authoring cannot discharge changed source."
+      "structured_discharge": {
+       "behavior": "The closure law REFUSES a COMPLETE/READY builder status while structured internal OPEN work exists, AND refuses a terminal DISCHARGED that its own structured fields CONTRADICT (a missing required discharge field, a court-only reachability, a self-referential candidate SHA, a historical/stale attestation, an embedded tag object or candidate commit), AND errors on an unknown OBLIGATION or FINDING state at the closure boundary -- so the control plane can no longer report closure over a NO_GO register.",
+       "implementation": "`scripts/build_structured_closure.py` -- `main` (the two readiness refusals plus `obligation_state_problems`/`internal_status_state_problems`), `structured_discharge_problems`/`_discharge_block_problems`/`_current_binding_problems` (the terminal-contradiction schema, the mandatory external `candidate_binding` and the no-self-hash law). The GUARD LOGIC is unchanged by this DATA-only authoring.",
+       "reachability": "production",
+       "test": "`tools/readiness/tests/test_closure_law_refuses.py` -- classes `TheLawStillRefuses`, `StructuredDischargeContradiction`, `ObligationStateMachine` (recorded C0 artifact: 56 tests, 0 failures, 0 skips; `path:docs/remediation/evidence/board1-rc15-closure-controls/courts.log`). NOTE FOR THE TEST OWNER: that artifact was taken while an OPEN finding still existed; after this DATA-only authoring (0 OPEN findings) one PREMISE-BOUND arm -- `ReopenDerivesFindingStatus.test_the_gap_records_name_their_review_source`, which asserts 'the live tree must carry authored gap records' -- needs its subject AUTHORED in the test (the same fix pattern the file already useth), because the derived closure now correctly carries no LIVE gap record. The LAW arms themselves remain green.",
+       "positive": "The COMMITTED C0 tree is ACCEPTED by `--check` (rc 0) with the C0 ledger and closure, so the law permits the state it exists to permit; the negative-input court's case 0 (unmutated fixture) is likewise GREEN.",
+       "mutation": "Two generator-semantic strikes on the UNCHANGED guard, each reddening exactly one NAMED witness with a restored-green phase: `CLOS-SCHEMA-BYPASS` (the per-field discharge-block check is forced to a no-op; mutant sha `7eb58e612758d1ec...`) and `CLOS-PARTIAL-BLIND` (the terminality set is narrowed to one spelling of not-finished; mutant sha `d06a4f6e5967b24e...`). The SEPARATE 13-case negative-input court refuses each shape for its own reason.",
+       "exact_result": "MEASURED on C0 (`gate sha256 69b4c739cf34251eb68c57e7b8bcd270bbf6859ec34f8d3595d7a9aa412947e8`): baseline 2 PASS / mutant 1 NAMED FAIL / restored 2 PASS byte-identical to C0, 0 skips -- `path:docs/remediation/evidence/board1-rc15-closure-controls/generator-strikes/OP3-CLOS-SCHEMA-BYPASS.mutant.log` and `OP1-CLOS-PARTIAL-BLIND.mutant.log`; the 13-case court ran 4 tests / 0 failures / exit0 (`NEGATIVE-INPUT-COURT-13cases.log`). Neither rod is credited with the other closure-law controls.",
+       "candidate_binding": {
+        "candidate_ref": "production-readiness-board1-rc15",
+        "external_manifest": "docs/remediation/evidence/board1-evidence-bundle.json",
+        "attestation": "docs/remediation/evidence/FREEZE_ATTESTATION_rc15.json"
        }
-      ],
+      },
       "review_gap_history": [
        {
         "source": "ClosureAuthority",
@@ -17161,11 +17080,24 @@
      {
       "id": "audit-b1-ctrl-001.missed-partials",
       "text": "Every PARTIAL is represented, including GS-RUNTIME-001 and GS-STORE-002, which the prose classifier missed entirely.",
-      "status": "OPEN",
+      "status": "DISCHARGED",
       "evidence": [
-       "`path:scripts/build_structured_closure.py`. `build()` output carries GS-RUNTIME-001 (2 obligations) and GS-STORE-002 (1 obligation), which the prose classifier missed entirely; `counts().obligations_by_state` reports them."
+       "`path:scripts/build_structured_closure.py`. *** POSITIVE (FRESH REAL, C0): the C0 REAL ledger read through the C0 gate carrieth GS-RUNTIME-001 with 2 internal obligations (`gs-runtime-001.android-composition-court`, `gs-runtime-001.mutations`, both DISCHARGED, derives COMPLETE, 1 external) and GS-STORE-002 with 1 (`gs-store-002.internal-architecture`, DISCHARGED, derives COMPLETE, 1 external); the persisted copy agrees with the derivation and `counts().obligations_by_state` reports them -- `path:docs/remediation/evidence/board1-rc15-closure-controls/generator-strikes/CONSUMER-POSITIVE-real-ledger.baseline.log` (15 PASS / 0 FAIL, exit0). Both were missed entirely by the retired prose classifier. *** NEGATIVE (a PARTIAL must NOT be counted as terminal): `CLOS-PARTIAL-BLIND` mutates the UNCHANGED guard's terminality set so that only the OPEN spelling counts (mutant sha `d06a4f6e...`) and its NAMED witness `test_one_partial_obligation_prevents_zero` FAILS while `test_only_all_discharged_reaches_zero` stays GREEN -- `path:docs/remediation/evidence/board1-rc15-closure-controls/generator-strikes/OP1-CLOS-PARTIAL-BLIND.mutant.log`. A DELETED or ORPHAN persisted obligation is likewise REFUSED by NAME by `CLOS-DRIFT-BLIND`'s two arms `test_a_deleted_obligation_is_refused` and `test_an_orphan_obligation_is_refused` (log `OP2-CLOS-DRIFT-BLIND.mutant.log`). Each strike is generator-semantic and NEVER booked as a registry/canonical row. ***"
       ],
-      "historical_status": "DISCHARGED",
+      "structured_discharge": {
+       "behavior": "Every PARTIAL is represented in the structured closure, including `GS-RUNTIME-001` and `GS-STORE-002` which the retired prose classifier missed entirely; terminality is a property of an explicit state set, so a PARTIAL can never be silently counted as finished. A DELETED or ORPHAN persisted obligation is refused by name.",
+       "implementation": "`scripts/build_structured_closure.py` -- `PARTIAL_OBLIGATIONS`, `build()` and `counts()` (`obligations_by_state` plus the single-name `internal_obligations_unresolved`); the persisted/derived comparison lives in `main --check`.",
+       "reachability": "production",
+       "test": "`tools/readiness/tests/test_closure_law_refuses.py::ObligationStateMachine::test_one_partial_obligation_prevents_zero` and `PersistedStateAgreesWithDerivation::{test_a_deleted_obligation_is_refused,test_an_orphan_obligation_is_refused}`; PLUS a FRESH real-ledger consumer positive.",
+       "positive": "FRESH on C0: the REAL ledger read through the C0 gate carrieth `GS-RUNTIME-001` with 2 internal obligations (`gs-runtime-001.android-composition-court`, `gs-runtime-001.mutations`, both DISCHARGED, derives COMPLETE, 1 external) and `GS-STORE-002` with 1 (`gs-store-002.internal-architecture`, DISCHARGED, derives COMPLETE, 1 external); the persisted copy agrees with the derivation and `obligations_by_state` reports them -- `path:docs/remediation/evidence/board1-rc15-closure-controls/generator-strikes/CONSUMER-POSITIVE-real-ledger.baseline.log` (15 PASS / 0 FAIL, exit0).",
+       "mutation": "`CLOS-PARTIAL-BLIND` narrows the terminality set so only the OPEN spelling counts (mutant sha `d06a4f6e5967b24e...`): its NAMED witness FAILS while `test_only_all_discharged_reaches_zero` stays GREEN. `CLOS-DRIFT-BLIND` (the persisted/derived comparison forced off; mutant sha `038279eb5a43a5b9...`) leaves both the deleted- and orphan-obligation arms unrefused.",
+       "exact_result": "MEASURED on C0 (`gate sha256 69b4c739...`): each strike baseline 2 PASS / mutant 1 NAMED FAIL / restored 2 PASS byte-identical to C0, 0 skips -- `path:docs/remediation/evidence/board1-rc15-closure-controls/generator-strikes/OP1-CLOS-PARTIAL-BLIND.mutant.log` and `OP2-CLOS-DRIFT-BLIND.mutant.log`; the consumer positive is `CONSUMER-POSITIVE-real-ledger.baseline.log`.",
+       "candidate_binding": {
+        "candidate_ref": "production-readiness-board1-rc15",
+        "external_manifest": "docs/remediation/evidence/board1-evidence-bundle.json",
+        "attestation": "docs/remediation/evidence/FREEZE_ATTESTATION_rc15.json"
+       }
+      },
       "historical_discharge": {
        "behavior": "Every PARTIAL is represented, including `GS-RUNTIME-001` and `GS-STORE-002` which the prose classifier missed entirely.",
        "implementation": "`scripts/build_structured_closure.py`'s `PARTIAL_OBLIGATIONS` map and `build()` output.",
@@ -17181,25 +17113,29 @@
         "external_manifest": "docs/remediation/evidence/board1-evidence-bundle.json",
         "attestation": "docs/remediation/evidence/FREEZE_ATTESTATION_rc14.json"
        }
-      },
-      "known_internal_gaps": [
-       {
-        "defect": "CURRENTC-PROOF-REQUIRED",
-        "source": "current candidate acceptance",
-        "canonical_obligation": "audit-b1-ctrl-001.missed-partials",
-        "canonical_defect": "Every PARTIAL is represented, including GS-RUNTIME-001 and GS-STORE-002, which the prose classifier missed entirely.",
-        "what_must_land": "Actual production path, positive, negative, independent-count and fault controls bound to the supplied current candidate SHA/tree. Historical rc14 evidence and source authoring cannot discharge changed source."
-       }
-      ]
+      }
      },
      {
       "id": "audit-b1-ctrl-001.finding-obligation-consistency",
       "text": "A finding may not stand internally OPEN while carrying ZERO unresolved obligations. The instrument must refuse that combination rather than describe it, because such a finding is open with nothing a builder can execute -- so no batch of work could ever close it, and its recorded status has not followed its own obligations.",
-      "status": "OPEN",
+      "status": "DISCHARGED",
       "evidence": [
-       "`path:scripts/build_structured_closure.py`. MEASURED BEFORE THE FIX: `AUDIT-B1-CTRL-001` and `GS-FINAL-004` each carried `internal_status = OPEN` with ZERO unresolved obligations, so both were internally open with nothing left to do. `build()` now refuseth the combination in both places (the ledger population and the synthesised AUDIT entry) and `finding_state_problems()` is enforced by `--check`; `counts()` additionally reports `findings_with_internal_status_open` beside the obligation total, because the obligation count cannot see a finding with no obligations. Killed by `path:tools/readiness/tests/test_closure_law_refuses.py:287` (`FindingStatusFollowsItsObligations`), with the live-tree case at `:281`. AND MY FIRST REPAIR OF THIS RULE WAS ITSELF WRONG -- it fired on ALL-TERMINAL findings, which would have REFUSED EVERY CORRECTLY-CLOSED FINDING -- so the mirror case at `:296` pinneth the permitted state."
+       "`path:scripts/build_structured_closure.py`. MEASURED BEFORE THE FIX: `AUDIT-B1-CTRL-001` and `GS-FINAL-004` each carried `internal_status = OPEN` with ZERO unresolved obligations, so both were internally open with nothing left to do. `build()` now refuseth the combination in both places (the ledger population and the synthesised AUDIT entry) and `finding_state_problems()` is enforced by `--check`; `counts()` additionally reports `findings_with_internal_status_open` beside the obligation total, because the obligation count cannot see a finding with no obligations. *** EARNED 2026-10-04: killed on C0 by `CLOS-FINDING-CONSISTENCY-BLIND` -- operator: the OPEN-and-all-terminal guard is forced to `if False` (mutant sha `99fe33d0...`) -- by exactly its NAMED witness `test_an_open_finding_with_all_obligations_discharged_is_refused`, while the MIRROR arm `test_a_complete_finding_with_all_obligations_discharged_is_PERMITTED` stays GREEN (`path:docs/remediation/evidence/board1-rc15-closure-controls/generator-strikes/OP4-CLOS-FINDING-CONSISTENCY-BLIND.mutant.log`). The guard LOGIC is unchanged by this DATA-only authoring. *** AND MY FIRST REPAIR OF THIS RULE WAS ITSELF WRONG -- it fired on ALL-TERMINAL findings, which would have REFUSED EVERY CORRECTLY-CLOSED FINDING -- so the mirror case `path:tools/readiness/tests/test_closure_law_refuses.py:547` pinneth the permitted state. The in-file witnesses are `path:tools/readiness/tests/test_closure_law_refuses.py:538` (refused) and `:547` (permitted)."
       ],
-      "historical_status": "DISCHARGED",
+      "structured_discharge": {
+       "behavior": "A finding may not stand internally OPEN while carrying ZERO unresolved obligations, and a finding declared COMPLETE may not carry an UNRESOLVED obligation: the instrument REFUSES both directions by name rather than describing the state, because an open finding with nothing a builder can execute could never be closed.",
+       "implementation": "`scripts/build_structured_closure.py` -- `build()` derives `internal_status` from the obligation set in both populations, `finding_state_problems()` is enforced by `main --check`, and `counts()` reports `findings_with_internal_status_open` beside the obligation total.",
+       "reachability": "production",
+       "test": "`tools/readiness/tests/test_closure_law_refuses.py::FindingStatusFollowsItsObligations::test_an_open_finding_with_all_obligations_discharged_is_refused` (witness) and `test_a_complete_finding_with_all_obligations_discharged_is_PERMITTED` (the mirror positive); `test_closure_state_mutations.py` cases 3 and 4.",
+       "positive": "The MIRROR arm is GREEN: a COMPLETE finding whose obligations are all DISCHARGED is the CORRECT state, not a defect -- so the rule refuseth the false state and permitteth the true one.",
+       "mutation": "`CLOS-FINDING-CONSISTENCY-BLIND` forces the OPEN-and-all-terminal guard to `if False` (mutant sha `99fe33d01458c335...`): its NAMED witness FAILS while the mirror arm stays GREEN. The negative-input court's case 3 (OPEN finding, zero unresolved obligations) and case 4 (COMPLETE finding over an OPEN obligation) are each refused in that run.",
+       "exact_result": "MEASURED on C0 (`gate sha256 69b4c739...`): baseline 2 PASS / mutant 1 NAMED FAIL / restored 2 PASS byte-identical to C0, 0 skips -- `path:docs/remediation/evidence/board1-rc15-closure-controls/generator-strikes/OP4-CLOS-FINDING-CONSISTENCY-BLIND.mutant.log`. The guard LOGIC is unchanged by this DATA-only authoring.",
+       "candidate_binding": {
+        "candidate_ref": "production-readiness-board1-rc15",
+        "external_manifest": "docs/remediation/evidence/board1-evidence-bundle.json",
+        "attestation": "docs/remediation/evidence/FREEZE_ATTESTATION_rc15.json"
+       }
+      },
       "historical_discharge": {
        "behavior": "A finding may not stand internally OPEN while carrying ZERO unresolved obligations: the instrument REFUSETH that combination rather than describing it.",
        "implementation": "`scripts/build_structured_closure.py` -- `build()` refuseth the combination in both populations and `finding_state_problems()` is enforced by `--check`.",
@@ -17215,41 +17151,29 @@
         "external_manifest": "docs/remediation/evidence/board1-evidence-bundle.json",
         "attestation": "docs/remediation/evidence/FREEZE_ATTESTATION_rc14.json"
        }
-      },
-      "known_internal_gaps": [
-       {
-        "defect": "CURRENTC-PROOF-REQUIRED",
-        "source": "current candidate acceptance",
-        "canonical_obligation": "audit-b1-ctrl-001.finding-obligation-consistency",
-        "canonical_defect": "A finding may not stand internally OPEN while carrying ZERO unresolved obligations. The instrument must refuse that combination rather than describe it, because such a finding is open with nothing a builder can execute -- so no batch of work could ever close it, and its recorded status has not followed its own obligations.",
-        "what_must_land": "Actual production path, positive, negative, independent-count and fault controls bound to the supplied current candidate SHA/tree. Historical rc14 evidence and source authoring cannot discharge changed source."
-       }
-      ]
+      }
      },
      {
       "id": "audit-b1-ctrl-001.ready-requires-both-populations",
       "text": "A COMPLETE/READY builder status must be refused while EITHER population is non-empty: unresolved internal obligations, and findings whose internal_status is OPEN. The two are not the same test, and a gate reading only one of them can permit readiness over live work.",
-      "status": "OPEN",
+      "status": "DISCHARGED",
       "evidence": [
-       "*** REOPENED 2026-10-02: both populations ARE checked in `--check`, but the readiness claim is not yet gated on the new structured semantics (`required_controls_present`, `unresolved_internal_dependencies`) that this mission adds, and the unknown-state refusal is not yet enforced at the CLOSURE boundary. *** *Prior DISCHARGED text kept.* `path:scripts/build_structured_closure.py`. MEASURED: a gate reading only `internal_obligations_unresolved` would have PERMITTED `READY_FOR_EXTERNAL_REAUDIT` while ten findings still reported themselves internally open, because two of them carried zero obligations to count. `--check` now refuseth on both conditions by name; killed by `path:tools/readiness/tests/test_closure_law_refuses.py:361` (`ReadinessRequiresBothPopulations`)."
+       "*** EARNED 2026-10-04: both populations are checked in `--check` AND the readiness claim is refused on EITHER of them BY NAME; the unknown-state refusals (`obligation_state_problems`/`internal_status_state_problems`) are enforced at the closure boundary; and the semantics gate (`semantics_gate_problems`) refuses a terminal claim behind an unmeasured control. *** Killed on C0 by `CLOS-STATUS-POPULATION-BLIND` (mutant sha `24064aca...`) on the UNCHANGED guard, by exactly its NAMED witness with a restored-green phase: `path:docs/remediation/evidence/board1-rc15-closure-controls/generator-strikes/OP5-CLOS-STATUS-POPULATION-BLIND.mutant.log`; the negative-input court's cases 12 and 13 (force READY / force COMPLETE over an AUTHORED unresolved obligation) are REFUSED inside the same GREEN 4-test run. The guard LOGIC is unchanged by this DATA-only authoring; a FINAL-C re-run is the parent's step and is NOT claimed here. *** *Prior DISCHARGED text kept.* `path:scripts/build_structured_closure.py`. MEASURED: a gate reading only `internal_obligations_unresolved` would have PERMITTED `READY_FOR_EXTERNAL_REAUDIT` while ten findings still reported themselves internally open, because two of them carried zero obligations to count. `--check` now refuseth on both conditions by name; killed by `path:tools/readiness/tests/test_closure_law_refuses.py:361` (`ReadinessRequiresBothPopulations`)."
       ],
-      "known_internal_gaps": [
-       {
-        "source": "ClosureAuthority",
-        "defect": "CTRL-001-READINESS-NOT-SEMANTIC-GATED",
-        "review_status": "REPAIRED_STALE",
-        "review_status_evidence": "`path:scripts/build_structured_closure.py::main` -- `--check` gateth the readiness claim on BOTH populations (`internal_obligations_open` AND `findings_with_internal_status_open`), runneth `internal_status_state_problems`/`obligation_state_problems` (unknown states refused by name), and `semantics_gate_problems` (a terminal claim behind a refused control). RESIDUAL: the obligation stays OPEN pending the current-C freeze re-derivation.",
-        "canonical_defect": "Readiness is not yet gated on the structured semantics, and unknown states are not enforced at the closure boundary.",
-        "what_must_land": "Readiness gated on the measured controls and unknown states refused by name (now enforced)."
-       },
-       {
-        "defect": "CURRENTC-PROOF-REQUIRED",
-        "source": "current candidate acceptance",
-        "canonical_obligation": "audit-b1-ctrl-001.ready-requires-both-populations",
-        "canonical_defect": "A COMPLETE/READY builder status must be refused while EITHER population is non-empty: unresolved internal obligations, and findings whose internal_status is OPEN. The two are not the same test, and a gate reading only one of them can permit readiness over live work.",
-        "what_must_land": "Actual production path, positive, negative, independent-count and fault controls bound to the supplied current candidate SHA/tree. Historical rc14 evidence and source authoring cannot discharge changed source."
+      "structured_discharge": {
+       "behavior": "A COMPLETE/READY builder status is refused while EITHER population is non-empty: unresolved internal OBLIGATIONS and findings whose internal_status is OPEN. The two are not the same test, and a gate reading only one of them can permit readiness over live work. Unknown obligation/finding states are refused by name, and a terminal claim behind an unmeasured control is refused.",
+       "implementation": "`scripts/build_structured_closure.py` -- `main` refuseth on `internal_obligations_open` AND on `findings_with_internal_status_open` by name, runs `internal_status_state_problems`/`obligation_state_problems`, and runs `semantics_gate_problems`. The GUARD LOGIC is unchanged by this DATA-only authoring.",
+       "reachability": "production",
+       "test": "`tools/readiness/tests/test_closure_law_refuses.py::ReadinessRequiresBothPopulations::test_a_finding_status_open_alone_blocks_readiness` (witness) and `test_the_status_population_is_reported_separately` (the positive); `test_closure_state_mutations.py` cases 12 and 13.",
+       "positive": "The STATUS population is reported SEPARATELY and truthfully (`findings_with_internal_status_open`), so the obligation count cannot hide a finding with no obligations; the negative-input court's case 12/13 refusals are read from the gate's OWN output, not from an exit code.",
+       "mutation": "`CLOS-STATUS-POPULATION-BLIND` forces `findings_status_open = 0` (mutant sha `24064acaabccbe65...`): its NAMED witness FAILS (`0 not greater than 0 ... while the STATUS population is not`) while the separate-reporting arm stays GREEN.",
+       "exact_result": "MEASURED on C0 (`gate sha256 69b4c739...`): baseline 2 PASS / mutant 1 NAMED FAIL / restored 2 PASS byte-identical to C0, 0 skips -- `path:docs/remediation/evidence/board1-rc15-closure-controls/generator-strikes/OP5-CLOS-STATUS-POPULATION-BLIND.mutant.log`; the negative-input court's cases 12 and 13 are refused inside the same GREEN 4-test run. A FINAL-C re-run is the parent's step and is NOT claimed here.",
+       "candidate_binding": {
+        "candidate_ref": "production-readiness-board1-rc15",
+        "external_manifest": "docs/remediation/evidence/board1-evidence-bundle.json",
+        "attestation": "docs/remediation/evidence/FREEZE_ATTESTATION_rc15.json"
        }
-      ],
+      },
       "review_gap_history": [
        {
         "source": "ClosureAuthority",
@@ -17267,20 +17191,20 @@
   },
   "structured_counts": {
    "findings_total": 68,
-   "findings_internal_open": 1,
-   "findings_with_internal_status_open": 1,
-   "internal_obligations_open": 4,
-   "internal_obligations_unresolved": 4,
+   "findings_internal_open": 0,
+   "findings_with_internal_status_open": 0,
+   "internal_obligations_open": 0,
+   "internal_obligations_unresolved": 0,
    "obligations_by_state": {
-    "OPEN": 4,
+    "OPEN": 0,
     "PARTIAL": 0,
-    "DISCHARGED": 31
+    "DISCHARGED": 35
    },
    "external_obligations": 5
   },
   "internal_remaining_prose_classifier_retired": {
    "note": "RETAINED FOR AUDIT HISTORY ONLY -- NOT AN INPUT TO ANY CLOSURE DECISION. Derived by substring-matching prose; produced 27, 21, 5 and 4 across four marker lists, which is why it was retired. Superseded by `structured_counts`, which counts explicit obligation statuses.",
-   "last_value": 28
+   "last_value": 0
   },
   "frontier_measured_this_session": {
    "measured_at": "2026-09-20",
@@ -17409,7 +17333,35 @@
       "reachability": "production",
       "control": "The derived counts are persisted and the manifest's structured counts must agree with the derivation field by field.",
       "behavior": "Structured per-finding closure: `internal_status`, `internal_obligations` and `external_obligations` for every nonterminal finding, with `internal_remaining` DERIVED from them rather than NLP-classified from prose, and the structured counts agreeing between the manifest and the derivation.",
-      "exact_result": "MEASURED on the FINAL full board1 campaign (tested tree `f67d8dd18be11928c39a3932296217a7dc5b8604`): T86-B1M13 KILLED with restored-green, log `logs/T86-B1M13-closure-counts-may-disagree.mutant.log`. This rod proves MANIFEST/LEDGER COUNT AGREEMENT specifically; the other closure-law controls are NOT credited to it."
+      "exact_result": "MEASURED on the FINAL full board1 campaign (tested tree `f67d8dd18be11928c39a3932296217a7dc5b8604`): T86-B1M13 KILLED with restored-green, log `logs/T86-B1M13-closure-counts-may-disagree.mutant.log`. This rod proves MANIFEST/LEDGER COUNT AGREEMENT specifically; the other closure-law controls are NOT credited to it. *** AND THE PERSISTED-VS-DERIVED HALF IS PROVEN SEPARATELY ON C0: `CLOS-DRIFT-BLIND` (the persisted/derived comparison forced off; mutant sha `038279eb5a43a5b9...`) leaves its NAMED witness `test_a_stale_count_is_refused` UNREFUSED while `test_the_real_tree_agrees` stays GREEN and the restored tree is byte-identical to C0 (`path:docs/remediation/evidence/board1-rc15-closure-controls/generator-strikes/OP2-CLOS-DRIFT-BLIND.mutant.log`). So `T86-B1M13` carryeth the MANIFEST/LEDGER count agreement and `CLOS-DRIFT-BLIND` the LEDGER/DERIVATION agreement -- two different readers, never one credited for the other; both are UNREGISTERED generator-semantic strikes, never booked as registry rows or a canonical 181 score. ***"
+     },
+     {
+      "obligation": "audit-b1-ctrl-001.closure-law",
+      "reachability": "production",
+      "control": "The COMMITTED C0 tree is ACCEPTED by `--check` (rc 0) with the C0 ledger and closure, so the law permits the state it exists to permit; the negative-input court's case 0 (unmutated fixture) is likewise GREEN.",
+      "behavior": "The closure law REFUSES a COMPLETE/READY builder status while structured internal OPEN work exists, AND refuses a terminal DISCHARGED that its own structured fields CONTRADICT (a missing required discharge field, a court-only reachability, a self-referential candidate SHA, a historical/stale attestation, an embedded tag object or candidate commit), AND errors on an unknown OBLIGATION or FINDING state at the closure boundary -- so the control plane can no longer report closure over a NO_GO register.",
+      "exact_result": "MEASURED on C0 (`gate sha256 69b4c739cf34251eb68c57e7b8bcd270bbf6859ec34f8d3595d7a9aa412947e8`): baseline 2 PASS / mutant 1 NAMED FAIL / restored 2 PASS byte-identical to C0, 0 skips -- `path:docs/remediation/evidence/board1-rc15-closure-controls/generator-strikes/OP3-CLOS-SCHEMA-BYPASS.mutant.log` and `OP1-CLOS-PARTIAL-BLIND.mutant.log`; the 13-case court ran 4 tests / 0 failures / exit0 (`NEGATIVE-INPUT-COURT-13cases.log`). Neither rod is credited with the other closure-law controls."
+     },
+     {
+      "obligation": "audit-b1-ctrl-001.missed-partials",
+      "reachability": "production",
+      "control": "FRESH on C0: the REAL ledger read through the C0 gate carrieth `GS-RUNTIME-001` with 2 internal obligations (`gs-runtime-001.android-composition-court`, `gs-runtime-001.mutations`, both DISCHARGED, derives COMPLETE, 1 external) and `GS-STORE-002` with 1 (`gs-store-002.internal-architecture`, DISCHARGED, derives COMPLETE, 1 external); the persisted copy agrees with the derivation and `obligations_by_state` reports them -- `path:docs/remediation/evidence/board1-rc15-closure-controls/generator-strikes/CONSUMER-POSITIVE-real-ledger.baseline.log` (15 PASS / 0 FAIL, exit0).",
+      "behavior": "Every PARTIAL is represented in the structured closure, including `GS-RUNTIME-001` and `GS-STORE-002` which the retired prose classifier missed entirely; terminality is a property of an explicit state set, so a PARTIAL can never be silently counted as finished. A DELETED or ORPHAN persisted obligation is refused by name.",
+      "exact_result": "MEASURED on C0 (`gate sha256 69b4c739...`): each strike baseline 2 PASS / mutant 1 NAMED FAIL / restored 2 PASS byte-identical to C0, 0 skips -- `path:docs/remediation/evidence/board1-rc15-closure-controls/generator-strikes/OP1-CLOS-PARTIAL-BLIND.mutant.log` and `OP2-CLOS-DRIFT-BLIND.mutant.log`; the consumer positive is `CONSUMER-POSITIVE-real-ledger.baseline.log`."
+     },
+     {
+      "obligation": "audit-b1-ctrl-001.finding-obligation-consistency",
+      "reachability": "production",
+      "control": "The MIRROR arm is GREEN: a COMPLETE finding whose obligations are all DISCHARGED is the CORRECT state, not a defect -- so the rule refuseth the false state and permitteth the true one.",
+      "behavior": "A finding may not stand internally OPEN while carrying ZERO unresolved obligations, and a finding declared COMPLETE may not carry an UNRESOLVED obligation: the instrument REFUSES both directions by name rather than describing the state, because an open finding with nothing a builder can execute could never be closed.",
+      "exact_result": "MEASURED on C0 (`gate sha256 69b4c739...`): baseline 2 PASS / mutant 1 NAMED FAIL / restored 2 PASS byte-identical to C0, 0 skips -- `path:docs/remediation/evidence/board1-rc15-closure-controls/generator-strikes/OP4-CLOS-FINDING-CONSISTENCY-BLIND.mutant.log`. The guard LOGIC is unchanged by this DATA-only authoring."
+     },
+     {
+      "obligation": "audit-b1-ctrl-001.ready-requires-both-populations",
+      "reachability": "production",
+      "control": "The STATUS population is reported SEPARATELY and truthfully (`findings_with_internal_status_open`), so the obligation count cannot hide a finding with no obligations; the negative-input court's case 12/13 refusals are read from the gate's OWN output, not from an exit code.",
+      "behavior": "A COMPLETE/READY builder status is refused while EITHER population is non-empty: unresolved internal OBLIGATIONS and findings whose internal_status is OPEN. The two are not the same test, and a gate reading only one of them can permit readiness over live work. Unknown obligation/finding states are refused by name, and a terminal claim behind an unmeasured control is refused.",
+      "exact_result": "MEASURED on C0 (`gate sha256 69b4c739...`): baseline 2 PASS / mutant 1 NAMED FAIL / restored 2 PASS byte-identical to C0, 0 skips -- `path:docs/remediation/evidence/board1-rc15-closure-controls/generator-strikes/OP5-CLOS-STATUS-POPULATION-BLIND.mutant.log`; the negative-input court's cases 12 and 13 are refused inside the same GREEN 4-test run. A FINAL-C re-run is the parent's step and is NOT claimed here."
      }
     ],
     "GS-ARCHIVE-005": [
@@ -17642,190 +17594,8 @@
     ]
    },
    "refused_controls": [],
-   "known_internal_gaps": {
-    "AUDIT-B1-CTRL-001": [
-     {
-      "id": "audit-b1-ctrl-001.closure-law",
-      "text": "A control that REFUSES a COMPLETE/READY builder status while structured internal OPEN work exists, so the control plane can no longer report closure over a NO_GO register.",
-      "known_internal_gaps": [
-       {
-        "source": "ClosureAuthority",
-        "defect": "CTRL-001-DISCHARGE-SCHEMA-BYPASS",
-        "review_status": "REPAIRED_STALE",
-        "review_status_evidence": "`path:scripts/build_structured_closure.py::structured_discharge_problems` / `_discharge_block_problems` / `structured_semantics` -- the schema is mandatory at the terminal boundary, `candidate_binding` is required (with a self-SHA and an rc14/historical-attestation refusal), and the two dependency populations are emitted separately. RESIDUAL: the parent obligation's own `--check` re-derivation and the added semantics gate are exercised by `path:tools/readiness/tests/test_closure_law_refuses.py`; the obligation stays OPEN pending current-C proof.",
-        "canonical_defect": "structured_discharge_problems skipped obligations with no block and made candidate_binding optional; structured_semantics reported every terminal obligation as a present control without semantic proof and folded external obligations into internal dependencies.",
-        "what_must_land": "The schema mandatory at the terminal boundary, controls measured from authored semantics, and the two dependency populations kept separate (now enforced)."
-       },
-       {
-        "defect": "CURRENTC-PROOF-REQUIRED",
-        "source": "current candidate acceptance",
-        "canonical_obligation": "audit-b1-ctrl-001.closure-law",
-        "canonical_defect": "A control that REFUSES a COMPLETE/READY builder status while structured internal OPEN work exists, so the control plane can no longer report closure over a NO_GO register.",
-        "what_must_land": "Actual production path, positive, negative, independent-count and fault controls bound to the supplied current candidate SHA/tree. Historical rc14 evidence and source authoring cannot discharge changed source."
-       }
-      ],
-      "discharge_text_scan": {
-       "scanned": true,
-       "hits": [
-        {
-         "concept": "cannot",
-         "field": "evidence",
-         "excerpt": "estored to REMEDIATION_IN_PROGRESS: `rc=0`. The law BITES, so the control plane cannot report closure over a NO_GO register"
-        }
-       ],
-       "concepts_scanned": [
-        "gap",
-        "absent",
-        "missing",
-        "not satisfied",
-        "not implemented",
-        "still owed",
-        "uncovered",
-        "cannot",
-        "not executed",
-        "not reached",
-        "placeholder",
-        "deferred",
-        "todo",
-        "known red",
-        "no live surface",
-        "no runtime authority"
-       ],
-       "authority": "review-only; NOT an input to any closure decision"
-      }
-     },
-     {
-      "id": "audit-b1-ctrl-001.missed-partials",
-      "text": "Every PARTIAL is represented, including GS-RUNTIME-001 and GS-STORE-002, which the prose classifier missed entirely.",
-      "known_internal_gaps": [
-       {
-        "defect": "CURRENTC-PROOF-REQUIRED",
-        "source": "current candidate acceptance",
-        "canonical_obligation": "audit-b1-ctrl-001.missed-partials",
-        "canonical_defect": "Every PARTIAL is represented, including GS-RUNTIME-001 and GS-STORE-002, which the prose classifier missed entirely.",
-        "what_must_land": "Actual production path, positive, negative, independent-count and fault controls bound to the supplied current candidate SHA/tree. Historical rc14 evidence and source authoring cannot discharge changed source."
-       }
-      ],
-      "discharge_text_scan": {
-       "scanned": true,
-       "hits": [],
-       "concepts_scanned": [
-        "gap",
-        "absent",
-        "missing",
-        "not satisfied",
-        "not implemented",
-        "still owed",
-        "uncovered",
-        "cannot",
-        "not executed",
-        "not reached",
-        "placeholder",
-        "deferred",
-        "todo",
-        "known red",
-        "no live surface",
-        "no runtime authority"
-       ],
-       "authority": "review-only; NOT an input to any closure decision"
-      }
-     },
-     {
-      "id": "audit-b1-ctrl-001.finding-obligation-consistency",
-      "text": "A finding may not stand internally OPEN while carrying ZERO unresolved obligations. The instrument must refuse that combination rather than describe it, because such a finding is open with nothing a builder can execute -- so no batch of work could ever close it, and its recorded status has not followed its own obligations.",
-      "known_internal_gaps": [
-       {
-        "defect": "CURRENTC-PROOF-REQUIRED",
-        "source": "current candidate acceptance",
-        "canonical_obligation": "audit-b1-ctrl-001.finding-obligation-consistency",
-        "canonical_defect": "A finding may not stand internally OPEN while carrying ZERO unresolved obligations. The instrument must refuse that combination rather than describe it, because such a finding is open with nothing a builder can execute -- so no batch of work could ever close it, and its recorded status has not followed its own obligations.",
-        "what_must_land": "Actual production path, positive, negative, independent-count and fault controls bound to the supplied current candidate SHA/tree. Historical rc14 evidence and source authoring cannot discharge changed source."
-       }
-      ],
-      "discharge_text_scan": {
-       "scanned": true,
-       "hits": [
-        {
-         "concept": "cannot",
-         "field": "evidence",
-         "excerpt": "internal_status_open` beside the obligation total, because the obligation count cannot see a finding with no obligations. Killed by `path:tools/readiness/tests/test_c"
-        }
-       ],
-       "concepts_scanned": [
-        "gap",
-        "absent",
-        "missing",
-        "not satisfied",
-        "not implemented",
-        "still owed",
-        "uncovered",
-        "cannot",
-        "not executed",
-        "not reached",
-        "placeholder",
-        "deferred",
-        "todo",
-        "known red",
-        "no live surface",
-        "no runtime authority"
-       ],
-       "authority": "review-only; NOT an input to any closure decision"
-      }
-     },
-     {
-      "id": "audit-b1-ctrl-001.ready-requires-both-populations",
-      "text": "A COMPLETE/READY builder status must be refused while EITHER population is non-empty: unresolved internal obligations, and findings whose internal_status is OPEN. The two are not the same test, and a gate reading only one of them can permit readiness over live work.",
-      "known_internal_gaps": [
-       {
-        "source": "ClosureAuthority",
-        "defect": "CTRL-001-READINESS-NOT-SEMANTIC-GATED",
-        "review_status": "REPAIRED_STALE",
-        "review_status_evidence": "`path:scripts/build_structured_closure.py::main` -- `--check` gateth the readiness claim on BOTH populations (`internal_obligations_open` AND `findings_with_internal_status_open`), runneth `internal_status_state_problems`/`obligation_state_problems` (unknown states refused by name), and `semantics_gate_problems` (a terminal claim behind a refused control). RESIDUAL: the obligation stays OPEN pending the current-C freeze re-derivation.",
-        "canonical_defect": "Readiness is not yet gated on the structured semantics, and unknown states are not enforced at the closure boundary.",
-        "what_must_land": "Readiness gated on the measured controls and unknown states refused by name (now enforced)."
-       },
-       {
-        "defect": "CURRENTC-PROOF-REQUIRED",
-        "source": "current candidate acceptance",
-        "canonical_obligation": "audit-b1-ctrl-001.ready-requires-both-populations",
-        "canonical_defect": "A COMPLETE/READY builder status must be refused while EITHER population is non-empty: unresolved internal obligations, and findings whose internal_status is OPEN. The two are not the same test, and a gate reading only one of them can permit readiness over live work.",
-        "what_must_land": "Actual production path, positive, negative, independent-count and fault controls bound to the supplied current candidate SHA/tree. Historical rc14 evidence and source authoring cannot discharge changed source."
-       }
-      ],
-      "discharge_text_scan": {
-       "scanned": true,
-       "hits": [],
-       "concepts_scanned": [
-        "gap",
-        "absent",
-        "missing",
-        "not satisfied",
-        "not implemented",
-        "still owed",
-        "uncovered",
-        "cannot",
-        "not executed",
-        "not reached",
-        "placeholder",
-        "deferred",
-        "todo",
-        "known red",
-        "no live surface",
-        "no runtime authority"
-       ],
-       "authority": "review-only; NOT an input to any closure decision"
-      }
-     }
-    ]
-   },
-   "unresolved_internal_dependencies": {
-    "AUDIT-B1-CTRL-001": [
-     "audit-b1-ctrl-001.closure-law",
-     "audit-b1-ctrl-001.missed-partials",
-     "audit-b1-ctrl-001.finding-obligation-consistency",
-     "audit-b1-ctrl-001.ready-requires-both-populations"
-    ]
-   },
+   "known_internal_gaps": {},
+   "unresolved_internal_dependencies": {},
    "external_obligations": {
     "GS-FINAL-004": [
      {
@@ -17905,9 +17675,9 @@
     "no runtime authority"
    ],
    "counts": {
-    "hits_total": 42,
+    "hits_total": 46,
     "by_disposition": {
-     "COVERED_BY_STRUCTURED_DISCHARGE": 19
+     "COVERED_BY_STRUCTURED_DISCHARGE": 21
     }
    },
    "roster": [
@@ -17917,6 +17687,42 @@
      "concept": "gap",
      "field": "evidence",
      "excerpt": "xplicit obligation statuses. *** THE MISSION'S ADDED SEMANTICS (`known_internal_gaps`, `unresolved_internal_dependencies`, `required_controls_present`, and the str",
+     "disposition": "COVERED_BY_STRUCTURED_DISCHARGE",
+     "reasoning": "terminal with authored semantics (reachability=production): the excerpt is control/refutation/scope prose inside a claim that NAMES the exercised control -- reasoned per obligation, NOT a verdict of soundness"
+    },
+    {
+     "finding": "AUDIT-B1-CTRL-001",
+     "obligation": "audit-b1-ctrl-001.closure-law",
+     "concept": "gap",
+     "field": "evidence",
+     "excerpt": "*** EARNED 2026-10-04: all three gaps this reopen named are CLOSED in the UNCHANGED guard -- (a) a terminal `DISCHAR",
+     "disposition": "COVERED_BY_STRUCTURED_DISCHARGE",
+     "reasoning": "terminal with authored semantics (reachability=production): the excerpt is control/refutation/scope prose inside a claim that NAMES the exercised control -- reasoned per obligation, NOT a verdict of soundness"
+    },
+    {
+     "finding": "AUDIT-B1-CTRL-001",
+     "obligation": "audit-b1-ctrl-001.closure-law",
+     "concept": "missing",
+     "field": "evidence",
+     "excerpt": "_discharge_problems`/`_discharge_block_problems`/`_current_binding_problems`: a missing required field, a court-only reachability, a self-referential candidate SHA, a ",
+     "disposition": "COVERED_BY_STRUCTURED_DISCHARGE",
+     "reasoning": "terminal with authored semantics (reachability=production): the excerpt is control/refutation/scope prose inside a claim that NAMES the exercised control -- reasoned per obligation, NOT a verdict of soundness"
+    },
+    {
+     "finding": "AUDIT-B1-CTRL-001",
+     "obligation": "audit-b1-ctrl-001.closure-law",
+     "concept": "cannot",
+     "field": "evidence",
+     "excerpt": "estored to REMEDIATION_IN_PROGRESS: `rc=0`. The law BITES, so the control plane cannot report closure over a NO_GO register",
+     "disposition": "COVERED_BY_STRUCTURED_DISCHARGE",
+     "reasoning": "terminal with authored semantics (reachability=production): the excerpt is control/refutation/scope prose inside a claim that NAMES the exercised control -- reasoned per obligation, NOT a verdict of soundness"
+    },
+    {
+     "finding": "AUDIT-B1-CTRL-001",
+     "obligation": "audit-b1-ctrl-001.finding-obligation-consistency",
+     "concept": "cannot",
+     "field": "evidence",
+     "excerpt": "internal_status_open` beside the obligation total, because the obligation count cannot see a finding with no obligations. *** EARNED 2026-10-04: killed on C0 by `CLOS",
      "disposition": "COVERED_BY_STRUCTURED_DISCHARGE",
      "reasoning": "terminal with authored semantics (reachability=production): the excerpt is control/refutation/scope prose inside a claim that NAMES the exercised control -- reasoned per obligation, NOT a verdict of soundness"
     },

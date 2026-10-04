@@ -3,10 +3,14 @@
 > **CURRENT STATE (2026-10-04) — DERIVED, NOT CARRIED.** *Everything below this banner is HISTORICAL
 > candidate narrative from the round-122 era and is preserved verbatim; its SHAs, lane counts and class
 > membership are NOT the current state.* **The current canonical state is DERIVED by
-> `scripts/build_structured_closure.py`: builder status `REMEDIATION_IN_PROGRESS`, **31 internal obligations
-> DISCHARGED and 4 OPEN** (1 finding still internally OPEN: AUDIT-B1-CTRL-001, whose FOUR closure-control discharges
-> await scope-specific mutation evidence -- these four are PENDING CORRECT PROOF and are NOT fake-closed). Each of the
-> 31 discharged obligations carries an authored, production-reachable `structured_discharge` (the seven fields + an
+> `scripts/build_structured_closure.py`: builder status `REMEDIATION_IN_PROGRESS`, **35 internal obligations
+> DISCHARGED and 0 OPEN** (no finding remains internally OPEN: `findings_with_internal_status_open = 0`). The FOUR
+> `AUDIT-B1-CTRL-001` closure-control discharges are now earned by their OWN scope-specific generator-semantic
+> mutation evidence -- five standalone strikes on the UNCHANGED C0 guard (`CLOS-PARTIAL-BLIND`, `CLOS-DRIFT-BLIND`,
+> `CLOS-SCHEMA-BYPASS`, `CLOS-FINDING-CONSISTENCY-BLIND`, each baseline 2 PASS / mutant 1 NAMED FAIL / restored 2 PASS
+> byte-identical to C0, and `CLOS-STATUS-POPULATION-BLIND` the same shape) plus the separate 13-case negative-input
+> court -- NOT fake-closed, and NEVER booked as registry rows or a canonical 181 score. Each of the
+> 35 discharged obligations carries an authored, production-reachable `structured_discharge` (the seven fields + an
 > external `candidate_binding` that names ONLY the prospective rc15 candidate ref (`production-readiness-board1-rc15`),
 > the external evidence bundle (manifest `docs/remediation/evidence/board1-evidence-bundle.json`) and the future
 > attestation path (`FREEZE_ATTESTATION_rc15.json`, reserved until freeze) -- NO closure SHA is embedded); `verified_fixed = 0` (only an independent audit may write
@@ -48,12 +52,26 @@
 > the command FIFO ONCE (idempotent `Fifo.close`), reply pipe unchanged, with NO new APIs and NO source-worker change.
 > Source pre/post `ad11a88866de38fc47284a6e71d2719b56addd3ae50fcf0e95768f8808146419`. **The source families are ALREADY
 > resealed and are UNCHANGED by the builder/docs-only closure edits (no new lane producer, no rewritten hash is needed);
-> only the FINAL-C strict integration is re-run AFTER the tracked writes. 31 of the 35 internal obligations are
-> DISCHARGED on earned proof and 4 remain OPEN pending the parent's SCOPE-SPECIFIC mutation evidence for the
-> CLOSURE-CONTROL block (the four `AUDIT-B1-CTRL-001` obligations); the restoration-disconnection mutation
-> `gs-final-006.mutation` is now DISCHARGED on its OWN separate four-rod restoration campaign (baseline `8e49631b…`,
+> only the FINAL-C strict integration is re-run AFTER the tracked writes. All 35 internal obligations are
+> DISCHARGED on earned proof and NONE remain OPEN: the CLOSURE-CONTROL block (the four `AUDIT-B1-CTRL-001`
+> obligations) is now earned by its OWN generator-semantic strike evidence, and
+> `gs-final-006.mutation` is DISCHARGED on its OWN separate four-rod restoration campaign (baseline `8e49631b…`,
 > tested tree `95952ec3…`, 4/4 SEMANTIC KILLED, never aggregated with the canonical 181); the five external gates stay
-> OPEN, so NO READY claim is made.**
+> OPEN, so NO READY claim is made, and the guard LOGIC is UNCHANGED by this DATA-only authoring -- the parent runs the
+> FINAL-C re-integration/attestation/freeze.**
+> **Closure-control strikes (2026-10-04):** the four closure-control discharges rest on
+> `docs/remediation/evidence/board1-rc15-closure-controls/generator-strikes/` (18 files: manifest + 15 phase logs +
+> `CONSUMER-POSITIVE-real-ledger.baseline.log` + `NEGATIVE-INPUT-COURT-13cases.log`), each baseline/mutant/restored
+> phase carrying its own digest and each restored run byte-identical to C0. The **56-test** closure-law court
+> (`docs/remediation/evidence/board1-rc15-closure-controls/courts.log`, `Ran 56 tests ... OK`) and the separate
+> **13-case** negative-input court (`NEGATIVE-INPUT-COURT-13cases.log`, 4 tests / 0 failures) are DISTINCT from the
+> canonical 181 (179 semantic + 2 structural); the closure-law fixture authority was repaired
+> (`ci/check_candidate_binding.py` refreshed from live in the scratch worktree, the citation trees provisioned) so the
+> GREEN baselines are attributable to the real authority rather than to a broken fixture. **The recorded 56-test court
+> was taken while an OPEN finding still existed; the LAW arms remain green, but one PREMISE-BOUND arm
+> (`ReopenDerivesFindingStatus.test_the_gap_records_name_their_review_source`) now needs its subject AUTHORED in the
+> test by the test owner, because the derived closure correctly carries no LIVE gap record once 0 findings are OPEN.**
+> A FINAL-C re-run AFTER the tracked writes is the parent's step and is NOT claimed here.
 > **Supply preflight (2026-10-04):** the four preflight supply refusals are REPAIRED by the canonical existing generators
 > only (no code guard/pin/source change): the current `ios/project.yml` fingerprint is captured (`0c4a39…`), the SBOM now
 > carries 566 components including 3 SQLite 2.6.2 coordinates, and 6 CycloneDX faces are refreshed.

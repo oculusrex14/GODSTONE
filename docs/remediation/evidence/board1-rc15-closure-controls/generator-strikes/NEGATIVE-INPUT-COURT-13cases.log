@@ -1,0 +1,13 @@
+test_case_0_the_unmutated_fixture_is_green (tools.readiness.tests.test_closure_state_mutations.ClosureStateMutations.test_case_0_the_unmutated_fixture_is_green)
+*** THE BASELINE, WITHOUT WHICH EVERY OTHER KILL IS UNATTRIBUTABLE. *** ... ok
+test_every_required_mutation_is_killed_for_its_own_reason (tools.readiness.tests.test_closure_state_mutations.ClosureStateMutations.test_every_required_mutation_is_killed_for_its_own_reason)
+*** EVERY MUTATION MUST BE REFUSED, AND REFUSED FOR THE REASON IT PROVOKES. *** ... ok
+test_the_campaign_is_the_required_size (tools.readiness.tests.test_closure_state_mutations.ClosureStateMutations.test_the_campaign_is_the_required_size)
+*** AT LEAST THIRTEEN MUTATIONS, EVERY ONE CARRYING AN EXPECTED CATEGORY. *** ... ok
+test_the_live_gate_accepts_the_committed_tree (tools.readiness.tests.test_closure_state_mutations.ClosureStateMutations.test_the_live_gate_accepts_the_committed_tree)
+*A campaign that reddened the real tree would prove the campaign, not the tree.* ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 28.168s
+
+OK
