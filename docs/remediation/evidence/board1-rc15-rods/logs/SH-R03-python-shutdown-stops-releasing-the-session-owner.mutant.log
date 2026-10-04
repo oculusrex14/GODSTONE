@@ -6,7 +6,7 @@ FAIL: test_w09_the_named_negative_each_defect_is_caught_by_name (test_t72.T72Fau
 Disabling ONE capacity release or ONE retry cap must break an invariant.
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_SH-R03-python-shutdown-stops-releasing-the-session-owner/tools/readiness/tests/test_t72.py", line 234, in test_w09_the_named_negative_each_defect_is_caught_by_name
+  File "/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_SH-R03-python-shutdown-stops-releasing-the-session-owner/tools/readiness/tests/test_t72.py", line 234, in test_w09_the_named_negative_each_defect_is_caught_by_name
     self.assertTrue(any(invariant in failure for failure in result.failures),
     ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
                     "%s: expected %s, got %r" % (defect, invariant, result.failures))

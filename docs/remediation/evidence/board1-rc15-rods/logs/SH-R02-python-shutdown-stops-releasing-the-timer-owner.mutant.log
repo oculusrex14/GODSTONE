@@ -6,7 +6,7 @@ FAIL: test_w09_the_named_negative_each_defect_is_caught_by_name (test_t72.T72Fau
 Disabling ONE capacity release or ONE retry cap must break an invariant.
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_SH-R02-python-shutdown-stops-releasing-the-timer-owner/tools/readiness/tests/test_t72.py", line 234, in test_w09_the_named_negative_each_defect_is_caught_by_name
+  File "/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_SH-R02-python-shutdown-stops-releasing-the-timer-owner/tools/readiness/tests/test_t72.py", line 234, in test_w09_the_named_negative_each_defect_is_caught_by_name
     self.assertTrue(any(invariant in failure for failure in result.failures),
     ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
                     "%s: expected %s, got %r" % (defect, invariant, result.failures))
@@ -14,6 +14,6 @@ Traceback (most recent call last):
 AssertionError: False is not true : no_timer_release: expected no_leaked_timers, got ['bounded_census: the census reached 3808, over the plateau 2124']
 
 ----------------------------------------------------------------------
-Ran 1 test in 0.008s
+Ran 1 test in 0.007s
 
 FAILED (failures=1)

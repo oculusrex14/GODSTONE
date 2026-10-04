@@ -6,7 +6,7 @@ FAIL: test_w09_the_named_negative_each_defect_is_caught_by_name (test_t72.T72Fau
 Disabling ONE capacity release or ONE retry cap must break an invariant.
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_SH-R01-python-the-timer-release-defect-is-a-no-op/tools/readiness/tests/test_t72.py", line 233, in test_w09_the_named_negative_each_defect_is_caught_by_name
+  File "/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_SH-R01-python-the-timer-release-defect-is-a-no-op/tools/readiness/tests/test_t72.py", line 233, in test_w09_the_named_negative_each_defect_is_caught_by_name
     self.assertFalse(result.passed, "%s must fail" % defect)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: True is not false : no_timer_release must fail

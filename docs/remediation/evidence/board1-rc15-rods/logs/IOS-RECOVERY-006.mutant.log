@@ -1,7 +1,7 @@
 Building for debugging...
 [1 / 5]
 [2 / 6] GodstoneCore
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneCore/ReleaseIntake.swift:58:16: warning: stored property 'values' of 'Sendable'-conforming struct 'BundleMetadata' contains non-Sendable type 'Any'; this is an error in the Swift 6 language mode
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneCore/ReleaseIntake.swift:58:16: warning: stored property 'values' of 'Sendable'-conforming struct 'BundleMetadata' contains non-Sendable type 'Any'; this is an error in the Swift 6 language mode
  56 | 
  57 | public struct BundleMetadata: Sendable {
  58 |     public let values: [String: Any]
@@ -10,14 +10,14 @@ Building for debugging...
  60 |     public init(values: [String: Any]) { self.values = values }
 [3 / 7] GodstoneCore
 [16 / 20] GodstoneCore
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneCore/ReleaseIntake.swift:58:16: warning: stored property 'values' of 'Sendable'-conforming struct 'BundleMetadata' contains non-Sendable type 'Any'; this is an error in the Swift 6 language mode
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneCore/ReleaseIntake.swift:58:16: warning: stored property 'values' of 'Sendable'-conforming struct 'BundleMetadata' contains non-Sendable type 'Any'; this is an error in the Swift 6 language mode
  56 | 
  57 | public struct BundleMetadata: Sendable {
  58 |     public let values: [String: Any]
     |                `- warning: stored property 'values' of 'Sendable'-conforming struct 'BundleMetadata' contains non-Sendable type 'Any'; this is an error in the Swift 6 language mode
  59 | 
  60 |     public init(values: [String: Any]) { self.values = values }
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneCore/ArchiveRepository.swift:217:23: warning: result of call to 'withCString' is unused [#NoUsage]
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneCore/ArchiveRepository.swift:217:23: warning: result of call to 'withCString' is unused [#NoUsage]
 215 |             let bound = Int64(ArchiveSearchQuery.bound(limit))
 216 |             return try run(sql, binds: { stmt in
 217 |                 match.withCString { sqlite3_bind_text(stmt, 1, $0, -1, sqliteTransient) }
@@ -25,7 +25,7 @@ Building for debugging...
 218 |                 sqlite3_bind_int64(stmt, 2, bound)
 219 |             }) { stmt in
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneCore/ArchiveRepository.swift:234:62: warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneCore/ArchiveRepository.swift:234:62: warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
 232 |     public func versionString() throws -> String {
 233 |         try run("SELECT sqlite_version()") { stmt in columnString(stmt, 0) }
 234 |             .first ?? (String(cString: sqlite3_libversion()) ?? "unknown")
@@ -33,7 +33,7 @@ Building for debugging...
 235 |     }
 236 | 
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneCore/ArchiveRepository.swift:428:68: warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneCore/ArchiveRepository.swift:428:68: warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
 426 |         let flags = SQLITE_OPEN_READONLY | SQLITE_OPEN_FULLMUTEX
 427 |         guard sqlite3_open_v2(path, &db, flags, nil) == SQLITE_OK else {
 428 |             let why = db.map { String(cString: sqlite3_errmsg($0)) ?? "?" } ?? "open refused"
@@ -41,7 +41,7 @@ Building for debugging...
 429 |             return refuse(db, .corrupt("the file at \(path) could not be opened read-only: \(why)"))
 430 |         }
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneCore/ArchiveRepository.swift:439:67: warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneCore/ArchiveRepository.swift:439:67: warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
 437 |             let rc = sqlite3_exec(handle, pragma, nil, nil, nil)
 438 |             if rc != SQLITE_OK {
 439 |                 let why = String(cString: sqlite3_errmsg(handle)) ?? "rc \(rc)"
@@ -49,7 +49,7 @@ Building for debugging...
 440 |                 return refuse(handle, .readFailure("the seal \(pragma) would not seat: \(why)"))
 441 |             }
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneCore/ArchiveRepository.swift:483:59: warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneCore/ArchiveRepository.swift:483:59: warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
 481 |             return refuse(handle, .incompatible(ArchiveError.ftsUnavailable(fault).localizedDescription))
 482 |         }
 483 |         let stock = String(cString: sqlite3_libversion()) ?? "unknown"
@@ -57,7 +57,7 @@ Building for debugging...
 484 |         return (handle, .ready(origin: "file \(path) | sqlite \(stock) | read-only"))
 485 |     }
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneCore/ArchiveRepository.swift:497:28: warning: result of call to 'withCString' is unused [#NoUsage]
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneCore/ArchiveRepository.swift:497:28: warning: result of call to 'withCString' is unused [#NoUsage]
 495 |             sqlite3_finalize(stmt); return nil
 496 |         }
 497 |         if let bind { bind.withCString { sqlite3_bind_text(stmt, 1, $0, -1, sqliteTransient) } }
@@ -65,7 +65,7 @@ Building for debugging...
 498 |         var out: String?
 499 |         if sqlite3_step(stmt) == SQLITE_ROW, let value = sqlite3_column_text(stmt, 0) {
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneCore/ArchiveRepository.swift:525:64: warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneCore/ArchiveRepository.swift:525:64: warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
 523 |         for verse in verses {
 524 |             if sqlite3_exec(mem, verse, nil, nil, nil) != SQLITE_OK {
 525 |                 let why = String(cString: sqlite3_errmsg(mem)) ?? "?"
@@ -73,7 +73,7 @@ Building for debugging...
 526 |                 return "\(ellipsis(verse)) cried: \(why)"
 527 |             }
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneCore/ArchiveRepository.swift:532:60: warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneCore/ArchiveRepository.swift:532:60: warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
 530 |         guard sqlite3_prepare_v2(mem, "SELECT rowid FROM t48_canary WHERE t48_canary MATCH 'generate'",
 531 |                                  -1, &stmt, nil) == SQLITE_OK else {
 532 |             let why = String(cString: sqlite3_errmsg(mem)) ?? "?"
@@ -81,7 +81,7 @@ Building for debugging...
 533 |             sqlite3_finalize(stmt)
 534 |             return "the stem match would not prepare: \(why)"
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneCore/ArchiveRepository.swift:547:55: warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneCore/ArchiveRepository.swift:547:55: warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
 545 |         guard let db else { return "no handle" }
 546 |         let code = sqlite3_errcode(db)
 547 |         let msg = String(cString: sqlite3_errmsg(db)) ?? "?"
@@ -90,9 +90,10 @@ Building for debugging...
 549 |     }
 
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
+[17 / 22] GodstoneCoreTests-product
 [18 / 22] GodstoneCoreTests-product
 [28 / 32] GodstoneCoreTests-product
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/GsFinal007SearchReturnTests.swift:47:18: warning: instance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/GsFinal007SearchReturnTests.swift:47:18: warning: instance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
  45 |         switch request {
  46 |         case .browse:
  47 |             lock.lock(); browseCalls += 1; lock.unlock()
@@ -108,7 +109,7 @@ Building for debugging...
  16 | 
  17 | /// Relinquishes a previously acquired lock.
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/GsFinal007SearchReturnTests.swift:47:49: warning: instance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/GsFinal007SearchReturnTests.swift:47:49: warning: instance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
  45 |         switch request {
  46 |         case .browse:
  47 |             lock.lock(); browseCalls += 1; lock.unlock()
@@ -124,7 +125,7 @@ Building for debugging...
  19 | 
  20 | @end
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/GsFinal007SearchReturnTests.swift:50:18: warning: instance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/GsFinal007SearchReturnTests.swift:50:18: warning: instance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
  48 |             return .documents(browseRows ?? [document])
  49 |         case .search(let phrase):
  50 |             lock.lock()
@@ -140,7 +141,7 @@ Building for debugging...
  16 | 
  17 | /// Relinquishes a previously acquired lock.
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/GsFinal007SearchReturnTests.swift:53:18: warning: instance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/GsFinal007SearchReturnTests.swift:53:18: warning: instance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
  51 |             searched.append(phrase)
  52 |             let answer = searchAnswers.isEmpty ? hitsForSearch : searchAnswers.removeFirst()
  53 |             lock.unlock()
@@ -155,7 +156,7 @@ Building for debugging...
     | `- note: 'unlock()' declared here
  19 | 
  20 | @end
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/OracleSupersessionAndBudgetTests.swift:178:18: warning: instance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/OracleSupersessionAndBudgetTests.swift:178:18: warning: instance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
 176 | 
 177 |         func retrieve(question: String) async -> RetrievalResult {
 178 |             lock.lock(); _retrieveCount += 1; lock.unlock()
@@ -171,7 +172,7 @@ Building for debugging...
  16 | 
  17 | /// Relinquishes a previously acquired lock.
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/OracleSupersessionAndBudgetTests.swift:178:52: warning: instance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/OracleSupersessionAndBudgetTests.swift:178:52: warning: instance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
 176 | 
 177 |         func retrieve(question: String) async -> RetrievalResult {
 178 |             lock.lock(); _retrieveCount += 1; lock.unlock()
@@ -187,7 +188,7 @@ Building for debugging...
  19 | 
  20 | @end
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/OracleSupersessionAndBudgetTests.swift:429:14: warning: immutable value 'recorder' was never used; consider replacing with '_' or removing it [#NoUsage]
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/OracleSupersessionAndBudgetTests.swift:429:14: warning: immutable value 'recorder' was never used; consider replacing with '_' or removing it [#NoUsage]
 427 |                                     tokens: ["The dose is 50 ml [1]."])
 428 |         let vm = OracleViewModel(pipeline: pipeline)
 429 |         let (recorder, cancellable) = record(vm)
@@ -195,7 +196,7 @@ Building for debugging...
 430 |         defer { cancellable.cancel() }
 431 | 
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/OracleSupersessionAndBudgetTests.swift:514:14: warning: immutable value 'recorder' was never used; consider replacing with '_' or removing it [#NoUsage]
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/OracleSupersessionAndBudgetTests.swift:514:14: warning: immutable value 'recorder' was never used; consider replacing with '_' or removing it [#NoUsage]
 512 |                                     tokens: [oversized])
 513 |         let vm = OracleViewModel(pipeline: pipeline, budget: budget)
 514 |         let (recorder, cancellable) = record(vm)
@@ -203,7 +204,7 @@ Building for debugging...
 515 |         defer { cancellable.cancel() }
 516 | 
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/OracleSupersessionAndBudgetTests.swift:533:14: warning: immutable value 'recorder' was never used; consider replacing with '_' or removing it [#NoUsage]
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/OracleSupersessionAndBudgetTests.swift:533:14: warning: immutable value 'recorder' was never used; consider replacing with '_' or removing it [#NoUsage]
 531 |                                     tokens: supported.map(String.init), ready: false)
 532 |         let vm = OracleViewModel(pipeline: pipeline)
 533 |         let (recorder, cancellable) = record(vm)
@@ -212,7 +213,7 @@ Building for debugging...
 535 | 
 
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT48Tests.swift:134:69: warning: main actor-isolated static property 'tierName' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT48Tests.swift:134:69: warning: main actor-isolated static property 'tierName' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
  23 | @MainActor
  24 | final class ReadinessT48Tests: XCTestCase {
  25 |     private static let tierName = Tier.light.archiveDatabaseName   // archive_light.db
@@ -227,7 +228,7 @@ Building for debugging...
 135 |                               _ shape: (inout FixtureKnobs) -> Void = { _ in }) throws -> URL {
 136 |         var knobs = FixtureKnobs()
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT50Tests.swift:238:69: warning: main actor-isolated static property 'tierName' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT50Tests.swift:238:69: warning: main actor-isolated static property 'tierName' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
  128 | @MainActor
  129 | final class ReadinessT50Tests: XCTestCase {
  130 |     private static let tierName = Tier.light.archiveDatabaseName   // archive_light.db
@@ -241,7 +242,7 @@ Building for debugging...
      |                                                                     `- warning: main actor-isolated static property 'tierName' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
  239 |                              _ shape: (inout FixtureKnobs) -> Void = { _ in }) throws -> URL {
  240 |         var knobs = FixtureKnobs()
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT51Tests.swift:171:57: warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT51Tests.swift:171:57: warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
 169 |             let rc = sqlite3_exec(db, statement, nil, nil, &err)
 170 |             if rc != SQLITE_OK {
 171 |                 let why = err.map { String(cString: $0) ?? "?" } ?? "rc \(rc)"
@@ -249,14 +250,14 @@ Building for debugging...
 172 |                 if let e = err { sqlite3_free(e) }
 173 |                 XCTFail("plant DDL from \(origin) cried on \"\(String(statement.prefix(72)))…\": \(why)")
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT51Tests.swift:203:57: warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT51Tests.swift:203:57: warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
 201 |             let prc = sqlite3_exec(db, sql, nil, nil, &err)
 202 |             if prc != SQLITE_OK {
 203 |                 let why = err.map { String(cString: $0) ?? "?" } ?? "rc \(prc)"
     |                                                         `- warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
 204 |                 if let e = err { sqlite3_free(e) }
 205 |                 XCTFail("plant insert cried: \(why) on \(String(sql.prefix(72)))…")
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT48Tests.swift:134:69: warning: main actor-isolated static property 'tierName' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT48Tests.swift:134:69: warning: main actor-isolated static property 'tierName' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
  23 | @MainActor
  24 | final class ReadinessT48Tests: XCTestCase {
  25 |     private static let tierName = Tier.light.archiveDatabaseName   // archive_light.db
@@ -271,7 +272,7 @@ Building for debugging...
 135 |                               _ shape: (inout FixtureKnobs) -> Void = { _ in }) throws -> URL {
 136 |         var knobs = FixtureKnobs()
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT48Tests.swift:112:57: warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT48Tests.swift:112:57: warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
 110 |             let rc = sqlite3_exec(db, statement, nil, nil, &err)
 111 |             if rc != SQLITE_OK {
 112 |                 let why = err.map { String(cString: $0) ?? "?" } ?? "rc \(rc)"
@@ -279,14 +280,14 @@ Building for debugging...
 113 |                 if let e = err { sqlite3_free(e) }
 114 |                 XCTFail("fixture DDL from \(origin) cried on \"\(String(statement.prefix(72)))…\": \(why)")
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT48Tests.swift:233:53: warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT48Tests.swift:233:53: warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
 231 |         let rc = sqlite3_exec(db, sql, nil, nil, &err)
 232 |         if rc != SQLITE_OK {
 233 |             let why = err.map { String(cString: $0) ?? "?" } ?? "rc \(rc)"
     |                                                     `- warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
 234 |             if let e = err { sqlite3_free(e) }
 235 |             XCTFail("fixture insert cried: \(why) on \(String(sql.prefix(72)))…")
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT61Tests.swift:215:9: warning: variable 'given' was never mutated; consider changing to 'let' constant [#VariableNeverMutated]
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT61Tests.swift:215:9: warning: variable 'given' was never mutated; consider changing to 'let' constant [#VariableNeverMutated]
 213 | 
 214 | private func t61Chunked(_ bytes: [UInt8], _ measure: Int, _ burst: Int) -> ModelStaging.T61Chunker {
 215 |     var given = bytes
@@ -295,7 +296,7 @@ Building for debugging...
 217 |     var words = 0
 
 [#VariableNeverMutated]: <https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated>
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT50Tests.swift:238:69: warning: main actor-isolated static property 'tierName' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT50Tests.swift:238:69: warning: main actor-isolated static property 'tierName' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
  128 | @MainActor
  129 | final class ReadinessT50Tests: XCTestCase {
  130 |     private static let tierName = Tier.light.archiveDatabaseName   // archive_light.db
@@ -310,7 +311,7 @@ Building for debugging...
  239 |                              _ shape: (inout FixtureKnobs) -> Void = { _ in }) throws -> URL {
  240 |         var knobs = FixtureKnobs()
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT50Tests.swift:83:18: warning: instance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT50Tests.swift:83:18: warning: instance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
   81 |         switch request {
   82 |         case .browse:
   83 |             lock.lock(); listCalls += 1; let injected = listFault; lock.unlock()
@@ -326,7 +327,7 @@ Building for debugging...
  16 | 
  17 | /// Relinquishes a previously acquired lock.
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT50Tests.swift:83:73: warning: instance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT50Tests.swift:83:73: warning: instance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
   81 |         switch request {
   82 |         case .browse:
   83 |             lock.lock(); listCalls += 1; let injected = listFault; lock.unlock()
@@ -342,7 +343,7 @@ Building for debugging...
  19 | 
  20 | @end
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT50Tests.swift:88:18: warning: instance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT50Tests.swift:88:18: warning: instance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
   86 |             return .documents([guide])
   87 |         case .search(let phrase):
   88 |             lock.lock(); searchCalls += 1; searched.append(phrase); lock.unlock()
@@ -358,7 +359,7 @@ Building for debugging...
  16 | 
  17 | /// Relinquishes a previously acquired lock.
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT50Tests.swift:88:74: warning: instance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT50Tests.swift:88:74: warning: instance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
   86 |             return .documents([guide])
   87 |         case .search(let phrase):
   88 |             lock.lock(); searchCalls += 1; searched.append(phrase); lock.unlock()
@@ -374,7 +375,7 @@ Building for debugging...
  19 | 
  20 | @end
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT50Tests.swift:102:18: warning: instance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT50Tests.swift:102:18: warning: instance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
  100 |             return .passages(searchBlock?(phrase) ?? [first])
  101 |         case .document(let id):
  102 |             lock.lock(); passageCalls += 1; lock.unlock()
@@ -390,7 +391,7 @@ Building for debugging...
  16 | 
  17 | /// Relinquishes a previously acquired lock.
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT50Tests.swift:102:50: warning: instance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT50Tests.swift:102:50: warning: instance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
  100 |             return .passages(searchBlock?(phrase) ?? [first])
  101 |         case .document(let id):
  102 |             lock.lock(); passageCalls += 1; lock.unlock()
@@ -406,7 +407,7 @@ Building for debugging...
  19 | 
  20 | @end
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT50Tests.swift:214:57: warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT50Tests.swift:214:57: warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
  212 |             let rc = sqlite3_exec(db, statement, nil, nil, &err)
  213 |             if rc != SQLITE_OK {
  214 |                 let why = err.map { String(cString: $0) ?? "?" } ?? "rc \(rc)"
@@ -414,7 +415,7 @@ Building for debugging...
  215 |                 if let e = err { sqlite3_free(e) }
  216 |                 XCTFail("fixture DDL from \(origin) cried on \"\(String(statement.prefix(72)))…\": \(why)")
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT50Tests.swift:226:53: warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT50Tests.swift:226:53: warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
  224 |         let rc = sqlite3_exec(db, sql, nil, nil, &err)
  225 |         if rc != SQLITE_OK {
  226 |             let why = err.map { String(cString: $0) ?? "?" } ?? "rc \(rc)"
@@ -422,7 +423,7 @@ Building for debugging...
  227 |             if let e = err { sqlite3_free(e) }
  228 |             XCTFail("fixture insert cried: \(why) on \(String(sql.prefix(72)))…")
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT50Tests.swift:593:32: warning: immutable value 'model' was never used; consider replacing with '_' or removing it [#NoUsage]
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT50Tests.swift:593:32: warning: immutable value 'model' was never used; consider replacing with '_' or removing it [#NoUsage]
  591 |     func testTheRealRoadProjectethProvenanceFromTheFrozenColumns() async throws {
  592 |         _ = try makeArchive()
  593 |         let (archive, library, model, scene) = composeTrio()
@@ -430,7 +431,7 @@ Building for debugging...
  594 |         await scene.loadDocuments()
  595 |         await seat(scene)
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT50Tests.swift:616:34: warning: immutable value 'model2' was never used; consider replacing with '_' or removing it [#NoUsage]
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT50Tests.swift:616:34: warning: immutable value 'model2' was never used; consider replacing with '_' or removing it [#NoUsage]
  614 |         // tell Unavailable, and the scene must refuse the empty masquerade
  615 |         _ = try makeArchive { $0.poisonBodyPages = true }
  616 |         let (archive2, library2, model2, scene2) = composeTrio()
@@ -438,7 +439,7 @@ Building for debugging...
  617 |         await scene2.loadDocuments()
  618 |         await seat(scene2)
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT50Tests.swift:767:23: warning: immutable value 'library' was never used; consider replacing with '_' or removing it [#NoUsage]
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT50Tests.swift:767:23: warning: immutable value 'library' was never used; consider replacing with '_' or removing it [#NoUsage]
  765 |     func testW20TheVisiblePassageIsNotedAndAnAnchorForAnotherDocumentIsRefused() async throws {
  766 |         _ = try makeArchive()
  767 |         let (archive, library, _, scene) = composeTrio()
@@ -446,7 +447,7 @@ Building for debugging...
  768 |         defer { archive.close() }
  769 |         await scene.loadDocuments()
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT50Tests.swift:786:9: warning: no 'async' operations occur within 'await' expression [#UnnecessaryEffectMarker]
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT50Tests.swift:786:9: warning: no 'async' operations occur within 'await' expression [#UnnecessaryEffectMarker]
  784 |         // (2) *** THE DISCRIMINATOR: AN ANCHOR NOTED WHILE NO DOCUMENT STANDS IS REFUSED, because an anchor for
  785 |         // another document would place the reader at whatever passage happeneth to carrieth that identity. ***
  786 |         await scene.backToDocuments()
@@ -454,7 +455,7 @@ Building for debugging...
  787 |         await seat(scene)
  788 |         let before = scene.scrollAnchor?.passageId
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT50Tests.swift:905:23: warning: immutable value 'library' was never used; consider replacing with '_' or removing it [#NoUsage]
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT50Tests.swift:905:23: warning: immutable value 'library' was never used; consider replacing with '_' or removing it [#NoUsage]
  903 |     func testW16TheSceneRecordSurvivethARealPersistenceRoundTrip() async throws {
  904 |         _ = try makeArchive()
  905 |         let (archive, library, _, scene) = composeTrio()
@@ -462,7 +463,7 @@ Building for debugging...
  906 |         defer { archive.close() }
  907 |         await scene.loadDocuments()
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT50Tests.swift:94:17: warning: code after 'return' will never be executed
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT50Tests.swift:94:17: warning: code after 'return' will never be executed
   92 |                 }
   93 |                 // resumed by the court; the halt-and-catch below is the elder's fate
   94 |                 if failSearch {
@@ -473,7 +474,7 @@ Building for debugging...
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
 [34 / 38] GodstoneMesh
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/BleTransport.swift:8:16: warning: stored property 'peripheral' of 'Sendable'-conforming struct 'OutboundPhysicalLifetime' contains non-Sendable type 'CBPeripheral'; this is an error in the Swift 6 language mode
+[35 / 39] GodstoneMesh/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/BleTransport.swift:8:16: warning: stored property 'peripheral' of 'Sendable'-conforming struct 'OutboundPhysicalLifetime' contains non-Sendable type 'CBPeripheral'; this is an error in the Swift 6 language mode
    6 |     public let relationKey: RelationKey
    7 |     public let transportEpoch: UInt64
    8 |     public let peripheral: CBPeripheral?
@@ -489,14 +490,14 @@ Building for debugging...
  67 | 
  68 | /*!
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/BleTransport.swift:2:1: warning: add '@preconcurrency' to suppress 'Sendable'-related warnings from module 'CoreBluetooth' [#AddPreconcurrencyImport]
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/BleTransport.swift:2:1: warning: add '@preconcurrency' to suppress 'Sendable'-related warnings from module 'CoreBluetooth' [#AddPreconcurrencyImport]
    1 | import Foundation
    2 | import CoreBluetooth
      | `- warning: add '@preconcurrency' to suppress 'Sendable'-related warnings from module 'CoreBluetooth' [#AddPreconcurrencyImport]
    3 | import GodstoneCore
    4 | 
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/BleTransport.swift:32:16: warning: stored property 'characteristicUuid' of 'Sendable'-conforming struct 'InboxSubscription' has non-Sendable type 'CBUUID'; this is an error in the Swift 6 language mode
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/BleTransport.swift:32:16: warning: stored property 'characteristicUuid' of 'Sendable'-conforming struct 'InboxSubscription' has non-Sendable type 'CBUUID'; this is an error in the Swift 6 language mode
   30 | /// subscription. Presented by the subscribe callback, held with the lease.
   31 | public struct InboxSubscription: Equatable, Sendable {
   32 |     public let characteristicUuid: CBUUID
@@ -512,7 +513,7 @@ Building for debugging...
  86 | 
  87 | /*!
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/BleTransport.swift:48:16: warning: stored property 'retainedCentral' of 'Sendable'-conforming struct 'InboundSubscriptionLifetime' contains non-Sendable type 'CBCentral'; this is an error in the Swift 6 language mode
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/BleTransport.swift:48:16: warning: stored property 'retainedCentral' of 'Sendable'-conforming struct 'InboundSubscriptionLifetime' contains non-Sendable type 'CBCentral'; this is an error in the Swift 6 language mode
   46 |     /// this handle - never through a fresh lookup of the subscriber list,
   47 |     /// which a reused identity could have renewed in the meantime.
   48 |     public let retainedCentral: CBCentral?
@@ -528,7 +529,7 @@ Building for debugging...
 29 | 
 30 | /*!
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/BleTransport.swift:123:5: warning: 'public' modifier is redundant for property declared in a public extension
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/BleTransport.swift:123:5: warning: 'public' modifier is redundant for property declared in a public extension
  121 | 
  122 | public extension TransportManagerFactory {
  123 |     public var admissionBudgetOverride: Int? { return nil }
@@ -536,7 +537,7 @@ Building for debugging...
  124 | }
  125 | 
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/BleTransport.swift:550:9: warning: stored property 'timer' of 'Sendable'-conforming struct 'TimerLease' has non-Sendable type 'Timer'; this is an error in the Swift 6 language mode
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/BleTransport.swift:550:9: warning: stored property 'timer' of 'Sendable'-conforming struct 'TimerLease' has non-Sendable type 'Timer'; this is an error in the Swift 6 language mode
  548 |     public let deadlineUptimeMillis: UInt64
  549 |     public let handle: TimerKey
  550 |     let timer: Timer
@@ -552,7 +553,7 @@ Building for debugging...
  46 | 
  47 | /// Initializes a timer object with the specified invocation object.
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/BoundRecipientKeyResolver.swift:11:1: warning: conformance to 'Sendable' must occur in the same source file as class 'PeerIdentityRepository'; use '@unchecked Sendable' for retroactive conformance; this is an error in the Swift 6 language mode
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/BoundRecipientKeyResolver.swift:11:1: warning: conformance to 'Sendable' must occur in the same source file as class 'PeerIdentityRepository'; use '@unchecked Sendable' for retroactive conformance; this is an error in the Swift 6 language mode
  9 | }
 10 | 
 11 | extension PeerIdentityRepository: PeerIdentityLookupSource {}
@@ -560,7 +561,7 @@ Building for debugging...
 12 | 
 13 | /// Read-only durable peer-identity -> ACK signing-key resolver (ADR-003, Phase C8.3).
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/PeerIdentityRepository.swift:114:17: warning: stored property 'store' of 'Sendable'-conforming class 'PeerIdentityRepository' has non-Sendable type 'any PeerIdentityStore'; this is an error in the Swift 6 language mode
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/PeerIdentityRepository.swift:114:17: warning: stored property 'store' of 'Sendable'-conforming class 'PeerIdentityRepository' has non-Sendable type 'any PeerIdentityStore'; this is an error in the Swift 6 language mode
 112 | /// and post-mutation readback verification (ADR-003, Phase C8.2B).
 113 | internal final class PeerIdentityRepository {
 114 |     private let store: PeerIdentityStore
@@ -568,7 +569,7 @@ Building for debugging...
 115 | 
 116 |     init(store: PeerIdentityStore) {
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/PeerIdentityStore.swift:223:19: note: protocol 'PeerIdentityStore' does not conform to the 'Sendable' protocol
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/PeerIdentityStore.swift:223:19: note: protocol 'PeerIdentityStore' does not conform to the 'Sendable' protocol
  221 | 
  222 | /// Storage protocol for peer identity repository backend (ADR-003, Phase C8.2B).
  223 | internal protocol PeerIdentityStore: AnyObject {
@@ -576,7 +577,7 @@ Building for debugging...
  224 |     func inImmediateTransaction<T>(_ block: (PeerIdentityStore) throws -> T) throws -> T
  225 | 
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/LabRuntime.swift:1937:17: warning: stored property 'trustStore' of 'Sendable'-conforming struct 'LabEstateSeam' contains non-Sendable type 'SqlitePeerIdentityStore'; this is an error in the Swift 6 language mode
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/LabRuntime.swift:1937:17: warning: stored property 'trustStore' of 'Sendable'-conforming struct 'LabEstateSeam' contains non-Sendable type 'SqlitePeerIdentityStore'; this is an error in the Swift 6 language mode
 1935 |     private let paths: [String: URL]
 1936 |     private let drain: LabEstateDrainSeam?
 1937 |     private let trustStore: SqlitePeerIdentityStore?
@@ -584,7 +585,7 @@ Building for debugging...
 1938 |     internal let keychain: any LocalIdentityKeychain = HarnessIdentityKeychain()
 1939 |     /// The lab carries no encrypted private store (its stores are plaintext files under Application Support), so
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/PeerIdentityStore.swift:288:22: note: class 'SqlitePeerIdentityStore' does not conform to the 'Sendable' protocol
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/PeerIdentityStore.swift:288:22: note: class 'SqlitePeerIdentityStore' does not conform to the 'Sendable' protocol
  286 | 
  287 | /// Production SQLite-backed peer identity store with fixed FileProtectionType.complete (ADR-003, Phase C8.2B).
  288 | internal final class SqlitePeerIdentityStore: PeerIdentityStore {
@@ -592,7 +593,7 @@ Building for debugging...
  289 |     private var handle: OpaquePointer?
  290 | 
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/LabRuntime.swift:1941:18: warning: stored property 'dekProvider' of 'Sendable'-conforming struct 'LabEstateSeam' contains non-Sendable type 'any PrivateStoreKeyProvider'; this is an error in the Swift 6 language mode
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/LabRuntime.swift:1941:18: warning: stored property 'dekProvider' of 'Sendable'-conforming struct 'LabEstateSeam' contains non-Sendable type 'any PrivateStoreKeyProvider'; this is an error in the Swift 6 language mode
 1939 |     /// The lab carries no encrypted private store (its stores are plaintext files under Application Support), so
 1940 |     /// there is no DEK to erase and the vault answereth `.absent` -- the tri-state doctrine's own honest word.
 1941 |     internal let dekProvider: (any PrivateStoreKeyProvider)? = nil
@@ -600,7 +601,7 @@ Building for debugging...
 1942 | 
 1943 |     /// - Parameters:
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/PrivateStoreKeyProvider.swift:66:17: note: protocol 'PrivateStoreKeyProvider' does not conform to the 'Sendable' protocol
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/PrivateStoreKeyProvider.swift:66:17: note: protocol 'PrivateStoreKeyProvider' does not conform to the 'Sendable' protocol
  64 | /// `DefaultPrivateStoreKeyProvider`; the court injects a fake to drive wrong-DEK,
  65 | /// Keychain-unavailable, locked-device and protection-failure decisions on the host.
  66 | public protocol PrivateStoreKeyProvider: AnyObject {
@@ -608,7 +609,7 @@ Building for debugging...
  67 |     /// The pinned DEK length in bytes (AES-256).
  68 |     var dekByteCount: Int { get }
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/MeshRuntime.swift:1261:17: warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/MeshRuntime.swift:1261:17: warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
 1259 |             invalidateRuntime: { [invalidator, messageStore, peerIdentityStore,
 1260 |                                  adoptedMessageConnection, adoptedPeerConnection] in
 1261 |                 try invalidator.invalidateForWipe()
@@ -616,7 +617,7 @@ Building for debugging...
 1262 |                 messageStore.close()
 1263 |                 peerIdentityStore.close()
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/MeshRuntime.swift:1480:13: warning: stored property 'dekProvider' of 'Sendable'-conforming struct 'DefaultRecoveryEstate' contains non-Sendable type 'any PrivateStoreKeyProvider'; this is an error in the Swift 6 language mode
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/MeshRuntime.swift:1480:13: warning: stored property 'dekProvider' of 'Sendable'-conforming struct 'DefaultRecoveryEstate' contains non-Sendable type 'any PrivateStoreKeyProvider'; this is an error in the Swift 6 language mode
 1478 |         let peerStoreUrl: URL
 1479 |         let keychain: any LocalIdentityKeychain
 1480 |         let dekProvider: (any PrivateStoreKeyProvider)?
@@ -624,7 +625,7 @@ Building for debugging...
 1481 |         /// The composition's ONE owner registry; the production recovery road drains and closes through IT.
 1482 |         let registry: EstateOwnerRegistry
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/PrivateStoreKeyProvider.swift:66:17: note: protocol 'PrivateStoreKeyProvider' does not conform to the 'Sendable' protocol
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/PrivateStoreKeyProvider.swift:66:17: note: protocol 'PrivateStoreKeyProvider' does not conform to the 'Sendable' protocol
  64 | /// `DefaultPrivateStoreKeyProvider`; the court injects a fake to drive wrong-DEK,
  65 | /// Keychain-unavailable, locked-device and protection-failure decisions on the host.
  66 | public protocol PrivateStoreKeyProvider: AnyObject {
@@ -632,7 +633,7 @@ Building for debugging...
  67 |     /// The pinned DEK length in bytes (AES-256).
  68 |     var dekByteCount: Int { get }
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/MeshRuntime.swift:1485:13: warning: stored property 'liveTransportSeam' of 'Sendable'-conforming struct 'DefaultRecoveryEstate' contains non-Sendable type 'any TransportRuntimeSeam'; this is an error in the Swift 6 language mode
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/MeshRuntime.swift:1485:13: warning: stored property 'liveTransportSeam' of 'Sendable'-conforming struct 'DefaultRecoveryEstate' contains non-Sendable type 'any TransportRuntimeSeam'; this is an error in the Swift 6 language mode
 1483 |         /// The runtime's live transport seam, when one is running; `nil` at create time, where the registry's own
 1484 |         /// positive cold proof is what the drain rung stands on.
 1485 |         let liveTransportSeam: TransportRuntimeSeam?
@@ -640,7 +641,7 @@ Building for debugging...
 1486 |         /// The runtime's owner invalidation/close hook, carried across rather than dropped.
 1487 |         let invalidateLiveOwners: () -> Void
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/CrashResumableWipe.swift:203:17: note: protocol 'TransportRuntimeSeam' does not conform to the 'Sendable' protocol
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/CrashResumableWipe.swift:203:17: note: protocol 'TransportRuntimeSeam' does not conform to the 'Sendable' protocol
 201 | }
 202 | 
 203 | public protocol TransportRuntimeSeam: AnyObject {
@@ -648,7 +649,7 @@ Building for debugging...
 204 |     func drainTransport() -> RuntimeDrainReceipt
 205 |     /// Whether THIS process lifetime has drained the transport; a reboot starts un-quiesced.
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/MeshRuntime.swift:1487:13: warning: stored property 'invalidateLiveOwners' of 'Sendable'-conforming struct 'DefaultRecoveryEstate' has non-Sendable type '() -> ()'; this is an error in the Swift 6 language mode
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/MeshRuntime.swift:1487:13: warning: stored property 'invalidateLiveOwners' of 'Sendable'-conforming struct 'DefaultRecoveryEstate' has non-Sendable type '() -> ()'; this is an error in the Swift 6 language mode
 1485 |         let liveTransportSeam: TransportRuntimeSeam?
 1486 |         /// The runtime's owner invalidation/close hook, carried across rather than dropped.
 1487 |         let invalidateLiveOwners: () -> Void
@@ -657,7 +658,7 @@ Building for debugging...
 1488 |         internal init(messageStoreUrl: URL, peerStoreUrl: URL,
 1489 |                       keychain: any LocalIdentityKeychain,
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/MessageStore.swift:66:10: warning: associated value 'created' of 'Sendable'-conforming enum 'OutboundEnqueueResult' has non-Sendable type 'FrameV2'; this is an error in the Swift 6 language mode
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/MessageStore.swift:66:10: warning: associated value 'created' of 'Sendable'-conforming enum 'OutboundEnqueueResult' has non-Sendable type 'FrameV2'; this is an error in the Swift 6 language mode
   64 | public enum OutboundEnqueueResult: Sendable, Equatable {
   65 |     /// A new DIRECT message was atomically persisted in held_frames and delivery_state (QUEUED_DURABLY).
   66 |     case created(FrameV2)
@@ -665,7 +666,7 @@ Building for debugging...
   67 |     /// An idempotent retry of the SAME logical message with matching SINGLE_RECIPIENT binding and exact canonical frame.
   68 |     case alreadyQueuedSameBinding(FrameV2)
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/WireV2.swift:7:15: note: consider making struct 'FrameV2' conform to the 'Sendable' protocol
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/WireV2.swift:7:15: note: consider making struct 'FrameV2' conform to the 'Sendable' protocol
   5 | 
   6 | /// GMP/2 frame. Header is 32 bytes, big-endian.
   7 | public struct FrameV2: Equatable {
@@ -673,7 +674,7 @@ Building for debugging...
   8 |     public static let magic: UInt16 = 0x4753
   9 |     public static let version: UInt8 = 0x02
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/MessageStore.swift:68:10: warning: associated value 'alreadyQueuedSameBinding' of 'Sendable'-conforming enum 'OutboundEnqueueResult' has non-Sendable type 'FrameV2'; this is an error in the Swift 6 language mode
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/MessageStore.swift:68:10: warning: associated value 'alreadyQueuedSameBinding' of 'Sendable'-conforming enum 'OutboundEnqueueResult' has non-Sendable type 'FrameV2'; this is an error in the Swift 6 language mode
   66 |     case created(FrameV2)
   67 |     /// An idempotent retry of the SAME logical message with matching SINGLE_RECIPIENT binding and exact canonical frame.
   68 |     case alreadyQueuedSameBinding(FrameV2)
@@ -681,7 +682,7 @@ Building for debugging...
   69 |     /// A held frame exists with matching msg_id but its fields/content differ from requested frame.
   70 |     case canonicalFrameMismatch
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/WireV2.swift:7:15: note: consider making struct 'FrameV2' conform to the 'Sendable' protocol
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/WireV2.swift:7:15: note: consider making struct 'FrameV2' conform to the 'Sendable' protocol
   5 | 
   6 | /// GMP/2 frame. Header is 32 bytes, big-endian.
   7 | public struct FrameV2: Equatable {
@@ -689,7 +690,7 @@ Building for debugging...
   8 |     public static let magic: UInt16 = 0x4753
   9 |     public static let version: UInt8 = 0x02
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SchemaMigration.swift:78:16: warning: stored property 'apply' of 'Sendable'-conforming struct 'MigrationStep' contains non-Sendable type '(any MigrationExecutor) -> ()'; this is an error in the Swift 6 language mode
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SchemaMigration.swift:78:16: warning: stored property 'apply' of 'Sendable'-conforming struct 'MigrationStep' contains non-Sendable type '(any MigrationExecutor) -> ()'; this is an error in the Swift 6 language mode
  76 |     public let to: Int
  77 |     public let statements: [String]
  78 |     public let apply: MigrationApply?
@@ -698,7 +699,7 @@ Building for debugging...
  79 |     public init(from: Int, to: Int, statements: [String], apply: MigrationApply? = nil) { self.from = from; self.to = to; self.statements = statements; self.apply = apply }
  80 | }
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SosCommand.swift:44:16: warning: stored property 'frame' of 'Sendable'-conforming struct 'ActiveSos' has non-Sendable type 'FrameV2'; this is an error in the Swift 6 language mode
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SosCommand.swift:44:16: warning: stored property 'frame' of 'Sendable'-conforming struct 'ActiveSos' has non-Sendable type 'FrameV2'; this is an error in the Swift 6 language mode
  42 |     public let msgId: Data
  43 |     public let state: DeliveryState
  44 |     public let frame: FrameV2
@@ -706,7 +707,7 @@ Building for debugging...
  45 |     /// When this node committed the pair, when it remembers; nil when the
  46 |     /// tables cannot name the instant (honest silence over a fabricated clock).
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/WireV2.swift:7:15: note: consider making struct 'FrameV2' conform to the 'Sendable' protocol
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/WireV2.swift:7:15: note: consider making struct 'FrameV2' conform to the 'Sendable' protocol
   5 | 
   6 | /// GMP/2 frame. Header is 32 bytes, big-endian.
   7 | public struct FrameV2: Equatable {
@@ -714,7 +715,7 @@ Building for debugging...
   8 |     public static let magic: UInt16 = 0x4753
   9 |     public static let version: UInt8 = 0x02
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SyncControlOwner.swift:42:14: warning: associated value 'answered(frame:)' of 'Sendable'-conforming enum 'OwnerDecision' contains non-Sendable type 'FrameV2'; this is an error in the Swift 6 language mode
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SyncControlOwner.swift:42:14: warning: associated value 'answered(frame:)' of 'Sendable'-conforming enum 'OwnerDecision' contains non-Sendable type 'FrameV2'; this is an error in the Swift 6 language mode
  40 |         case ignored(reason: String)
  41 |         case refused(reason: String)
  42 |         case answered(frame: FrameV2)
@@ -722,7 +723,7 @@ Building for debugging...
  43 |         case delivered(frames: [FrameV2])
  44 |     }
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/WireV2.swift:7:15: note: consider making struct 'FrameV2' conform to the 'Sendable' protocol
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/WireV2.swift:7:15: note: consider making struct 'FrameV2' conform to the 'Sendable' protocol
   5 | 
   6 | /// GMP/2 frame. Header is 32 bytes, big-endian.
   7 | public struct FrameV2: Equatable {
@@ -730,7 +731,7 @@ Building for debugging...
   8 |     public static let magic: UInt16 = 0x4753
   9 |     public static let version: UInt8 = 0x02
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SyncControlOwner.swift:43:14: warning: associated value 'delivered(frames:)' of 'Sendable'-conforming enum 'OwnerDecision' contains non-Sendable type 'FrameV2'; this is an error in the Swift 6 language mode
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SyncControlOwner.swift:43:14: warning: associated value 'delivered(frames:)' of 'Sendable'-conforming enum 'OwnerDecision' contains non-Sendable type 'FrameV2'; this is an error in the Swift 6 language mode
  41 |         case refused(reason: String)
  42 |         case answered(frame: FrameV2)
  43 |         case delivered(frames: [FrameV2])
@@ -738,7 +739,7 @@ Building for debugging...
  44 |     }
  45 | 
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/WireV2.swift:7:15: note: consider making struct 'FrameV2' conform to the 'Sendable' protocol
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/WireV2.swift:7:15: note: consider making struct 'FrameV2' conform to the 'Sendable' protocol
   5 | 
   6 | /// GMP/2 frame. Header is 32 bytes, big-endian.
   7 | public struct FrameV2: Equatable {
@@ -746,7 +747,7 @@ Building for debugging...
   8 |     public static let magic: UInt16 = 0x4753
   9 |     public static let version: UInt8 = 0x02
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SyncPump.swift:46:16: warning: stored property 'frame' of 'Sendable'-conforming struct 'ForwardCopy' has non-Sendable type 'FrameV2'; this is an error in the Swift 6 language mode
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SyncPump.swift:46:16: warning: stored property 'frame' of 'Sendable'-conforming struct 'ForwardCopy' has non-Sendable type 'FrameV2'; this is an error in the Swift 6 language mode
  44 | /// exactly once -- and every retry re-emiteth these exact bytes.
  45 | public struct ForwardCopy: Equatable, Sendable {
  46 |     public let frame: FrameV2
@@ -754,7 +755,7 @@ Building for debugging...
  47 |     /// The immediate hop it arrived from, which is never offered it back.
  48 |     public let fromPeer: Data?
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/WireV2.swift:7:15: note: consider making struct 'FrameV2' conform to the 'Sendable' protocol
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/WireV2.swift:7:15: note: consider making struct 'FrameV2' conform to the 'Sendable' protocol
   5 | 
   6 | /// GMP/2 frame. Header is 32 bytes, big-endian.
   7 | public struct FrameV2: Equatable {
@@ -762,7 +763,7 @@ Building for debugging...
   8 |     public static let magic: UInt16 = 0x4753
   9 |     public static let version: UInt8 = 0x02
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/TrustedHandshakeController.swift:39:9: warning: stored property 'noiseSession' of 'Sendable'-conforming struct 'DefaultHs3Writer' has non-Sendable type 'NoiseSession'; this is an error in the Swift 6 language mode
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/TrustedHandshakeController.swift:39:9: warning: stored property 'noiseSession' of 'Sendable'-conforming struct 'DefaultHs3Writer' has non-Sendable type 'NoiseSession'; this is an error in the Swift 6 language mode
  37 | 
  38 | internal struct DefaultHs3Writer: Hs3Writer {
  39 |     let noiseSession: NoiseSession
@@ -770,7 +771,7 @@ Building for debugging...
  40 |     func writeHs3(payload: Data) throws -> Data {
  41 |         try noiseSession.writeMessage3(payload: payload)
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/NoiseSession.swift:48:20: note: class 'NoiseSession' does not conform to the 'Sendable' protocol
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/NoiseSession.swift:48:20: note: class 'NoiseSession' does not conform to the 'Sendable' protocol
  46 | }
  47 | 
  48 | public final class NoiseSession {
@@ -780,11 +781,10 @@ Building for debugging...
 
 [#AddPreconcurrencyImport]: <https://docs.swift.org/compiler/documentation/diagnostics/add-preconcurrency-import>
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
-[35 / 39] GodstoneMesh
-[50 / 54] GodstoneMesh
-error: SwiftCompile normal arm64 /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/MeshRuntime.swift failed with a nonzero exit code. Command line:     cd /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages
+
+error: SwiftCompile normal arm64 /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/MeshRuntime.swift failed with a nonzero exit code. Command line:     cd /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages
     builtin-SwiftPerFileCompile MeshRuntime.swift
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/LinkInfoSnapshotAuthority.swift:143:13: warning: variable 'bloom' was never mutated; consider changing to 'let' constant [#VariableNeverMutated]
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/LinkInfoSnapshotAuthority.swift:143:13: warning: variable 'bloom' was never mutated; consider changing to 'let' constant [#VariableNeverMutated]
 141 |         let nodeHint = identity.nodeHint
 142 |         var count = 0
 143 |         var bloom = BloomDigest()
@@ -792,7 +792,7 @@ error: SwiftCompile normal arm64 /private/tmp/godstone-board1-rc15-full-4f84d0b6
 144 |         store.forEachHeldMsgId { msgId in
 145 |             count += 1
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/MeshRuntime.swift:1261:17: warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/MeshRuntime.swift:1261:17: warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
 1259 |             invalidateRuntime: { [invalidator, messageStore, peerIdentityStore,
 1260 |                                  adoptedMessageConnection, adoptedPeerConnection] in
 1261 |                 try invalidator.invalidateForWipe()
@@ -800,7 +800,7 @@ error: SwiftCompile normal arm64 /private/tmp/godstone-board1-rc15-full-4f84d0b6
 1262 |                 messageStore.close()
 1263 |                 peerIdentityStore.close()
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/MeshRuntime.swift:1480:13: warning: stored property 'dekProvider' of 'Sendable'-conforming struct 'DefaultRecoveryEstate' contains non-Sendable type 'any PrivateStoreKeyProvider'; this is an error in the Swift 6 language mode
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/MeshRuntime.swift:1480:13: warning: stored property 'dekProvider' of 'Sendable'-conforming struct 'DefaultRecoveryEstate' contains non-Sendable type 'any PrivateStoreKeyProvider'; this is an error in the Swift 6 language mode
 1478 |         let peerStoreUrl: URL
 1479 |         let keychain: any LocalIdentityKeychain
 1480 |         let dekProvider: (any PrivateStoreKeyProvider)?
@@ -808,7 +808,7 @@ error: SwiftCompile normal arm64 /private/tmp/godstone-board1-rc15-full-4f84d0b6
 1481 |         /// The composition's ONE owner registry; the production recovery road drains and closes through IT.
 1482 |         let registry: EstateOwnerRegistry
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/PrivateStoreKeyProvider.swift:66:17: note: protocol 'PrivateStoreKeyProvider' does not conform to the 'Sendable' protocol
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/PrivateStoreKeyProvider.swift:66:17: note: protocol 'PrivateStoreKeyProvider' does not conform to the 'Sendable' protocol
  64 | /// `DefaultPrivateStoreKeyProvider`; the court injects a fake to drive wrong-DEK,
  65 | /// Keychain-unavailable, locked-device and protection-failure decisions on the host.
  66 | public protocol PrivateStoreKeyProvider: AnyObject {
@@ -816,7 +816,7 @@ error: SwiftCompile normal arm64 /private/tmp/godstone-board1-rc15-full-4f84d0b6
  67 |     /// The pinned DEK length in bytes (AES-256).
  68 |     var dekByteCount: Int { get }
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/MeshRuntime.swift:1485:13: warning: stored property 'liveTransportSeam' of 'Sendable'-conforming struct 'DefaultRecoveryEstate' contains non-Sendable type 'any TransportRuntimeSeam'; this is an error in the Swift 6 language mode
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/MeshRuntime.swift:1485:13: warning: stored property 'liveTransportSeam' of 'Sendable'-conforming struct 'DefaultRecoveryEstate' contains non-Sendable type 'any TransportRuntimeSeam'; this is an error in the Swift 6 language mode
 1483 |         /// The runtime's live transport seam, when one is running; `nil` at create time, where the registry's own
 1484 |         /// positive cold proof is what the drain rung stands on.
 1485 |         let liveTransportSeam: TransportRuntimeSeam?
@@ -824,7 +824,7 @@ error: SwiftCompile normal arm64 /private/tmp/godstone-board1-rc15-full-4f84d0b6
 1486 |         /// The runtime's owner invalidation/close hook, carried across rather than dropped.
 1487 |         let invalidateLiveOwners: () -> Void
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/CrashResumableWipe.swift:203:17: note: protocol 'TransportRuntimeSeam' does not conform to the 'Sendable' protocol
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/CrashResumableWipe.swift:203:17: note: protocol 'TransportRuntimeSeam' does not conform to the 'Sendable' protocol
 201 | }
 202 | 
 203 | public protocol TransportRuntimeSeam: AnyObject {
@@ -832,7 +832,7 @@ error: SwiftCompile normal arm64 /private/tmp/godstone-board1-rc15-full-4f84d0b6
 204 |     func drainTransport() -> RuntimeDrainReceipt
 205 |     /// Whether THIS process lifetime has drained the transport; a reboot starts un-quiesced.
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/MeshRuntime.swift:1487:13: warning: stored property 'invalidateLiveOwners' of 'Sendable'-conforming struct 'DefaultRecoveryEstate' has non-Sendable type '() -> ()'; this is an error in the Swift 6 language mode
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/MeshRuntime.swift:1487:13: warning: stored property 'invalidateLiveOwners' of 'Sendable'-conforming struct 'DefaultRecoveryEstate' has non-Sendable type '() -> ()'; this is an error in the Swift 6 language mode
 1485 |         let liveTransportSeam: TransportRuntimeSeam?
 1486 |         /// The runtime's owner invalidation/close hook, carried across rather than dropped.
 1487 |         let invalidateLiveOwners: () -> Void
@@ -841,7 +841,7 @@ error: SwiftCompile normal arm64 /private/tmp/godstone-board1-rc15-full-4f84d0b6
 1488 |         internal init(messageStoreUrl: URL, peerStoreUrl: URL,
 1489 |                       keychain: any LocalIdentityKeychain,
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/MeshRuntime.swift:307:24: warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/MeshRuntime.swift:307:24: warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
  305 |                     return .storageFailure
  306 |                 }
  307 |                 return try messageStore.commitInboundWithObligationAtWithFault(
@@ -849,7 +849,7 @@ error: SwiftCompile normal arm64 /private/tmp/godstone-board1-rc15-full-4f84d0b6
  308 |                     frame, receivedFrom: receivedFrom, localRecipientNodeId: localRecipient,
  309 |                     identityGeneration: generation, obligationLifetimeMs: lifetime,
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/MeshRuntime.swift:689:25: error: value of optional type 'PrivateRuntimePermit?' must be unwrapped to a value of type 'PrivateRuntimePermit'
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/MeshRuntime.swift:689:25: error: value of optional type 'PrivateRuntimePermit?' must be unwrapped to a value of type 'PrivateRuntimePermit'
  687 |             // no public mint, no self-named scope, and the generation is never compared against the permit itself.*
  688 |             let lease = try PhysicalEstateAuthority.shared.beginConstruction(
  689 |                 permit: permit,
@@ -862,6 +862,6 @@ error: SwiftCompile normal arm64 /private/tmp/godstone-board1-rc15-full-4f84d0b6
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
 [#VariableNeverMutated]: <https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated>
 Failed frontend command:
-/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swift-frontend -frontend -c /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/AccessibilityContract.swift /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/AckAuthenticator.swift /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/AckDispatcher.swift /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/AckObligationStore.swift /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/AdmissionBudget.swift /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/BleConnection.swift /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/BleHandshake.swift /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/BleHandshakeAuthority.swift /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/BleOrchestrationDriver.swift /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/BleRecord.swift /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/BleRoleBindingCoordinator.swift /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/BleRoleElection.swift /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/BleTransport.swift /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/BoundRecipientKeyResolver.swift /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/BulkTransport.swift /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/ComposedRuntime.swift /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/ControlPayloadV1.swift /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/CrashResumableWipe.swift /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/DeliveryProjection.swift /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/DeliveryTracker.swift /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/Diagnostics.swift /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/EncryptedStoreFactory.swift /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/EstateOwnerRegistry.swift /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/FileWipeJournal.swift /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/FrameDispatcher.swift /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/GattServiceContract.swift /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/IdentityAckSigner.swift /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/IdentityBindingV1.swift /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/KeyTableTrustResolver.swift /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/LabRuntime.swift -primary-file /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/LifecycleTransportAdapter.swift -primary-file /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/LifetimeControl.swift -primary-file /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/LinkInfoSnapshotAuthority.swift -primary-file /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/LinkInfoSnapshotTypes.swift -primary-file /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/LocalIdentityStateV1.swift -primary-file /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/MeshCheckpoint.swift -primary-file /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/MeshCoordinator.swift -primary-file /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/MeshIdentity.swift -primary-file /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/MeshNode.swift -primary-file /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/MeshRuntime.swift /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/MeshTrustFacade.swift /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/MeshUXModel.swift /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/MessageStore.swift /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/NoiseSession.swift /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/OwnedVerifiedConnection.swift /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/PanicWipe.swift /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/PeerEventPublisher.swift /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/PeerGovernor.swift /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/PeerIdentityRepository.swift /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/PeerIdentityStore.swift /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/PeerTrustEngine.swift /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/PeerTrustModels.swift /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/PlaintextToEncryptedMigration.swift /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/Priority.swift /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/PrivateStoreKeyProvider.swift /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/RealTransportHostRig.swift /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/RecipientInboxRepository.swift /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/RecordWriter.swift /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/ReplayWindow.swift /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/RetentionClock.swift /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/Router.swift /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/RuntimeLifecycleGate.swift /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SQLCipherTrustedExpectation.swift /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SQLiteFunctionTable.swift /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SchemaMigration.swift /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SealedSender.swift /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SendDirectAuthority.swift /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SessionManager.swift /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SessionSlot.swift /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SignedMessageV1.swift /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SignedSosV1.swift /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SosCommand.swift /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SosFrameValidator.swift /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SqlCipherDylibEngine.swift /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SqliteDeliveryRepository.swift /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SqliteOutboundIntentJournal.swift /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/StableInventorySnapshot.swift /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/StartupRecoveryDecision.swift /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/StoreQuota.swift /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/StressCampaign.swift /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SyncControlOwner.swift /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SyncPump.swift /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/TrustAuthorityAdapter.swift /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/TrustUXModel.swift /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/TrustedHandshakeController.swift /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/TrustedPeerChannel.swift /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/UnifiedRuntimeLifecycle.swift /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/WipeArtifactFileSystemSeam.swift /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/WipeDeferredSeams.swift /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/WipeDeferredTransportSeam.swift /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/WipeIdentityAuthoritySeam.swift /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/WipeJournalDurabilityAdapter.swift /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/WipeKeyVaultSeam.swift /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/WireV2.swift -supplementary-output-file-map /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/.build/out/Intermediates.noindex/GodstoneFoundation.build/Debug/GodstoneMesh-t.build/Objects-normal/arm64/supplementaryOutputs-8 -target arm64-apple-macos13.0 -disable-cross-import-overlay-search -load-resolved-plugin /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib/swift/host/plugins/libFoundationMacros.dylib\#/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/bin/swift-plugin-server\#FoundationMacros -load-resolved-plugin /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib/swift/host/plugins/libObservationMacros.dylib\#/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/bin/swift-plugin-server\#ObservationMacros -load-resolved-plugin /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib/swift/host/plugins/libSwiftMacros.dylib\#/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/bin/swift-plugin-server\#SwiftMacros -disable-implicit-swift-modules -Xcc -fno-implicit-modules -Xcc -fno-implicit-module-maps -explicit-swift-module-map-file /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/.build/out/Intermediates.noindex/GodstoneFoundation.build/Debug/GodstoneMesh-t.build/Objects-normal/arm64/GodstoneMesh-dependencies-1.json -Xllvm -aarch64-use-tbi -enable-objc-interop -stack-check -sdk /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk -I /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/.build/out/Products/Debug -Isystem /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib -F /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/.build/out/Products/Debug/PackageFrameworks -F /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/.build/out/Products/Debug -F /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks -module-cache-path /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/.build/out/Intermediates.noindex/SwiftExplicitPrecompiledModules -no-color-diagnostics -Xcc -fno-color-diagnostics -enable-testing -g -debug-info-format\=dwarf -dwarf-version\=4 -swift-version 5 -Onone -D SWIFT_PACKAGE -D DEBUG -D SWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE -D Xcode -serialize-debugging-options -enable-experimental-feature DebugDescriptionMacro -empty-abi-descriptor -validate-clang-modules-once -clang-build-session-file /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/.build/out/ModuleCache.noindex/Session.modulevalidation -Xcc -working-directory -Xcc /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages -enable-anonymous-context-mangled-names -file-compilation-dir /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -Xcc -ivfsstatcache -Xcc /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/.build/out/SDKStatCaches.noindex/macosx27.0-26A425-a0facfad118c1a7a18f0aad9463f65497231f6df4def33e022ae2eb8f782df1a.sdkstatcache -Xcc -fmodules-prune-interval\=86400 -Xcc -fmodules-prune-after\=345600 -Xcc -I/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/.build/out/Products/Debug/include -Xcc -I/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/.build/out/Intermediates.noindex/GodstoneFoundation.build/Debug/GodstoneMesh-t.build/DerivedSources-normal/arm64 -Xcc -I/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/.build/out/Intermediates.noindex/GodstoneFoundation.build/Debug/GodstoneMesh-t.build/DerivedSources/arm64 -Xcc -I/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/.build/out/Intermediates.noindex/GodstoneFoundation.build/Debug/GodstoneMesh-t.build/DerivedSources -Xcc -DSWIFT_PACKAGE -Xcc -DDEBUG\=1 -no-auto-bridging-header-chaining -module-name GodstoneMesh -package-name godstonefoundation -const-gather-protocols-file /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/.build/out/Intermediates.noindex/GodstoneFoundation.build/Debug/GodstoneMesh-t.build/Objects-normal/arm64/GodstoneMesh_const_extract_protocols.json -disable-clang-spi -clang-target arm64-apple-macos27.0 -target-sdk-version 27.0 -target-sdk-name macosx27.0 -in-process-plugin-server-path /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/libSwiftInProcPluginServer.dylib -parse-as-library -o /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/.build/out/Intermediates.noindex/GodstoneFoundation.build/Debug/GodstoneMesh-t.build/Objects-normal/arm64/LifecycleTransportAdapter.o -o /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/.build/out/Intermediates.noindex/GodstoneFoundation.build/Debug/GodstoneMesh-t.build/Objects-normal/arm64/LifetimeControl.o -o /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/.build/out/Intermediates.noindex/GodstoneFoundation.build/Debug/GodstoneMesh-t.build/Objects-normal/arm64/LinkInfoSnapshotAuthority.o -o /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/.build/out/Intermediates.noindex/GodstoneFoundation.build/Debug/GodstoneMesh-t.build/Objects-normal/arm64/LinkInfoSnapshotTypes.o -o /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/.build/out/Intermediates.noindex/GodstoneFoundation.build/Debug/GodstoneMesh-t.build/Objects-normal/arm64/LocalIdentityStateV1.o -o /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/.build/out/Intermediates.noindex/GodstoneFoundation.build/Debug/GodstoneMesh-t.build/Objects-normal/arm64/MeshCheckpoint.o -o /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/.build/out/Intermediates.noindex/GodstoneFoundation.build/Debug/GodstoneMesh-t.build/Objects-normal/arm64/MeshCoordinator.o -o /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/.build/out/Intermediates.noindex/GodstoneFoundation.build/Debug/GodstoneMesh-t.build/Objects-normal/arm64/MeshIdentity.o -o /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/.build/out/Intermediates.noindex/GodstoneFoundation.build/Debug/GodstoneMesh-t.build/Objects-normal/arm64/MeshNode.o -o /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/.build/out/Intermediates.noindex/GodstoneFoundation.build/Debug/GodstoneMesh-t.build/Objects-normal/arm64/MeshRuntime.o -debug-module-path /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/.build/out/Intermediates.noindex/GodstoneFoundation.build/Debug/GodstoneMesh-t.build/Objects-normal/arm64/GodstoneMesh.swiftmodule -index-unit-output-path /GodstoneFoundation.build/Debug/GodstoneMesh-t.build/Objects-normal/arm64/LifecycleTransportAdapter.o -index-unit-output-path /GodstoneFoundation.build/Debug/GodstoneMesh-t.build/Objects-normal/arm64/LifetimeControl.o -index-unit-output-path /GodstoneFoundation.build/Debug/GodstoneMesh-t.build/Objects-normal/arm64/LinkInfoSnapshotAuthority.o -index-unit-output-path /GodstoneFoundation.build/Debug/GodstoneMesh-t.build/Objects-normal/arm64/LinkInfoSnapshotTypes.o -index-unit-output-path /GodstoneFoundation.build/Debug/GodstoneMesh-t.build/Objects-normal/arm64/LocalIdentityStateV1.o -index-unit-output-path /GodstoneFoundation.build/Debug/GodstoneMesh-t.build/Objects-normal/arm64/MeshCheckpoint.o -index-unit-output-path /GodstoneFoundation.build/Debug/GodstoneMesh-t.build/Objects-normal/arm64/MeshCoordinator.o -index-unit-output-path /GodstoneFoundation.build/Debug/GodstoneMesh-t.build/Objects-normal/arm64/MeshIdentity.o -index-unit-output-path /GodstoneFoundation.build/Debug/GodstoneMesh-t.build/Objects-normal/arm64/MeshNode.o -index-unit-output-path /GodstoneFoundation.build/Debug/GodstoneMesh-t.build/Objects-normal/arm64/MeshRuntime.o -index-store-path /private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/.build/out -index-system-modules
+/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swift-frontend -frontend -c /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/AccessibilityContract.swift /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/AckAuthenticator.swift /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/AckDispatcher.swift /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/AckObligationStore.swift /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/AdmissionBudget.swift /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/BleConnection.swift /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/BleHandshake.swift /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/BleHandshakeAuthority.swift /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/BleOrchestrationDriver.swift /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/BleRecord.swift /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/BleRoleBindingCoordinator.swift /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/BleRoleElection.swift /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/BleTransport.swift /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/BoundRecipientKeyResolver.swift /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/BulkTransport.swift /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/ComposedRuntime.swift /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/ControlPayloadV1.swift /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/CrashResumableWipe.swift /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/DeliveryProjection.swift /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/DeliveryTracker.swift /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/Diagnostics.swift /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/EncryptedStoreFactory.swift /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/EstateOwnerRegistry.swift /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/FileWipeJournal.swift /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/FrameDispatcher.swift /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/GattServiceContract.swift /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/IdentityAckSigner.swift /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/IdentityBindingV1.swift /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/KeyTableTrustResolver.swift /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/LabRuntime.swift -primary-file /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/LifecycleTransportAdapter.swift -primary-file /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/LifetimeControl.swift -primary-file /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/LinkInfoSnapshotAuthority.swift -primary-file /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/LinkInfoSnapshotTypes.swift -primary-file /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/LocalIdentityStateV1.swift -primary-file /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/MeshCheckpoint.swift -primary-file /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/MeshCoordinator.swift -primary-file /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/MeshIdentity.swift -primary-file /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/MeshNode.swift -primary-file /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/MeshRuntime.swift /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/MeshTrustFacade.swift /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/MeshUXModel.swift /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/MessageStore.swift /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/NoiseSession.swift /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/OwnedVerifiedConnection.swift /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/PanicWipe.swift /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/PeerEventPublisher.swift /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/PeerGovernor.swift /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/PeerIdentityRepository.swift /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/PeerIdentityStore.swift /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/PeerTrustEngine.swift /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/PeerTrustModels.swift /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/PlaintextToEncryptedMigration.swift /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/Priority.swift /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/PrivateStoreKeyProvider.swift /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/RealTransportHostRig.swift /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/RecipientInboxRepository.swift /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/RecordWriter.swift /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/ReplayWindow.swift /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/RetentionClock.swift /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/Router.swift /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/RuntimeLifecycleGate.swift /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SQLCipherTrustedExpectation.swift /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SQLiteFunctionTable.swift /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SchemaMigration.swift /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SealedSender.swift /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SendDirectAuthority.swift /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SessionManager.swift /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SessionSlot.swift /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SignedMessageV1.swift /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SignedSosV1.swift /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SosCommand.swift /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SosFrameValidator.swift /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SqlCipherDylibEngine.swift /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SqliteDeliveryRepository.swift /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SqliteOutboundIntentJournal.swift /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/StableInventorySnapshot.swift /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/StartupRecoveryDecision.swift /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/StoreQuota.swift /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/StressCampaign.swift /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SyncControlOwner.swift /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SyncPump.swift /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/TrustAuthorityAdapter.swift /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/TrustUXModel.swift /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/TrustedHandshakeController.swift /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/TrustedPeerChannel.swift /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/UnifiedRuntimeLifecycle.swift /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/WipeArtifactFileSystemSeam.swift /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/WipeDeferredSeams.swift /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/WipeDeferredTransportSeam.swift /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/WipeIdentityAuthoritySeam.swift /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/WipeJournalDurabilityAdapter.swift /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/WipeKeyVaultSeam.swift /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/WireV2.swift -supplementary-output-file-map /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/.build/out/Intermediates.noindex/GodstoneFoundation.build/Debug/GodstoneMesh-t.build/Objects-normal/arm64/supplementaryOutputs-8 -target arm64-apple-macos13.0 -disable-cross-import-overlay-search -load-resolved-plugin /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib/swift/host/plugins/libFoundationMacros.dylib\#/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/bin/swift-plugin-server\#FoundationMacros -load-resolved-plugin /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib/swift/host/plugins/libObservationMacros.dylib\#/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/bin/swift-plugin-server\#ObservationMacros -load-resolved-plugin /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib/swift/host/plugins/libSwiftMacros.dylib\#/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/bin/swift-plugin-server\#SwiftMacros -disable-implicit-swift-modules -Xcc -fno-implicit-modules -Xcc -fno-implicit-module-maps -explicit-swift-module-map-file /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/.build/out/Intermediates.noindex/GodstoneFoundation.build/Debug/GodstoneMesh-t.build/Objects-normal/arm64/GodstoneMesh-dependencies-1.json -Xllvm -aarch64-use-tbi -enable-objc-interop -stack-check -sdk /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk -I /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/.build/out/Products/Debug -Isystem /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib -F /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/.build/out/Products/Debug/PackageFrameworks -F /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/.build/out/Products/Debug -F /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks -module-cache-path /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/.build/out/Intermediates.noindex/SwiftExplicitPrecompiledModules -no-color-diagnostics -Xcc -fno-color-diagnostics -enable-testing -g -debug-info-format\=dwarf -dwarf-version\=4 -swift-version 5 -Onone -D SWIFT_PACKAGE -D DEBUG -D SWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE -D Xcode -serialize-debugging-options -enable-experimental-feature DebugDescriptionMacro -empty-abi-descriptor -validate-clang-modules-once -clang-build-session-file /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/.build/out/ModuleCache.noindex/Session.modulevalidation -Xcc -working-directory -Xcc /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages -enable-anonymous-context-mangled-names -file-compilation-dir /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -Xcc -ivfsstatcache -Xcc /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/.build/out/SDKStatCaches.noindex/macosx27.0-26A425-a0facfad118c1a7a18f0aad9463f65497231f6df4def33e022ae2eb8f782df1a.sdkstatcache -Xcc -fmodules-prune-interval\=86400 -Xcc -fmodules-prune-after\=345600 -Xcc -I/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/.build/out/Products/Debug/include -Xcc -I/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/.build/out/Intermediates.noindex/GodstoneFoundation.build/Debug/GodstoneMesh-t.build/DerivedSources-normal/arm64 -Xcc -I/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/.build/out/Intermediates.noindex/GodstoneFoundation.build/Debug/GodstoneMesh-t.build/DerivedSources/arm64 -Xcc -I/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/.build/out/Intermediates.noindex/GodstoneFoundation.build/Debug/GodstoneMesh-t.build/DerivedSources -Xcc -DSWIFT_PACKAGE -Xcc -DDEBUG\=1 -no-auto-bridging-header-chaining -module-name GodstoneMesh -package-name godstonefoundation -const-gather-protocols-file /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/.build/out/Intermediates.noindex/GodstoneFoundation.build/Debug/GodstoneMesh-t.build/Objects-normal/arm64/GodstoneMesh_const_extract_protocols.json -disable-clang-spi -clang-target arm64-apple-macos27.0 -target-sdk-version 27.0 -target-sdk-name macosx27.0 -in-process-plugin-server-path /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/libSwiftInProcPluginServer.dylib -parse-as-library -o /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/.build/out/Intermediates.noindex/GodstoneFoundation.build/Debug/GodstoneMesh-t.build/Objects-normal/arm64/LifecycleTransportAdapter.o -o /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/.build/out/Intermediates.noindex/GodstoneFoundation.build/Debug/GodstoneMesh-t.build/Objects-normal/arm64/LifetimeControl.o -o /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/.build/out/Intermediates.noindex/GodstoneFoundation.build/Debug/GodstoneMesh-t.build/Objects-normal/arm64/LinkInfoSnapshotAuthority.o -o /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/.build/out/Intermediates.noindex/GodstoneFoundation.build/Debug/GodstoneMesh-t.build/Objects-normal/arm64/LinkInfoSnapshotTypes.o -o /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/.build/out/Intermediates.noindex/GodstoneFoundation.build/Debug/GodstoneMesh-t.build/Objects-normal/arm64/LocalIdentityStateV1.o -o /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/.build/out/Intermediates.noindex/GodstoneFoundation.build/Debug/GodstoneMesh-t.build/Objects-normal/arm64/MeshCheckpoint.o -o /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/.build/out/Intermediates.noindex/GodstoneFoundation.build/Debug/GodstoneMesh-t.build/Objects-normal/arm64/MeshCoordinator.o -o /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/.build/out/Intermediates.noindex/GodstoneFoundation.build/Debug/GodstoneMesh-t.build/Objects-normal/arm64/MeshIdentity.o -o /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/.build/out/Intermediates.noindex/GodstoneFoundation.build/Debug/GodstoneMesh-t.build/Objects-normal/arm64/MeshNode.o -o /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/.build/out/Intermediates.noindex/GodstoneFoundation.build/Debug/GodstoneMesh-t.build/Objects-normal/arm64/MeshRuntime.o -debug-module-path /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/.build/out/Intermediates.noindex/GodstoneFoundation.build/Debug/GodstoneMesh-t.build/Objects-normal/arm64/GodstoneMesh.swiftmodule -index-unit-output-path /GodstoneFoundation.build/Debug/GodstoneMesh-t.build/Objects-normal/arm64/LifecycleTransportAdapter.o -index-unit-output-path /GodstoneFoundation.build/Debug/GodstoneMesh-t.build/Objects-normal/arm64/LifetimeControl.o -index-unit-output-path /GodstoneFoundation.build/Debug/GodstoneMesh-t.build/Objects-normal/arm64/LinkInfoSnapshotAuthority.o -index-unit-output-path /GodstoneFoundation.build/Debug/GodstoneMesh-t.build/Objects-normal/arm64/LinkInfoSnapshotTypes.o -index-unit-output-path /GodstoneFoundation.build/Debug/GodstoneMesh-t.build/Objects-normal/arm64/LocalIdentityStateV1.o -index-unit-output-path /GodstoneFoundation.build/Debug/GodstoneMesh-t.build/Objects-normal/arm64/MeshCheckpoint.o -index-unit-output-path /GodstoneFoundation.build/Debug/GodstoneMesh-t.build/Objects-normal/arm64/MeshCoordinator.o -index-unit-output-path /GodstoneFoundation.build/Debug/GodstoneMesh-t.build/Objects-normal/arm64/MeshIdentity.o -index-unit-output-path /GodstoneFoundation.build/Debug/GodstoneMesh-t.build/Objects-normal/arm64/MeshNode.o -index-unit-output-path /GodstoneFoundation.build/Debug/GodstoneMesh-t.build/Objects-normal/arm64/MeshRuntime.o -index-store-path /private/tmp/godstone-board1-rc15-full-c5a565fc/wt_IOS-RECOVERY-006/ios/Packages/GodstoneFoundation/.build/out -index-system-modules
 error: Build failed
 error: fatalError

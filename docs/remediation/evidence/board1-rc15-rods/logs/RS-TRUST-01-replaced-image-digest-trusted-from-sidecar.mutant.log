@@ -6,12 +6,12 @@ FAIL: test_a_replaced_image_is_refused_by_name (test_audit_supplychain_harness.S
 *** THE REGISTER, NOT A CO-LOCATED SIDECAR, IS THE AUTHORITY. ***
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_RS-TRUST-01-replaced-image-digest-trusted-from-sidecar/tools/readiness/tests/test_audit_supplychain_harness.py", line 336, in test_a_replaced_image_is_refused_by_name
+  File "/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_RS-TRUST-01-replaced-image-digest-trusted-from-sidecar/tools/readiness/tests/test_audit_supplychain_harness.py", line 336, in test_a_replaced_image_is_refused_by_name
     with self.assertRaises(self.V.AuthorityError):
          ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: AuthorityError not raised
 
 ----------------------------------------------------------------------
-Ran 1 test in 0.024s
+Ran 1 test in 0.016s
 
 FAILED (failures=1)

@@ -4,7 +4,7 @@ test_a_wrong_digest_is_refused_by_name (test_audit_supplychain_harness.Toolchain
 FAIL: test_a_wrong_digest_is_refused_by_name (test_audit_supplychain_harness.ToolchainDownloadCourt.test_a_wrong_digest_is_refused_by_name)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_RS-DL-01-wrong-download-digest-asleep/tools/readiness/tests/test_audit_supplychain_harness.py", line 73, in test_a_wrong_digest_is_refused_by_name
+  File "/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_RS-DL-01-wrong-download-digest-asleep/tools/readiness/tests/test_audit_supplychain_harness.py", line 73, in test_a_wrong_digest_is_refused_by_name
     self.assertTrue(any("NOT THE PINNED ARCHIVE" in item for item in problems),
     ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
                     problems)
@@ -12,6 +12,6 @@ Traceback (most recent call last):
 AssertionError: False is not true : []
 
 ----------------------------------------------------------------------
-Ran 1 test in 0.001s
+Ran 1 test in 0.002s
 
 FAILED (failures=1)

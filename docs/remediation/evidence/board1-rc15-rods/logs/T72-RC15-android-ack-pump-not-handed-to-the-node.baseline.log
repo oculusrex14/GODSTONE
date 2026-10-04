@@ -1,3 +1,5 @@
+e: The daemon has terminated unexpectedly on startup attempt #1 with error code: 0. The daemon process output:
+    1. Kotlin compile daemon is ready
 
 TEST-SUITE TEST-io.godstone.mesh.di.GsFinal003GraphComponentTest.xml tests=13 skipped=0 failures=0 errors=0
 TEST-CASE PASS theComponentsPumpIdentityIsUnreachableOnAHostAndSaysSo

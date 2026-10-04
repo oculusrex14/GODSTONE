@@ -5,12 +5,12 @@ FAILURE: Build failed with an exception.
 
 * What went wrong:
 Execution failed for task ':app:testLightDebugUnitTest'.
-> There were failing tests. See the report at: file:///private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_T57-RC6-truncation-splitteth-a-character/android/app/build/reports/tests/testLightDebugUnitTest/index.html
+> There were failing tests. See the report at: file:///private/tmp/godstone-board1-rc15-full-c5a565fc/wt_T57-RC6-truncation-splitteth-a-character/android/app/build/reports/tests/testLightDebugUnitTest/index.html
 
 * Try:
 > Run with --scan to get full insights.
 
-BUILD FAILED in 16s
+BUILD FAILED in 15s
 
 TEST-SUITE TEST-io.godstone.app.readiness.ReadinessT57Test.xml tests=15 skipped=0 failures=1 errors=0
 TEST-CASE PASS test_w01_offline_then_a_peer_then_the_ack

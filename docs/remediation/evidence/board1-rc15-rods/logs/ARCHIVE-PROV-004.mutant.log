@@ -1,27 +1,29 @@
 === swift build --target GodstoneCoreTests ===
 Building for debugging...
+[1 / 5]
 [2 / 6] GodstoneCore
 [3 / 7] GodstoneCore
 [16 / 20] GodstoneCore
 [19 / 23] GodstoneCoreTests-product
 [29 / 33] GodstoneCoreTests-product
+[30 / 33] GodstoneCoreTests-product
 [34 / 36] GodstoneCoreTests-product
-Build complete! (2.04 secs)
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_ARCHIVE-PROV-004/ios/Packages/GodstoneFoundation/Sources/GodstoneCore/ReleaseIntake.swift:58:16: warning: stored property 'values' of 'Sendable'-conforming struct 'BundleMetadata' contains non-Sendable type 'Any'; this is an error in the Swift 6 language mode
+Build complete! (2.00 secs)
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_ARCHIVE-PROV-004/ios/Packages/GodstoneFoundation/Sources/GodstoneCore/ReleaseIntake.swift:58:16: warning: stored property 'values' of 'Sendable'-conforming struct 'BundleMetadata' contains non-Sendable type 'Any'; this is an error in the Swift 6 language mode
  56 | 
  57 | public struct BundleMetadata: Sendable {
  58 |     public let values: [String: Any]
     |                `- warning: stored property 'values' of 'Sendable'-conforming struct 'BundleMetadata' contains non-Sendable type 'Any'; this is an error in the Swift 6 language mode
  59 | 
  60 |     public init(values: [String: Any]) { self.values = values }
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_ARCHIVE-PROV-004/ios/Packages/GodstoneFoundation/Sources/GodstoneCore/ReleaseIntake.swift:58:16: warning: stored property 'values' of 'Sendable'-conforming struct 'BundleMetadata' contains non-Sendable type 'Any'; this is an error in the Swift 6 language mode
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_ARCHIVE-PROV-004/ios/Packages/GodstoneFoundation/Sources/GodstoneCore/ReleaseIntake.swift:58:16: warning: stored property 'values' of 'Sendable'-conforming struct 'BundleMetadata' contains non-Sendable type 'Any'; this is an error in the Swift 6 language mode
  56 | 
  57 | public struct BundleMetadata: Sendable {
  58 |     public let values: [String: Any]
     |                `- warning: stored property 'values' of 'Sendable'-conforming struct 'BundleMetadata' contains non-Sendable type 'Any'; this is an error in the Swift 6 language mode
  59 | 
  60 |     public init(values: [String: Any]) { self.values = values }
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_ARCHIVE-PROV-004/ios/Packages/GodstoneFoundation/Sources/GodstoneCore/ArchiveRepository.swift:217:23: warning: result of call to 'withCString' is unused [#NoUsage]
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_ARCHIVE-PROV-004/ios/Packages/GodstoneFoundation/Sources/GodstoneCore/ArchiveRepository.swift:217:23: warning: result of call to 'withCString' is unused [#NoUsage]
 215 |             let bound = Int64(ArchiveSearchQuery.bound(limit))
 216 |             return try run(sql, binds: { stmt in
 217 |                 match.withCString { sqlite3_bind_text(stmt, 1, $0, -1, sqliteTransient) }
@@ -29,7 +31,7 @@ Build complete! (2.04 secs)
 218 |                 sqlite3_bind_int64(stmt, 2, bound)
 219 |             }) { stmt in
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_ARCHIVE-PROV-004/ios/Packages/GodstoneFoundation/Sources/GodstoneCore/ArchiveRepository.swift:234:62: warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_ARCHIVE-PROV-004/ios/Packages/GodstoneFoundation/Sources/GodstoneCore/ArchiveRepository.swift:234:62: warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
 232 |     public func versionString() throws -> String {
 233 |         try run("SELECT sqlite_version()") { stmt in columnString(stmt, 0) }
 234 |             .first ?? (String(cString: sqlite3_libversion()) ?? "unknown")
@@ -37,7 +39,7 @@ Build complete! (2.04 secs)
 235 |     }
 236 | 
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_ARCHIVE-PROV-004/ios/Packages/GodstoneFoundation/Sources/GodstoneCore/ArchiveRepository.swift:428:68: warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_ARCHIVE-PROV-004/ios/Packages/GodstoneFoundation/Sources/GodstoneCore/ArchiveRepository.swift:428:68: warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
 426 |         let flags = SQLITE_OPEN_READONLY | SQLITE_OPEN_FULLMUTEX
 427 |         guard sqlite3_open_v2(path, &db, flags, nil) == SQLITE_OK else {
 428 |             let why = db.map { String(cString: sqlite3_errmsg($0)) ?? "?" } ?? "open refused"
@@ -45,7 +47,7 @@ Build complete! (2.04 secs)
 429 |             return refuse(db, .corrupt("the file at \(path) could not be opened read-only: \(why)"))
 430 |         }
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_ARCHIVE-PROV-004/ios/Packages/GodstoneFoundation/Sources/GodstoneCore/ArchiveRepository.swift:439:67: warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_ARCHIVE-PROV-004/ios/Packages/GodstoneFoundation/Sources/GodstoneCore/ArchiveRepository.swift:439:67: warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
 437 |             let rc = sqlite3_exec(handle, pragma, nil, nil, nil)
 438 |             if rc != SQLITE_OK {
 439 |                 let why = String(cString: sqlite3_errmsg(handle)) ?? "rc \(rc)"
@@ -53,7 +55,7 @@ Build complete! (2.04 secs)
 440 |                 return refuse(handle, .readFailure("the seal \(pragma) would not seat: \(why)"))
 441 |             }
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_ARCHIVE-PROV-004/ios/Packages/GodstoneFoundation/Sources/GodstoneCore/ArchiveRepository.swift:483:59: warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_ARCHIVE-PROV-004/ios/Packages/GodstoneFoundation/Sources/GodstoneCore/ArchiveRepository.swift:483:59: warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
 481 |             return refuse(handle, .incompatible(ArchiveError.ftsUnavailable(fault).localizedDescription))
 482 |         }
 483 |         let stock = String(cString: sqlite3_libversion()) ?? "unknown"
@@ -61,7 +63,7 @@ Build complete! (2.04 secs)
 484 |         return (handle, .ready(origin: "file \(path) | sqlite \(stock) | read-only"))
 485 |     }
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_ARCHIVE-PROV-004/ios/Packages/GodstoneFoundation/Sources/GodstoneCore/ArchiveRepository.swift:497:28: warning: result of call to 'withCString' is unused [#NoUsage]
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_ARCHIVE-PROV-004/ios/Packages/GodstoneFoundation/Sources/GodstoneCore/ArchiveRepository.swift:497:28: warning: result of call to 'withCString' is unused [#NoUsage]
 495 |             sqlite3_finalize(stmt); return nil
 496 |         }
 497 |         if let bind { bind.withCString { sqlite3_bind_text(stmt, 1, $0, -1, sqliteTransient) } }
@@ -69,7 +71,7 @@ Build complete! (2.04 secs)
 498 |         var out: String?
 499 |         if sqlite3_step(stmt) == SQLITE_ROW, let value = sqlite3_column_text(stmt, 0) {
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_ARCHIVE-PROV-004/ios/Packages/GodstoneFoundation/Sources/GodstoneCore/ArchiveRepository.swift:525:64: warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_ARCHIVE-PROV-004/ios/Packages/GodstoneFoundation/Sources/GodstoneCore/ArchiveRepository.swift:525:64: warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
 523 |         for verse in verses {
 524 |             if sqlite3_exec(mem, verse, nil, nil, nil) != SQLITE_OK {
 525 |                 let why = String(cString: sqlite3_errmsg(mem)) ?? "?"
@@ -77,7 +79,7 @@ Build complete! (2.04 secs)
 526 |                 return "\(ellipsis(verse)) cried: \(why)"
 527 |             }
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_ARCHIVE-PROV-004/ios/Packages/GodstoneFoundation/Sources/GodstoneCore/ArchiveRepository.swift:532:60: warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_ARCHIVE-PROV-004/ios/Packages/GodstoneFoundation/Sources/GodstoneCore/ArchiveRepository.swift:532:60: warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
 530 |         guard sqlite3_prepare_v2(mem, "SELECT rowid FROM t48_canary WHERE t48_canary MATCH 'generate'",
 531 |                                  -1, &stmt, nil) == SQLITE_OK else {
 532 |             let why = String(cString: sqlite3_errmsg(mem)) ?? "?"
@@ -85,7 +87,7 @@ Build complete! (2.04 secs)
 533 |             sqlite3_finalize(stmt)
 534 |             return "the stem match would not prepare: \(why)"
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_ARCHIVE-PROV-004/ios/Packages/GodstoneFoundation/Sources/GodstoneCore/ArchiveRepository.swift:547:55: warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_ARCHIVE-PROV-004/ios/Packages/GodstoneFoundation/Sources/GodstoneCore/ArchiveRepository.swift:547:55: warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
 545 |         guard let db else { return "no handle" }
 546 |         let code = sqlite3_errcode(db)
 547 |         let msg = String(cString: sqlite3_errmsg(db)) ?? "?"
@@ -93,7 +95,7 @@ Build complete! (2.04 secs)
 548 |         return "errno \(code) errmsg \(msg)"
 549 |     }
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_ARCHIVE-PROV-004/ios/Packages/GodstoneFoundation/Sources/GodstoneCore/ArchiveSceneModel.swift:329:25: warning: immutable value 'archiveError' was never used; consider replacing with '_' or removing it [#NoUsage]
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_ARCHIVE-PROV-004/ios/Packages/GodstoneFoundation/Sources/GodstoneCore/ArchiveSceneModel.swift:329:25: warning: immutable value 'archiveError' was never used; consider replacing with '_' or removing it [#NoUsage]
 327 |             do {
 328 |                 source = try reading.sourceMetadataChecked(documentId: id)
 329 |             } catch let archiveError as ArchiveError {
@@ -102,7 +104,7 @@ Build complete! (2.04 secs)
 331 |             } catch {
 
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_ARCHIVE-PROV-004/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/GsFinal007SearchReturnTests.swift:47:18: warning: instance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_ARCHIVE-PROV-004/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/GsFinal007SearchReturnTests.swift:47:18: warning: instance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
  45 |         switch request {
  46 |         case .browse:
  47 |             lock.lock(); browseCalls += 1; lock.unlock()
@@ -118,7 +120,7 @@ Build complete! (2.04 secs)
  16 | 
  17 | /// Relinquishes a previously acquired lock.
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_ARCHIVE-PROV-004/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/GsFinal007SearchReturnTests.swift:47:49: warning: instance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_ARCHIVE-PROV-004/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/GsFinal007SearchReturnTests.swift:47:49: warning: instance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
  45 |         switch request {
  46 |         case .browse:
  47 |             lock.lock(); browseCalls += 1; lock.unlock()
@@ -134,7 +136,7 @@ Build complete! (2.04 secs)
  19 | 
  20 | @end
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_ARCHIVE-PROV-004/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/GsFinal007SearchReturnTests.swift:50:18: warning: instance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_ARCHIVE-PROV-004/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/GsFinal007SearchReturnTests.swift:50:18: warning: instance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
  48 |             return .documents(browseRows ?? [document])
  49 |         case .search(let phrase):
  50 |             lock.lock()
@@ -150,7 +152,7 @@ Build complete! (2.04 secs)
  16 | 
  17 | /// Relinquishes a previously acquired lock.
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_ARCHIVE-PROV-004/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/GsFinal007SearchReturnTests.swift:53:18: warning: instance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_ARCHIVE-PROV-004/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/GsFinal007SearchReturnTests.swift:53:18: warning: instance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
  51 |             searched.append(phrase)
  52 |             let answer = searchAnswers.isEmpty ? hitsForSearch : searchAnswers.removeFirst()
  53 |             lock.unlock()
@@ -165,7 +167,7 @@ Build complete! (2.04 secs)
     | `- note: 'unlock()' declared here
  19 | 
  20 | @end
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_ARCHIVE-PROV-004/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/OracleSupersessionAndBudgetTests.swift:178:18: warning: instance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_ARCHIVE-PROV-004/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/OracleSupersessionAndBudgetTests.swift:178:18: warning: instance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
 176 | 
 177 |         func retrieve(question: String) async -> RetrievalResult {
 178 |             lock.lock(); _retrieveCount += 1; lock.unlock()
@@ -181,7 +183,7 @@ Build complete! (2.04 secs)
  16 | 
  17 | /// Relinquishes a previously acquired lock.
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_ARCHIVE-PROV-004/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/OracleSupersessionAndBudgetTests.swift:178:52: warning: instance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_ARCHIVE-PROV-004/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/OracleSupersessionAndBudgetTests.swift:178:52: warning: instance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
 176 | 
 177 |         func retrieve(question: String) async -> RetrievalResult {
 178 |             lock.lock(); _retrieveCount += 1; lock.unlock()
@@ -197,7 +199,7 @@ Build complete! (2.04 secs)
  19 | 
  20 | @end
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_ARCHIVE-PROV-004/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/OracleSupersessionAndBudgetTests.swift:429:14: warning: immutable value 'recorder' was never used; consider replacing with '_' or removing it [#NoUsage]
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_ARCHIVE-PROV-004/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/OracleSupersessionAndBudgetTests.swift:429:14: warning: immutable value 'recorder' was never used; consider replacing with '_' or removing it [#NoUsage]
 427 |                                     tokens: ["The dose is 50 ml [1]."])
 428 |         let vm = OracleViewModel(pipeline: pipeline)
 429 |         let (recorder, cancellable) = record(vm)
@@ -205,7 +207,7 @@ Build complete! (2.04 secs)
 430 |         defer { cancellable.cancel() }
 431 | 
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_ARCHIVE-PROV-004/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/OracleSupersessionAndBudgetTests.swift:514:14: warning: immutable value 'recorder' was never used; consider replacing with '_' or removing it [#NoUsage]
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_ARCHIVE-PROV-004/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/OracleSupersessionAndBudgetTests.swift:514:14: warning: immutable value 'recorder' was never used; consider replacing with '_' or removing it [#NoUsage]
 512 |                                     tokens: [oversized])
 513 |         let vm = OracleViewModel(pipeline: pipeline, budget: budget)
 514 |         let (recorder, cancellable) = record(vm)
@@ -213,7 +215,7 @@ Build complete! (2.04 secs)
 515 |         defer { cancellable.cancel() }
 516 | 
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_ARCHIVE-PROV-004/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/OracleSupersessionAndBudgetTests.swift:533:14: warning: immutable value 'recorder' was never used; consider replacing with '_' or removing it [#NoUsage]
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_ARCHIVE-PROV-004/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/OracleSupersessionAndBudgetTests.swift:533:14: warning: immutable value 'recorder' was never used; consider replacing with '_' or removing it [#NoUsage]
 531 |                                     tokens: supported.map(String.init), ready: false)
 532 |         let vm = OracleViewModel(pipeline: pipeline)
 533 |         let (recorder, cancellable) = record(vm)
@@ -222,7 +224,7 @@ Build complete! (2.04 secs)
 535 | 
 
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_ARCHIVE-PROV-004/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT48Tests.swift:134:69: warning: main actor-isolated static property 'tierName' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_ARCHIVE-PROV-004/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT48Tests.swift:134:69: warning: main actor-isolated static property 'tierName' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
  23 | @MainActor
  24 | final class ReadinessT48Tests: XCTestCase {
  25 |     private static let tierName = Tier.light.archiveDatabaseName   // archive_light.db
@@ -237,7 +239,7 @@ Build complete! (2.04 secs)
 135 |                               _ shape: (inout FixtureKnobs) -> Void = { _ in }) throws -> URL {
 136 |         var knobs = FixtureKnobs()
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_ARCHIVE-PROV-004/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT50Tests.swift:238:69: warning: main actor-isolated static property 'tierName' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_ARCHIVE-PROV-004/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT50Tests.swift:238:69: warning: main actor-isolated static property 'tierName' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
  128 | @MainActor
  129 | final class ReadinessT50Tests: XCTestCase {
  130 |     private static let tierName = Tier.light.archiveDatabaseName   // archive_light.db
@@ -251,22 +253,7 @@ Build complete! (2.04 secs)
      |                                                                     `- warning: main actor-isolated static property 'tierName' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
  239 |                              _ shape: (inout FixtureKnobs) -> Void = { _ in }) throws -> URL {
  240 |         var knobs = FixtureKnobs()
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_ARCHIVE-PROV-004/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT51Tests.swift:171:57: warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
-169 |             let rc = sqlite3_exec(db, statement, nil, nil, &err)
-170 |             if rc != SQLITE_OK {
-171 |                 let why = err.map { String(cString: $0) ?? "?" } ?? "rc \(rc)"
-    |                                                         `- warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
-172 |                 if let e = err { sqlite3_free(e) }
-173 |                 XCTFail("plant DDL from \(origin) cried on \"\(String(statement.prefix(72)))…\": \(why)")
-
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_ARCHIVE-PROV-004/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT51Tests.swift:203:57: warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
-201 |             let prc = sqlite3_exec(db, sql, nil, nil, &err)
-202 |             if prc != SQLITE_OK {
-203 |                 let why = err.map { String(cString: $0) ?? "?" } ?? "rc \(prc)"
-    |                                                         `- warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
-204 |                 if let e = err { sqlite3_free(e) }
-205 |                 XCTFail("plant insert cried: \(why) on \(String(sql.prefix(72)))…")
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_ARCHIVE-PROV-004/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT48Tests.swift:134:69: warning: main actor-isolated static property 'tierName' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_ARCHIVE-PROV-004/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT48Tests.swift:134:69: warning: main actor-isolated static property 'tierName' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
  23 | @MainActor
  24 | final class ReadinessT48Tests: XCTestCase {
  25 |     private static let tierName = Tier.light.archiveDatabaseName   // archive_light.db
@@ -281,7 +268,7 @@ Build complete! (2.04 secs)
 135 |                               _ shape: (inout FixtureKnobs) -> Void = { _ in }) throws -> URL {
 136 |         var knobs = FixtureKnobs()
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_ARCHIVE-PROV-004/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT48Tests.swift:112:57: warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_ARCHIVE-PROV-004/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT48Tests.swift:112:57: warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
 110 |             let rc = sqlite3_exec(db, statement, nil, nil, &err)
 111 |             if rc != SQLITE_OK {
 112 |                 let why = err.map { String(cString: $0) ?? "?" } ?? "rc \(rc)"
@@ -289,14 +276,29 @@ Build complete! (2.04 secs)
 113 |                 if let e = err { sqlite3_free(e) }
 114 |                 XCTFail("fixture DDL from \(origin) cried on \"\(String(statement.prefix(72)))…\": \(why)")
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_ARCHIVE-PROV-004/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT48Tests.swift:233:53: warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_ARCHIVE-PROV-004/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT48Tests.swift:233:53: warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
 231 |         let rc = sqlite3_exec(db, sql, nil, nil, &err)
 232 |         if rc != SQLITE_OK {
 233 |             let why = err.map { String(cString: $0) ?? "?" } ?? "rc \(rc)"
     |                                                     `- warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
 234 |             if let e = err { sqlite3_free(e) }
 235 |             XCTFail("fixture insert cried: \(why) on \(String(sql.prefix(72)))…")
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_ARCHIVE-PROV-004/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT61Tests.swift:215:9: warning: variable 'given' was never mutated; consider changing to 'let' constant [#VariableNeverMutated]
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_ARCHIVE-PROV-004/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT51Tests.swift:171:57: warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
+169 |             let rc = sqlite3_exec(db, statement, nil, nil, &err)
+170 |             if rc != SQLITE_OK {
+171 |                 let why = err.map { String(cString: $0) ?? "?" } ?? "rc \(rc)"
+    |                                                         `- warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
+172 |                 if let e = err { sqlite3_free(e) }
+173 |                 XCTFail("plant DDL from \(origin) cried on \"\(String(statement.prefix(72)))…\": \(why)")
+
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_ARCHIVE-PROV-004/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT51Tests.swift:203:57: warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
+201 |             let prc = sqlite3_exec(db, sql, nil, nil, &err)
+202 |             if prc != SQLITE_OK {
+203 |                 let why = err.map { String(cString: $0) ?? "?" } ?? "rc \(prc)"
+    |                                                         `- warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
+204 |                 if let e = err { sqlite3_free(e) }
+205 |                 XCTFail("plant insert cried: \(why) on \(String(sql.prefix(72)))…")
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_ARCHIVE-PROV-004/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT61Tests.swift:215:9: warning: variable 'given' was never mutated; consider changing to 'let' constant [#VariableNeverMutated]
 213 | 
 214 | private func t61Chunked(_ bytes: [UInt8], _ measure: Int, _ burst: Int) -> ModelStaging.T61Chunker {
 215 |     var given = bytes
@@ -305,7 +307,7 @@ Build complete! (2.04 secs)
 217 |     var words = 0
 
 [#VariableNeverMutated]: <https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated>
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_ARCHIVE-PROV-004/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT50Tests.swift:238:69: warning: main actor-isolated static property 'tierName' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_ARCHIVE-PROV-004/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT50Tests.swift:238:69: warning: main actor-isolated static property 'tierName' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
  128 | @MainActor
  129 | final class ReadinessT50Tests: XCTestCase {
  130 |     private static let tierName = Tier.light.archiveDatabaseName   // archive_light.db
@@ -320,7 +322,7 @@ Build complete! (2.04 secs)
  239 |                              _ shape: (inout FixtureKnobs) -> Void = { _ in }) throws -> URL {
  240 |         var knobs = FixtureKnobs()
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_ARCHIVE-PROV-004/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT50Tests.swift:83:18: warning: instance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_ARCHIVE-PROV-004/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT50Tests.swift:83:18: warning: instance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
   81 |         switch request {
   82 |         case .browse:
   83 |             lock.lock(); listCalls += 1; let injected = listFault; lock.unlock()
@@ -336,7 +338,7 @@ Build complete! (2.04 secs)
  16 | 
  17 | /// Relinquishes a previously acquired lock.
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_ARCHIVE-PROV-004/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT50Tests.swift:83:73: warning: instance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_ARCHIVE-PROV-004/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT50Tests.swift:83:73: warning: instance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
   81 |         switch request {
   82 |         case .browse:
   83 |             lock.lock(); listCalls += 1; let injected = listFault; lock.unlock()
@@ -352,7 +354,7 @@ Build complete! (2.04 secs)
  19 | 
  20 | @end
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_ARCHIVE-PROV-004/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT50Tests.swift:88:18: warning: instance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_ARCHIVE-PROV-004/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT50Tests.swift:88:18: warning: instance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
   86 |             return .documents([guide])
   87 |         case .search(let phrase):
   88 |             lock.lock(); searchCalls += 1; searched.append(phrase); lock.unlock()
@@ -368,7 +370,7 @@ Build complete! (2.04 secs)
  16 | 
  17 | /// Relinquishes a previously acquired lock.
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_ARCHIVE-PROV-004/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT50Tests.swift:88:74: warning: instance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_ARCHIVE-PROV-004/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT50Tests.swift:88:74: warning: instance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
   86 |             return .documents([guide])
   87 |         case .search(let phrase):
   88 |             lock.lock(); searchCalls += 1; searched.append(phrase); lock.unlock()
@@ -384,7 +386,7 @@ Build complete! (2.04 secs)
  19 | 
  20 | @end
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_ARCHIVE-PROV-004/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT50Tests.swift:102:18: warning: instance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_ARCHIVE-PROV-004/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT50Tests.swift:102:18: warning: instance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
  100 |             return .passages(searchBlock?(phrase) ?? [first])
  101 |         case .document(let id):
  102 |             lock.lock(); passageCalls += 1; lock.unlock()
@@ -400,7 +402,7 @@ Build complete! (2.04 secs)
  16 | 
  17 | /// Relinquishes a previously acquired lock.
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_ARCHIVE-PROV-004/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT50Tests.swift:102:50: warning: instance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_ARCHIVE-PROV-004/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT50Tests.swift:102:50: warning: instance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
  100 |             return .passages(searchBlock?(phrase) ?? [first])
  101 |         case .document(let id):
  102 |             lock.lock(); passageCalls += 1; lock.unlock()
@@ -416,7 +418,7 @@ Build complete! (2.04 secs)
  19 | 
  20 | @end
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_ARCHIVE-PROV-004/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT50Tests.swift:214:57: warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_ARCHIVE-PROV-004/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT50Tests.swift:214:57: warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
  212 |             let rc = sqlite3_exec(db, statement, nil, nil, &err)
  213 |             if rc != SQLITE_OK {
  214 |                 let why = err.map { String(cString: $0) ?? "?" } ?? "rc \(rc)"
@@ -424,7 +426,7 @@ Build complete! (2.04 secs)
  215 |                 if let e = err { sqlite3_free(e) }
  216 |                 XCTFail("fixture DDL from \(origin) cried on \"\(String(statement.prefix(72)))…\": \(why)")
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_ARCHIVE-PROV-004/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT50Tests.swift:226:53: warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_ARCHIVE-PROV-004/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT50Tests.swift:226:53: warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
  224 |         let rc = sqlite3_exec(db, sql, nil, nil, &err)
  225 |         if rc != SQLITE_OK {
  226 |             let why = err.map { String(cString: $0) ?? "?" } ?? "rc \(rc)"
@@ -432,7 +434,7 @@ Build complete! (2.04 secs)
  227 |             if let e = err { sqlite3_free(e) }
  228 |             XCTFail("fixture insert cried: \(why) on \(String(sql.prefix(72)))…")
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_ARCHIVE-PROV-004/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT50Tests.swift:593:32: warning: immutable value 'model' was never used; consider replacing with '_' or removing it [#NoUsage]
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_ARCHIVE-PROV-004/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT50Tests.swift:593:32: warning: immutable value 'model' was never used; consider replacing with '_' or removing it [#NoUsage]
  591 |     func testTheRealRoadProjectethProvenanceFromTheFrozenColumns() async throws {
  592 |         _ = try makeArchive()
  593 |         let (archive, library, model, scene) = composeTrio()
@@ -440,7 +442,7 @@ Build complete! (2.04 secs)
  594 |         await scene.loadDocuments()
  595 |         await seat(scene)
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_ARCHIVE-PROV-004/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT50Tests.swift:616:34: warning: immutable value 'model2' was never used; consider replacing with '_' or removing it [#NoUsage]
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_ARCHIVE-PROV-004/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT50Tests.swift:616:34: warning: immutable value 'model2' was never used; consider replacing with '_' or removing it [#NoUsage]
  614 |         // tell Unavailable, and the scene must refuse the empty masquerade
  615 |         _ = try makeArchive { $0.poisonBodyPages = true }
  616 |         let (archive2, library2, model2, scene2) = composeTrio()
@@ -448,7 +450,7 @@ Build complete! (2.04 secs)
  617 |         await scene2.loadDocuments()
  618 |         await seat(scene2)
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_ARCHIVE-PROV-004/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT50Tests.swift:767:23: warning: immutable value 'library' was never used; consider replacing with '_' or removing it [#NoUsage]
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_ARCHIVE-PROV-004/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT50Tests.swift:767:23: warning: immutable value 'library' was never used; consider replacing with '_' or removing it [#NoUsage]
  765 |     func testW20TheVisiblePassageIsNotedAndAnAnchorForAnotherDocumentIsRefused() async throws {
  766 |         _ = try makeArchive()
  767 |         let (archive, library, _, scene) = composeTrio()
@@ -456,7 +458,7 @@ Build complete! (2.04 secs)
  768 |         defer { archive.close() }
  769 |         await scene.loadDocuments()
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_ARCHIVE-PROV-004/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT50Tests.swift:786:9: warning: no 'async' operations occur within 'await' expression [#UnnecessaryEffectMarker]
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_ARCHIVE-PROV-004/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT50Tests.swift:786:9: warning: no 'async' operations occur within 'await' expression [#UnnecessaryEffectMarker]
  784 |         // (2) *** THE DISCRIMINATOR: AN ANCHOR NOTED WHILE NO DOCUMENT STANDS IS REFUSED, because an anchor for
  785 |         // another document would place the reader at whatever passage happeneth to carrieth that identity. ***
  786 |         await scene.backToDocuments()
@@ -464,7 +466,7 @@ Build complete! (2.04 secs)
  787 |         await seat(scene)
  788 |         let before = scene.scrollAnchor?.passageId
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_ARCHIVE-PROV-004/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT50Tests.swift:905:23: warning: immutable value 'library' was never used; consider replacing with '_' or removing it [#NoUsage]
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_ARCHIVE-PROV-004/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT50Tests.swift:905:23: warning: immutable value 'library' was never used; consider replacing with '_' or removing it [#NoUsage]
  903 |     func testW16TheSceneRecordSurvivethARealPersistenceRoundTrip() async throws {
  904 |         _ = try makeArchive()
  905 |         let (archive, library, _, scene) = composeTrio()
@@ -472,7 +474,7 @@ Build complete! (2.04 secs)
  906 |         defer { archive.close() }
  907 |         await scene.loadDocuments()
 
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_ARCHIVE-PROV-004/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT50Tests.swift:94:17: warning: code after 'return' will never be executed
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_ARCHIVE-PROV-004/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT50Tests.swift:94:17: warning: code after 'return' will never be executed
   92 |                 }
   93 |                 // resumed by the court; the halt-and-catch below is the elder's fate
   94 |                 if failSearch {
@@ -483,21 +485,21 @@ Build complete! (2.04 secs)
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
 
-Test Suite 'Selected tests' started at 2026-10-04 07:00:01.428.
-Test Suite 'GodstoneCoreTests.xctest' started at 2026-10-04 07:00:01.434.
-Test Suite 'ReadinessT50Tests' started at 2026-10-04 07:00:01.434.
+Test Suite 'Selected tests' started at 2026-10-04 13:31:25.540.
+Test Suite 'GodstoneCoreTests.xctest' started at 2026-10-04 13:31:25.545.
+Test Suite 'ReadinessT50Tests' started at 2026-10-04 13:31:25.545.
 Test Case '-[GodstoneCoreTests.ReadinessT50Tests testAGenuineAbsenceLeavethTheDocumentReadableWithNoBannerAndNoRetry]' started.
 Test Case '-[GodstoneCoreTests.ReadinessT50Tests testAGenuineAbsenceLeavethTheDocumentReadableWithNoBannerAndNoRetry]' passed (0.001 seconds).
 Test Case '-[GodstoneCoreTests.ReadinessT50Tests testAnObsoleteFailureCannotOverwriteNewerResults]' started.
-Test Case '-[GodstoneCoreTests.ReadinessT50Tests testAnObsoleteFailureCannotOverwriteNewerResults]' passed (0.007 seconds).
+Test Case '-[GodstoneCoreTests.ReadinessT50Tests testAnObsoleteFailureCannotOverwriteNewerResults]' passed (0.005 seconds).
 Test Case '-[GodstoneCoreTests.ReadinessT50Tests testDismissalStrikethOutTheInFlightPetition]' started.
 Test Case '-[GodstoneCoreTests.ReadinessT50Tests testDismissalStrikethOutTheInFlightPetition]' passed (0.005 seconds).
 Test Case '-[GodstoneCoreTests.ReadinessT50Tests testEditingTheFieldNeverReladlethSubmittedResults]' started.
 Test Case '-[GodstoneCoreTests.ReadinessT50Tests testEditingTheFieldNeverReladlethSubmittedResults]' passed (0.000 seconds).
 Test Case '-[GodstoneCoreTests.ReadinessT50Tests testInitialBrowseRestethReadyAndTheTrioStandeth]' started.
-Test Case '-[GodstoneCoreTests.ReadinessT50Tests testInitialBrowseRestethReadyAndTheTrioStandeth]' passed (0.010 seconds).
+Test Case '-[GodstoneCoreTests.ReadinessT50Tests testInitialBrowseRestethReadyAndTheTrioStandeth]' passed (0.009 seconds).
 Test Case '-[GodstoneCoreTests.ReadinessT50Tests testProcessRecreationRestorethTheSameJourney]' started.
-Test Case '-[GodstoneCoreTests.ReadinessT50Tests testProcessRecreationRestorethTheSameJourney]' passed (0.001 seconds).
+Test Case '-[GodstoneCoreTests.ReadinessT50Tests testProcessRecreationRestorethTheSameJourney]' passed (0.000 seconds).
 Test Case '-[GodstoneCoreTests.ReadinessT50Tests testRestoreIntoAnOpenDocumentCarriethTheSearchIdentityIntoTheReturnRoad]' started.
 Test Case '-[GodstoneCoreTests.ReadinessT50Tests testRestoreIntoAnOpenDocumentCarriethTheSearchIdentityIntoTheReturnRoad]' passed (0.000 seconds).
 Test Case '-[GodstoneCoreTests.ReadinessT50Tests testRetryIsEarnedOnlyWhereTheRoadMayMend]' started.
@@ -509,19 +511,19 @@ Test Case '-[GodstoneCoreTests.ReadinessT50Tests testTheBannerCarriethNoSQLWhisp
 Test Case '-[GodstoneCoreTests.ReadinessT50Tests testTheBlankPetitionIsAReturnAndTheFieldIsBounded]' started.
 Test Case '-[GodstoneCoreTests.ReadinessT50Tests testTheBlankPetitionIsAReturnAndTheFieldIsBounded]' passed (0.000 seconds).
 Test Case '-[GodstoneCoreTests.ReadinessT50Tests testTheClosedCandidateAnswerethTheMetadataProbeWithTypedNoHandle]' started.
-Test Case '-[GodstoneCoreTests.ReadinessT50Tests testTheClosedCandidateAnswerethTheMetadataProbeWithTypedNoHandle]' passed (0.008 seconds).
+Test Case '-[GodstoneCoreTests.ReadinessT50Tests testTheClosedCandidateAnswerethTheMetadataProbeWithTypedNoHandle]' passed (0.006 seconds).
 Test Case '-[GodstoneCoreTests.ReadinessT50Tests testTheGateBeforeTheRoadStoppetheTheSupersededPetition]' started.
 Test Case '-[GodstoneCoreTests.ReadinessT50Tests testTheGateBeforeTheRoadStoppetheTheSupersededPetition]' passed (0.001 seconds).
 Test Case '-[GodstoneCoreTests.ReadinessT50Tests testTheHonestEmptyAndTheAbsentAreTalesToldApart]' started.
 Test Case '-[GodstoneCoreTests.ReadinessT50Tests testTheHonestEmptyAndTheAbsentAreTalesToldApart]' passed (0.009 seconds).
 Test Case '-[GodstoneCoreTests.ReadinessT50Tests testTheMetadataTaxonomyTravellethUntouchedAndTheUntouchableIsNotOfferedAKnock]' started.
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_ARCHIVE-PROV-004/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT50Tests.swift:1253: error: -[GodstoneCoreTests.ReadinessT50Tests testTheMetadataTaxonomyTravellethUntouchedAndTheUntouchableIsNotOfferedAKnock] : failed - the second woe must be told too: Optional(GodstoneCore.ArchiveError.corrupt("the archive could not be read"))
-Test Case '-[GodstoneCoreTests.ReadinessT50Tests testTheMetadataTaxonomyTravellethUntouchedAndTheUntouchableIsNotOfferedAKnock]' failed (0.042 seconds).
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_ARCHIVE-PROV-004/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT50Tests.swift:1253: error: -[GodstoneCoreTests.ReadinessT50Tests testTheMetadataTaxonomyTravellethUntouchedAndTheUntouchableIsNotOfferedAKnock] : failed - the second woe must be told too: Optional(GodstoneCore.ArchiveError.corrupt("the archive could not be read"))
+Test Case '-[GodstoneCoreTests.ReadinessT50Tests testTheMetadataTaxonomyTravellethUntouchedAndTheUntouchableIsNotOfferedAKnock]' failed (0.045 seconds).
 Test Case '-[GodstoneCoreTests.ReadinessT50Tests testTheRealMetadataFaultIsToldAsTypedWoeAndNeverAsAbsence]' started.
-/private/tmp/godstone-board1-rc15-full-4f84d0b6/wt_ARCHIVE-PROV-004/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT50Tests.swift:1106: error: -[GodstoneCoreTests.ReadinessT50Tests testTheRealMetadataFaultIsToldAsTypedWoeAndNeverAsAbsence] : failed - the carried fault must be the typed woe the checked path met, got corrupt("the archive could not be read")
+/private/tmp/godstone-board1-rc15-full-c5a565fc/wt_ARCHIVE-PROV-004/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT50Tests.swift:1106: error: -[GodstoneCoreTests.ReadinessT50Tests testTheRealMetadataFaultIsToldAsTypedWoeAndNeverAsAbsence] : failed - the carried fault must be the typed woe the checked path met, got corrupt("the archive could not be read")
 Test Case '-[GodstoneCoreTests.ReadinessT50Tests testTheRealMetadataFaultIsToldAsTypedWoeAndNeverAsAbsence]' failed (0.009 seconds).
 Test Case '-[GodstoneCoreTests.ReadinessT50Tests testTheRealRoadProjectethProvenanceFromTheFrozenColumns]' started.
-Test Case '-[GodstoneCoreTests.ReadinessT50Tests testTheRealRoadProjectethProvenanceFromTheFrozenColumns]' passed (0.022 seconds).
+Test Case '-[GodstoneCoreTests.ReadinessT50Tests testTheRealRoadProjectethProvenanceFromTheFrozenColumns]' passed (0.024 seconds).
 Test Case '-[GodstoneCoreTests.ReadinessT50Tests testTheSameRoadTellethAbsenceAndFaultApartAtOneProbe]' started.
 Test Case '-[GodstoneCoreTests.ReadinessT50Tests testTheSameRoadTellethAbsenceAndFaultApartAtOneProbe]' passed (0.000 seconds).
 Test Case '-[GodstoneCoreTests.ReadinessT50Tests testTheScenePresentethTheMetadataWoeAndTheRetryBringethTheProjectionBack]' started.
@@ -533,7 +535,7 @@ Test Case '-[GodstoneCoreTests.ReadinessT50Tests testTheSealedFakesCompileWithTh
 Test Case '-[GodstoneCoreTests.ReadinessT50Tests testTypedPhasesReportThemselvesAtTheScene]' started.
 Test Case '-[GodstoneCoreTests.ReadinessT50Tests testTypedPhasesReportThemselvesAtTheScene]' passed (0.005 seconds).
 Test Case '-[GodstoneCoreTests.ReadinessT50Tests testW15TheLibrariesProvenanceProbeAnswerethTheDocumentsOwnMetadata]' started.
-Test Case '-[GodstoneCoreTests.ReadinessT50Tests testW15TheLibrariesProvenanceProbeAnswerethTheDocumentsOwnMetadata]' passed (0.007 seconds).
+Test Case '-[GodstoneCoreTests.ReadinessT50Tests testW15TheLibrariesProvenanceProbeAnswerethTheDocumentsOwnMetadata]' passed (0.008 seconds).
 Test Case '-[GodstoneCoreTests.ReadinessT50Tests testW16TheSceneRecordSurvivethARealPersistenceRoundTrip]' started.
 Test Case '-[GodstoneCoreTests.ReadinessT50Tests testW16TheSceneRecordSurvivethARealPersistenceRoundTrip]' passed (0.008 seconds).
 Test Case '-[GodstoneCoreTests.ReadinessT50Tests testW17TheSceneRecordHathAProductionCallerAndRestorationPrecedethTheFirstBrowse]' started.
@@ -544,9 +546,9 @@ Test Case '-[GodstoneCoreTests.ReadinessT50Tests testW19ARestoredDocumentReturne
 Test Case '-[GodstoneCoreTests.ReadinessT50Tests testW19ARestoredDocumentReturnethToTheSearchItWasOpenedFrom]' passed (0.007 seconds).
 Test Case '-[GodstoneCoreTests.ReadinessT50Tests testW20TheVisiblePassageIsNotedAndAnAnchorForAnotherDocumentIsRefused]' started.
 Test Case '-[GodstoneCoreTests.ReadinessT50Tests testW20TheVisiblePassageIsNotedAndAnAnchorForAnotherDocumentIsRefused]' passed (0.007 seconds).
-Test Suite 'ReadinessT50Tests' failed at 2026-10-04 07:00:01.600.
+Test Suite 'ReadinessT50Tests' failed at 2026-10-04 13:31:25.711.
+	 Executed 28 tests, with 2 failures (0 unexpected) in 0.164 (0.165) seconds
+Test Suite 'GodstoneCoreTests.xctest' failed at 2026-10-04 13:31:25.711.
 	 Executed 28 tests, with 2 failures (0 unexpected) in 0.164 (0.166) seconds
-Test Suite 'GodstoneCoreTests.xctest' failed at 2026-10-04 07:00:01.600.
-	 Executed 28 tests, with 2 failures (0 unexpected) in 0.164 (0.166) seconds
-Test Suite 'Selected tests' failed at 2026-10-04 07:00:01.600.
-	 Executed 28 tests, with 2 failures (0 unexpected) in 0.164 (0.172) seconds
+Test Suite 'Selected tests' failed at 2026-10-04 13:31:25.711.
+	 Executed 28 tests, with 2 failures (0 unexpected) in 0.164 (0.171) seconds
