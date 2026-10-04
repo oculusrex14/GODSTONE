@@ -67,11 +67,26 @@
 > **13-case** negative-input court (`NEGATIVE-INPUT-COURT-13cases.log`, 4 tests / 0 failures) are DISTINCT from the
 > canonical 181 (179 semantic + 2 structural); the closure-law fixture authority was repaired
 > (`ci/check_candidate_binding.py` refreshed from live in the scratch worktree, the citation trees provisioned) so the
-> GREEN baselines are attributable to the real authority rather than to a broken fixture. **The recorded 56-test court
-> was taken while an OPEN finding still existed; the LAW arms remain green, but one PREMISE-BOUND arm
-> (`ReopenDerivesFindingStatus.test_the_gap_records_name_their_review_source`) now needs its subject AUTHORED in the
-> test by the test owner, because the derived closure correctly carries no LIVE gap record once 0 findings are OPEN.**
-> A FINAL-C re-run AFTER the tracked writes is the parent's step and is NOT claimed here.
+> GREEN baselines are attributable to the real authority rather than to a broken fixture. The recorded 56-test court
+> remains C0 history. The obsolete live-source gap-layout assertion was removed, not re-pinned; the separate
+> pre-freeze behavioral contract court passed **78 tests / 0 failures**
+> (`docs/remediation/evidence/board1-rc15-closure-controls/final-contract-courts.log`).
+> Neither court claims an exact final-candidate integration or authenticated freeze.
+> **Hosted prerequisite refusal:** untagged candidate `9e4064edd6d3c5d17c07fcaed45d147d77bd9b20` failed
+> [release attempt 1](https://github.com/oculusrex14/GODSTONE/actions/runs/37207140714) and
+> [repository verification](https://github.com/oculusrex14/GODSTONE/actions/runs/37207140743).
+> Kotlin resolution and clean-checkout prerequisites refused before terminal proof; the repository terminal job
+> was skipped. The two internal LIGHT release jobs passed, but that is not a complete release or readiness claim.
+> No rc15 tag or attestation exists. Corrected prerequisites, a newly committed candidate and its own proofs are required.
+> **Prepared clean-clone registry proof:** the original paths, identities and registered raw digests are retained.
+> `scripts/materialize_external_registry_proof.py --write` produced **837** staged content-addressed gzip objects;
+> its real `--check` verified **896** non-lost external references. All 837 decompressed SHA-256 values were checked,
+> with 0 missing or mismatched objects (98,435,155 raw bytes; 7,884,005 compressed bytes).
+> A valid absent absolute builder-root declaration still verified 896 references; a relative declaration refused
+> by name. The consumer reads only tracked clone-carried proof, not the builder root.
+> The single anchored declared loss remains a loss. These historical carriers are not current runtime proof,
+> canonical mutation catches, external-gate closure, or an authenticated candidate freeze.
+> A six-class credential-pattern scan found no matches; that limited scan is not a blanket secrecy guarantee.
 > **Supply preflight (2026-10-04):** the four preflight supply refusals are REPAIRED by the canonical existing generators
 > only (no code guard/pin/source change): the current `ios/project.yml` fingerprint is captured (`0c4a39…`), the SBOM now
 > carries 566 components including 3 SQLite 2.6.2 coordinates, and 6 CycloneDX faces are refreshed.

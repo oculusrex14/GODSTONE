@@ -442,6 +442,11 @@ def build() -> tuple[dict, list[str]]:
     if not ledger_counts["counts_accounted"]:
         problems.append(f"the ledger's five-way partition does NOT close: registered "
                         f"{ledger_counts['registered']} != accounted {ledger_counts['accounted']}")
+    # The registry's own problems (a malformed/unlawful declared identity, malformed anchored losses, incomplete
+    # current proof) must refuse a build too, not merely travel into the document where a matching stored copy could
+    # be resealed and accepted.
+    for p in ledger_counts.get("problems") or []:
+        problems.append(f"ledger registry: {p}")
     historical = historical_records(anchor_facts.get("commit_sha"))
     missing_anchor = [r["path"] for r in historical if r["sha256"] is None]
     if missing_anchor:
@@ -465,8 +470,9 @@ def build() -> tuple[dict, list[str]]:
         ),
         "historical_root_declared": {
             "path": str(ledger_document.get("evidence_root") or ""),
-            "availability": "out-of-repo, NOT required for the internal gate; examined where present, "
-                            "declared absent where not",
+            "availability": "out-of-repo, NOT required for the internal gate; validated as an identity but never "
+                            "read by the re-derivation, which re-derives external proof from the tracked "
+                            "content-addressed archive",
         },
         "digests": digests,
         "repo_internal": {
@@ -496,9 +502,12 @@ def build() -> tuple[dict, list[str]]:
         "notes": (
             "digests cover every TRACKED file under docs/remediation/evidence, which a clean clone carries; a file "
             "present but untracked is named in `untracked_present` and never digested. The out-of-repository builder "
-            "evidence root is DECLARED in historical_root_declared and is NEVER required: its absence defers "
-            "historical arms rather than failing the internal gate, and its presence can never make an internal court "
-            "green because no internal court reads it. Historical digests are read at the immutable rc14 anchor."
+            "evidence root is declared in historical_root_declared and is not required: it is validated as an "
+            "identity but never read by the re-derivation, and cannot make any internal court green because no "
+            "internal court reads it. External proof is re-derived from the tracked content-addressed archive "
+            "`evidence/external-registry-proof/<registered-sha256>.gz`, so the same dispositions hold in a clean "
+            "clone; a missing, untracked, symlinked or tampered entry is a named refusal. Historical digests are read "
+            "at the immutable rc14 anchor."
         ),
     }
     body["document_sha256"] = document_digest(body)
@@ -604,11 +613,18 @@ def check(doc: dict) -> list[str]:
         return problems + [f"the ledger partition cannot be derived: {exc}"]
     for key in ("registered", "examined", "verified", "mismatched", "unresolved", "unnamed", "declared_lost",
                 "undigested", "accounted", "counts_accounted", "populations", "partition_rule",
-                "records_sha256", "source_sha256", "problems", "historical_anchor_commit",
+                "records_sha256", "source_sha256", "historical_anchor_commit",
                 "external_proof_scope", "declared_evidence_root", "declared_root_state"):
         if recorded_part.get(key) != live_part.get(key):
             problems.append(f"ledger_registered_partition.{key}: bundle {recorded_part.get(key)!r} != re-derived "
                             f"{live_part.get(key)!r}")
+    # A malformed/unlawful declared identity (or any other registry problem) must refuse an accepted document, not
+    # merely compare equal to a stored copy that was resealed.
+    if recorded_part.get("problems"):
+        problems.append(f"ledger_registered_partition.problems must be empty in an accepted document, got "
+                        f"{recorded_part['problems']!r}")
+    for p in live_part.get("problems") or []:
+        problems.append(f"ledger registry: {p}")
     accounted = (live_part["examined"] + live_part["unresolved"] + live_part["unnamed"]
                  + live_part["declared_lost"] + live_part["undigested"])
     if accounted != live_part["registered"]:

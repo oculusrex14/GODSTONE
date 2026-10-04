@@ -1,24 +1,115 @@
 """Enumerate source evidence references without absorbing workstation-owned archives.
 
-Every reference is one row with one namespace and one disposition. Counts are
-computed from those rows, never from a stored counter or an audit summary.
-Repository-owned bytes are claimed only through the Git index or the immutable
-anchor commit; the builder evidence root the RECORD declares (`evidence_root`)
-is examined where present and declared absent where not -- it is never required,
-never an input to an internal gate, and the protected user archives are never
-opened by any road.
+Every reference is one row with one namespace and one disposition. Counts are computed from those rows, never from a
+stored counter. Repository-owned bytes are claimed only through the Git index or the immutable anchor commit.
+External references are re-derived from a tracked, content-addressed proof archive
+(evidence/external-registry-proof/<sha256>.gz), so the same dispositions hold in a clean clone wherever it runs. The
+builder evidence root the record declares (evidence_root) is validated as an identity but never read by the consumer;
+it is never required, never an input to an internal gate, and the protected user archives are never opened.
 """
 from __future__ import annotations
 
+import gzip
 import hashlib
 import json
 import re
 import subprocess
+import zlib
 from pathlib import Path
 
 DISPOSITIONS = ("examined", "unresolved", "unnamed", "declared_lost", "undigested")
 PROTECTED_ROOTS = ("AUDIT_FINAL_2026-09-15", "GODSTONE_BLUEPRINT_HANDOFF", "godstone-audit")
 DIGEST = re.compile(r"[0-9a-f]{64}\Z")
+
+# The clone-carried proof archive: external evidence made re-derivable in a clean clone.
+#
+# Each registered external reference's original bytes are stored gzip-compressed as
+# evidence/external-registry-proof/<registered-sha256>.gz. The file name is the digest the bytes must hash to, so a
+# tampered, missing, untracked or symlinked entry is a named refusal rather than a declared pass. The archive is the
+# only authority the consumer re-derives external proof from; the builder root is never read by classify().
+CLONE_PROOF_DIRNAME = "evidence/external-registry-proof"
+# Archive entry extension. The stored bytes are logs and reports, not necessarily JSON, so the suffix is plain .gz;
+# the file name (the registered SHA-256) is the whole content-addressing contract.
+ARCHIVE_SUFFIX = ".gz"
+
+
+def _archive_entry(root: Path, expected_sha: str, tracked: set[str]) -> Path | None:
+    """Return the archive entry for a registered SHA-256, or None when it is not a lawful clone-carried proof.
+
+    The entry `<registered-sha256>.gz` must be named by exactly that digest and be a tracked, regular, non-symlink
+    file whose every path component under the repository is a real directory. A symlinked leaf, a symlinked archive
+    directory, an untracked entry, or a path that resolves outside the repository is refused; None then makes the
+    reference re-derive unresolved.
+    """
+    if not isinstance(expected_sha, str) or not DIGEST.fullmatch(expected_sha):
+        return None
+    rel = f"{CLONE_PROOF_DIRNAME}/{expected_sha}{ARCHIVE_SUFFIX}"
+    if rel not in tracked:
+        return None
+    entry = root / rel
+    # No path component -- leaf or ancestor -- may be a symlink, and the resolved leaf must stay inside the resolved
+    # repository root. lstat (is_symlink) does not follow links, so a symlinked parent cannot smuggle a target in.
+    try:
+        for parent in entry.parents:
+            if parent == root.parent:
+                break
+            if parent.is_symlink():
+                return None
+        if entry.is_symlink() or not entry.is_file():
+            return None
+        resolved = entry.resolve()
+        resolve_root = root.resolve()
+        if resolved != resolve_root and resolve_root not in resolved.parents:
+            return None
+    except OSError:
+        return None
+    return entry
+
+
+def _clone_carried_bytes(root: Path, expected_sha: str, tracked: set[str]) -> bytes | None:
+    """Return one registered reference's bytes from the tracked content-addressed archive, or None.
+
+    The entry must decompress to bytes whose SHA-256 equals its name. A missing, untracked, symlinked, unreadable or
+    tampered entry returns None, so the reference re-derives unresolved rather than passing.
+    """
+    entry = _archive_entry(root, expected_sha, tracked)
+    if entry is None:
+        return None
+    try:
+        raw = gzip.decompress(entry.read_bytes())
+    except (OSError, EOFError, gzip.BadGzipFile, zlib.error):
+        return None
+    if hashlib.sha256(raw).hexdigest() != expected_sha:
+        return None
+    return raw
+
+
+def declared_root_declaration(document: dict, root: Path):
+    """Validate the root the record declares (an identity), without requiring it to exist or reading it.
+
+    Presence on the current host is not a property of the candidate: external proof is re-derived from the tracked
+    archive, so the document re-derives identically wherever it runs. The declared path must be absolute, outside the
+    repository, and not a protected user archive; a malformed declaration returns None plus a named reason rather
+    than a value the archive can hide behind.
+    """
+    declared = document.get("evidence_root")
+    if not isinstance(declared, str) or not declared.strip():
+        return None, "the record declares no evidence_root"
+    candidate = Path(declared)
+    if not candidate.is_absolute():
+        return None, f"the declared evidence_root {declared!r} is not absolute"
+    try:
+        resolved = candidate.resolve()
+    except OSError:
+        resolved = candidate
+    root_resolved = root.resolve()
+    if resolved == root_resolved or root_resolved in resolved.parents:
+        return None, ("the declared root lies inside the repository; repository bytes are claimed "
+                      "through the Git index and the anchor commit only")
+    for name in PROTECTED_ROOTS:
+        if name in resolved.parts:
+            return None, f"the declared root names the protected user archive {name!r}: never opened"
+    return candidate, None
 
 
 class RegistryError(RuntimeError):
@@ -116,14 +207,49 @@ def _is_within(child: Path, parent: Path) -> bool:
         return False
 
 
-def _declared_evidence_root(document: dict, root: Path):
-    """*** THE ROOT THE RECORD DECLARES, VERIFIED BEFORE IT IS EVER TRUSTED. ***
+def ownership_namespace(path, expected, root: Path, tracked: set[str],
+                        historical_pairs: set[tuple[str, str]]) -> tuple[str, str | None]:
+    """Return (namespace, repository-relative path) for one reference -- the single ownership authority.
 
-    The builder evidence root is read from the ledger's own `evidence_root` field -- the meaning of a
-    relative path is RECORDED, not assumed from whoever's shell runs the check, which is the same law
-    `ci/check_evidence_digests.py` enforces. A declared root that is absent, malformed, pointed inside
-    the repository, or pointed at a protected user archive yields `None` plus a NAMED reason: those
-    bytes then read as DECLARED ABSENT, never silently skipped and never grabbed from anywhere else.
+    Used by both the consumer (classify) and the materializer's required-population enumeration, so the two never
+    diverge. Namespaces: protected-historical (a protected user archive), repository-historical (tracked and anchored
+    in history), repository-current (tracked now), external-historical (everything else).
+    """
+    rel = _relative(path, root) if isinstance(path, str) else None
+    protected = rel is not None and any(rel == p or rel.startswith(p + "/") for p in PROTECTED_ROOTS)
+    historical = (path, expected) in historical_pairs
+    # An absolute historical path can name a checkout on another workstation.
+    if rel is None and isinstance(path, str) and "/GODSTONE/" in path:
+        suffix = path.split("/GODSTONE/", 1)[1]
+        if suffix in tracked:
+            rel = suffix
+        protected = any(suffix == p or suffix.startswith(p + "/") for p in PROTECTED_ROOTS)
+    if protected:
+        return "protected-historical", rel
+    if historical and rel in tracked:
+        return "repository-historical", rel
+    if rel in tracked:
+        return "repository-current", rel
+    return "external-historical", rel
+
+
+def valid_anchored_loss(source: dict, historical_pairs: set[tuple[str, str]]) -> bool:
+    """True when a declared_lost is well-formed AND its exact (path, sha256) is anchored in the immutable ledger."""
+    loss = source.get("declared_lost")
+    path, expected = source.get("path"), source.get("sha256")
+    return (isinstance(loss, dict) and loss.get("log") == path and loss.get("sha256") == expected
+            and isinstance(loss.get("reason"), str) and bool(loss["reason"].strip())
+            and isinstance(loss.get("date"), str) and bool(loss["date"].strip())
+            and (path, expected) in historical_pairs)
+
+
+def _declared_evidence_root(document: dict, root: Path):
+    """Return the declared builder evidence root after validating it, or (None, reason).
+
+    This is the materializer's read-only source road; the consumer (classify) never calls it and re-derives external
+    proof from the tracked archive. The path is read from the ledger's evidence_root field. A declared root that is
+    absent, malformed, inside the repository, or a protected user archive returns None plus a named reason, so the
+    materializer refuses rather than fabricating or reading bytes elsewhere.
     """
     declared = document.get("evidence_root")
     if not isinstance(declared, str) or not declared.strip():
@@ -148,12 +274,11 @@ def _declared_evidence_root(document: dict, root: Path):
 
 
 def _external_bytes(declared_root, declared_note, path_text: str):
-    """*** EXAMINE THE DECLARED ROOT'S BYTES -- OR NAME WHY THEY ARE DECLARED ABSENT. ***
+    """Return the declared root's bytes for one reference, or (None, reason).
 
-    *Presence is examination; absence is a NAMED deferral.* **The resolution order is the court's own
-    (root, then `root/REMEDIATION`), absolute paths qualify ONLY inside the verified declared root, and
-    a symlink never carries evidence across the boundary.** *Every row read on this road carries
-    `proof_scope`: the builder root is never required and no internal gate may read its bytes.*
+    This is the materializer's read-only source road; the consumer never calls it. Resolution order is (root, then
+    root/REMEDIATION); an absolute path qualifies only inside the verified declared root, and a symlink never carries
+    evidence across the boundary. The builder root is never written and never required.
     """
     if declared_root is None:
         return None, f"external bytes not examined: {declared_note}"
@@ -191,7 +316,11 @@ def classify(document: dict, *, root: Path, anchor_commit: str,
     if not isinstance(document.get("findings"), dict) or not document["findings"]:
         raise RegistryError("Evidence register has no findings population")
     tracked = set(_git(root, "ls-files", "-z").split("\0")) - {""}
-    declared_root, declared_note = _declared_evidence_root(document, root)
+    declared_root, declared_note = declared_root_declaration(document, root)
+    declared_root_state = ("DECLARED; the tracked clone-carried proof archive is the authority"
+                           if declared_root is not None else declared_note)
+    declaration_problems = ([] if declared_root is not None
+                            else [f"the declared evidence_root is malformed or unlawful: {declared_note}"])
     anchor_text = _git(root, "show", f"{anchor_commit}:{ledger_relative}")
     try:
         anchor_document = json.loads(anchor_text)
@@ -204,7 +333,7 @@ def classify(document: dict, *, root: Path, anchor_commit: str,
     if not source_rows:
         raise RegistryError("Evidence register has no registered references")
     rows: list[dict] = []
-    problems: list[str] = []
+    problems: list[str] = list(declaration_problems)
     for source in source_rows:
         row = {"id": source["id"], "population": source["population"],
                "path": source["path"], "registered_sha256": source["sha256"]}
@@ -214,18 +343,7 @@ def classify(document: dict, *, root: Path, anchor_commit: str,
                        reason="Registered reference has no valid path")
             rows.append(row)
             continue
-        rel = _relative(path, root)
-        protected = rel is not None and any(rel == p or rel.startswith(p + "/") for p in PROTECTED_ROOTS)
-        historical = (path, expected) in historical_pairs
-        # Absolute historical paths can name a checkout on another workstation.
-        if rel is None and "/GODSTONE/" in path:
-            suffix = path.split("/GODSTONE/", 1)[1]
-            if suffix in tracked:
-                rel = suffix
-            protected = any(suffix == p or suffix.startswith(p + "/") for p in PROTECTED_ROOTS)
-        namespace = ("protected-historical" if protected else
-                     "repository-historical" if historical and rel in tracked else
-                     "repository-current" if rel in tracked else "external-historical")
+        namespace, rel = ownership_namespace(path, expected, root, tracked, historical_pairs)
         row["namespace"] = namespace
         if not isinstance(expected, str) or not DIGEST.fullmatch(expected):
             row.update(disposition="undigested", proof=False, reason="Missing or malformed registered SHA-256")
@@ -233,11 +351,7 @@ def classify(document: dict, *, root: Path, anchor_commit: str,
             continue
         loss = source.get("declared_lost")
         if loss is not None:
-            valid_loss = (isinstance(loss, dict) and loss.get("log") == path and loss.get("sha256") == expected
-                          and isinstance(loss.get("reason"), str) and bool(loss["reason"].strip())
-                          and isinstance(loss.get("date"), str) and bool(loss["date"].strip())
-                          and (path, expected) in historical_pairs)
-            if not valid_loss:
+            if not valid_anchored_loss(source, historical_pairs):
                 row.update(disposition="unresolved", proof=False, reason="Malformed or unanchored declared loss")
                 problems.append(f"{row['id']}: malformed or unanchored declared_lost")
                 rows.append(row)
@@ -271,16 +385,17 @@ def classify(document: dict, *, root: Path, anchor_commit: str,
             if data is None:
                 why_absent = "tracked bytes absent from the working tree or symlinked out of the repository"
         elif namespace == "external-historical":
-            if rel is not None and (root / rel).is_file():
-                # A file that sits in the tree WITHOUT being tracked is not clean-clone evidence.
-                data = None
-                why_absent = "present in the working tree but UNTRACKED: named, never digested, never absorbed"
+            # External dispositions are re-derived only from the tracked content-addressed archive, so the document
+            # re-derives identically wherever it runs. A missing, untracked, symlinked or tampered entry leaves the
+            # reference unresolved (a named refusal), and the user's builder root is never read here.
+            data = _clone_carried_bytes(root, expected, tracked)
+            if data is not None:
+                row["read_via"] = "clone-carried-proof-archive"
+                row["proof_scope"] = ("external proof re-derived from the tracked content-addressed archive "
+                                      f"{CLONE_PROOF_DIRNAME}; the builder root is never required")
             else:
-                data, why_absent = _external_bytes(declared_root, declared_note, path)
-                if data is not None:
-                    row["read_via"] = "declared-evidence-root"
-                    row["proof_scope"] = ("EXTERNAL examination only: the builder root is never required, "
-                                           "and no internal gate may read its bytes")
+                why_absent = (f"no tracked clone-carried proof archive entry "
+                              f"{CLONE_PROOF_DIRNAME}/{expected}{ARCHIVE_SUFFIX}")
         if data is None:
             row.update(disposition="unresolved", proof=False, reason=why_absent)
         else:
@@ -307,10 +422,11 @@ def classify(document: dict, *, root: Path, anchor_commit: str,
                                    for name in DISPOSITIONS}
         populations[population].update(registered=len(selected), verified=sum(row["proof"] for row in selected))
     return {**counts, "partition_rule": "registered == examined + unresolved + unnamed + declared_lost + undigested",
-            "external_proof_scope": ("external-historical proof is examination of the declared builder root "
-                                     "only; it is never required and no internal gate may read it"),
+            "external_proof_scope": ("external proof is re-derived from the tracked content-addressed archive "
+                                     f"{CLONE_PROOF_DIRNAME}; the builder root is declared but never required, "
+                                     "and no internal gate reads its bytes"),
             "declared_evidence_root": str(declared_root) if declared_root is not None else None,
-            "declared_root_state": "PRESENT" if declared_root is not None else declared_note,
+            "declared_root_state": declared_root_state,
             "populations": populations, "records": rows, "records_sha256": canonical_digest(rows),
             "source_sha256": canonical_digest(document), "historical_anchor_commit": anchor_commit,
             "problems": problems}
