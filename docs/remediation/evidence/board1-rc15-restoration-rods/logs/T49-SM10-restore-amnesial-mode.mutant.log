@@ -1,0 +1,36 @@
+
+21 tests completed, 1 failed
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:testLightDebugUnitTest'.
+> There were failing tests. See the report at: file:///private/tmp/godstone-board1-rc15-restoration-8e49631b/wt_T49-SM10-restore-amnesial-mode/android/app/build/reports/tests/testLightDebugUnitTest/index.html
+
+* Try:
+> Run with --scan to get full insights.
+
+BUILD FAILED in 18s
+
+TEST-SUITE TEST-io.godstone.app.readiness.ReadinessT49Test.xml tests=21 skipped=0 failures=1 errors=0
+TEST-CASE PASS testTheRealFrozenRoadCarriethProvenanceAndTellethTruth
+TEST-CASE PASS testBlankSearchReturnethToDocumentsAndTheFieldIsBounded
+TEST-CASE PASS testAnObsoleteFailureCannotOverwriteNewerResults
+TEST-CASE PASS testTheProvenanceFaultComethForthAndTheUncitedRowRestethQuietly
+TEST-CASE PASS testSearchOpensTheWholeDocumentAndBackRestorethTheSearch
+TEST-CASE PASS testNoMatchesRetainethTheSearchContextAndReturnethToDocuments
+TEST-CASE PASS testInitialBrowseLoadsDocumentsAndRestethReady
+TEST-CASE PASS testRetryIsEarnedOnlyWhereTheRoadMayMend
+TEST-CASE PASS testQueuedSearchCannotOvertakeTheNewerNavigation
+TEST-CASE PASS testTheUnavailableArchiveNeverMasqueradethAsAnEmptyOne
+TEST-CASE PASS testBackFromTheDocumentRestorethTheSceneUntouched
+TEST-CASE PASS testTheProvenanceProjectionCarriethTheFrozenWords
+TEST-CASE PASS testAnEmptyHandleIsAFirstRunAndNotARestorationOfNothing
+TEST-CASE PASS testProcessRecreationFindethThePlaceInTheSavedStateHandle
+TEST-CASE PASS testTheShownTaleIsSanitisedNotTheCausesOwnWords
+TEST-CASE PASS testAProcessRecreationRestorethTheReadingAnchorAndHonourethIt
+TEST-CASE PASS testAStaleAnchorFallethBackToTheFirstPassageAndIsNotHonoured
+TEST-CASE PASS testRefreshArchiveStatusPublishethTheTypedVerdict
+TEST-CASE PASS testTheRealMetadataRoadTellethProjectionAbsenceAndFaultApart
+TEST-CASE PASS testEditingTheFieldNeverRelabellethSubmittedResults
+TEST-CASE FAIL testProcessRecreationRestorethTheSameJourney

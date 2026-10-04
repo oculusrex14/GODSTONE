@@ -3,12 +3,16 @@
 > **CURRENT STATE (2026-10-04) — DERIVED, NOT CARRIED.** *Everything below this banner is HISTORICAL
 > candidate narrative from the round-122 era and is preserved verbatim; its SHAs, lane counts and class
 > membership are NOT the current state.* **The current canonical state is DERIVED by
-> `scripts/build_structured_closure.py`: builder status `REMEDIATION_IN_PROGRESS`, 35 internal obligations
-> OPEN across 10 findings (GS-FINAL-003, GS-FINAL-004, GS-INTEGRATION-001, GS-RUNTIME-001, GS-STRESS-001,
-> GS-UX-001, GS-ARCHIVE-005, GS-FINAL-006, GS-STORE-002, AUDIT-B1-CTRL-001), ZERO DISCHARGED (every
-> rc14-era discharge is DEMOTED with its claim kept as `historical_discharge`), `verified_fixed = 0`, 5
-> external obligations (`gs-final-004.native-engine-half`, `gs-runtime-001.android-keystore`,
-> `gs-store-002.sqlcipher-engine`, `gs-stress-001.device-radio`, `gs-ux-001.human-accessibility-acceptance`).**
+> `scripts/build_structured_closure.py`: builder status `REMEDIATION_IN_PROGRESS`, **31 internal obligations
+> DISCHARGED and 4 OPEN** (1 finding still internally OPEN: AUDIT-B1-CTRL-001, whose FOUR closure-control discharges
+> await scope-specific mutation evidence -- these four are PENDING CORRECT PROOF and are NOT fake-closed). Each of the
+> 31 discharged obligations carries an authored, production-reachable `structured_discharge` (the seven fields + an
+> external `candidate_binding` that names ONLY the prospective rc15 candidate ref (`production-readiness-board1-rc15`),
+> the external evidence bundle (manifest `docs/remediation/evidence/board1-evidence-bundle.json`) and the future
+> attestation path (`FREEZE_ATTESTATION_rc15.json`, reserved until freeze) -- NO closure SHA is embedded); `verified_fixed = 0` (only an independent audit may write
+> it), 5 external obligations
+> (`gs-final-004.native-engine-half`, `gs-runtime-001.android-keystore`, `gs-store-002.sqlcipher-engine`,
+> `gs-stress-001.device-radio`, `gs-ux-001.human-accessibility-acceptance`).**
 > *The rc14 candidate, its tag object and its attestation remain immutable historical evidence; the rc14
 > attestation's blanket internal-completion verdict is NOT a current completion claim.* **The prospective
 > bound candidate is `production-readiness-board1-rc15` (its tag is created at freeze time; until then the
@@ -20,12 +24,20 @@
 > half is asserted in-process and the current UI run passed 43 tests / 0 failures -- LabMesh 29 accessibility 11 +
 > functional 18, LIGHT 14 -- with human acceptance remaining the existing external obligation). A `REPAIRED_STALE` status
 > settles ONLY the source half of a review's claim and does NOT discharge any obligation.
-> **Current rc15 work:** the full board1 campaign on `4f84d0b6` recorded **179 `KILLED` + 2 `EXEC_INVALID`**
-> (IOS-RECOVERY-005, SH-R13 -- each retained the original find needle inside its replacement, so the strict
-> installation postcondition correctly refused; the two registry needles were then completed to whole lines so post-find=0,
-> with NO harness weakening), and the selected two-rod three-phase qualification on `f66a1b41` **KILLED both** with green
-> restorations. **These are DISTINCT runs: they are NEVER summed into one 181 campaign and are NOT discharge proof.**
-> The final full 181 campaign remains PENDING.
+> **FINAL campaign (2026-10-04):** the background full board1 campaign on baseline `c5a565fcb83e3e636ebe3ac253bd0f6351d41da3`
+> (tested tree `f67d8dd18be11928c39a3932296217a7dc5b8604`, canonical manifest `docs/remediation/evidence/board1-rc15-rods`)
+> KILLED **181/181** required rods -- **179 SEMANTIC + 2 STRUCTURAL rows, separately classified and NEVER quoted as one
+> aggregate** (`LANE-ROD-6-android-runner-aborts-before-digests` tests_run 1/restored 1; `ARCHIVE-PROV-007` tests_run
+> 43/restored 43). SEMANTIC catches split into 178 `witness`-channel rows (build_exit 0) and ONE lawful
+> `compiler`-channel row, `IOS-RECOVERY-006` (build_exit 1, tests_run null, restored-green 10).
+> STRUCTURAL catches are TWO `witness`-channel rows (build_exit 0), accounted separately.
+> `IOS-RECOVERY-006` strikes the source-bound TYPE-ENFORCEMENT invariant: compile-time refusal is its intended
+> kill, NOT a build-invalid row. Every row carries a green restored phase and its own
+> phase-log digests; `python3 -B ci/mutations.py --selftest-manifest --group board1 --manifest-dir
+> docs/remediation/evidence/board1-rc15-rods` PASSES. The earlier `4f84d0b6` run (179 KILLED + 2 EXEC_INVALID: IOS-RECOVERY-005,
+> SH-R13 -- each retained the original find needle inside its replacement, so the strict installation postcondition
+> correctly refused; the two registry needles were then completed to WHOLE-LINE needles so post-find=0, with NO harness
+> weakening) and the selected two-rod qualification on `f66a1b41` are **DISTINCT earlier runs**, not folded into the 181.
 > **Integration stage proof (2026-10-04):** the full `--mode all` integration now **PASSES** on clean full SHA
 > `b7bac67f018b015b0038ec11b3228bba9de59545` -- checker `python3 -B ci/check_integration_evidence.py --report
 > /tmp/board1-rc15-integration-b7bac67f/integration-report.json --require-mode all` = **PASS** (rows 10, cross 8, crash 2,
@@ -34,9 +46,19 @@
 > the macOS SIGKILL campaign rc 0 with two fresh recoveries on the actual Android TestExecutor; natural `bye` on BOTH
 > workers with command EOF (the 120s oracle unchanged). The coordinator fix `b7` centralizes `Worker.send('bye')` to close
 > the command FIFO ONCE (idempotent `Fifo.close`), reply pipe unchanged, with NO new APIs and NO source-worker change.
-> Source pre/post `ad11a88866de38fc47284a6e71d2719b56addd3ae50fcf0e95768f8808146419`. **REMAINING: the current source-family
-> reseal (Android 7 lanes, host, UI+sim) and the final full 181 campaign; ALL 35 obligations stay OPEN and none is
-> discharged.**
+> Source pre/post `ad11a88866de38fc47284a6e71d2719b56addd3ae50fcf0e95768f8808146419`. **The source families are ALREADY
+> resealed and are UNCHANGED by the builder/docs-only closure edits (no new lane producer, no rewritten hash is needed);
+> only the FINAL-C strict integration is re-run AFTER the tracked writes. 31 of the 35 internal obligations are
+> DISCHARGED on earned proof and 4 remain OPEN pending the parent's SCOPE-SPECIFIC mutation evidence for the
+> CLOSURE-CONTROL block (the four `AUDIT-B1-CTRL-001` obligations); the restoration-disconnection mutation
+> `gs-final-006.mutation` is now DISCHARGED on its OWN separate four-rod restoration campaign (baseline `8e49631b…`,
+> tested tree `95952ec3…`, 4/4 SEMANTIC KILLED, never aggregated with the canonical 181); the five external gates stay
+> OPEN, so NO READY claim is made.**
+> **Supply preflight (2026-10-04):** the four preflight supply refusals are REPAIRED by the canonical existing generators
+> only (no code guard/pin/source change): the current `ios/project.yml` fingerprint is captured (`0c4a39…`), the SBOM now
+> carries 566 components including 3 SQLite 2.6.2 coordinates, and 6 CycloneDX faces are refreshed.
+> `verify --all` and `sbom-export --check` PASS with HONEST warnings (cmake absent / unpinned tool versions / a
+> debug-dex nondeterminism) -- reproducibility is NOT claimed, and no guard was weakened.
 > Compiler refusal is a catch only for the explicitly declared permit type-enforcement control;
 > ordinary compile errors, missing execution, skipped cases and timeouts remain non-catches.
 > The simulator stock-SQLite oracle now stages the resolved device's runtime image, validates its export

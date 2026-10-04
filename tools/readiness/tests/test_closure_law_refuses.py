@@ -56,6 +56,125 @@ def _load_binding_authority():
     return mod
 
 
+#: *** THE TREES THE GATE'S CITATION BACKSTOP RESOLVES AGAINST, AND THE ONE IT IMPORTS. ***
+#:
+#: *THE MEASURED FIXTURE DEFECT THIS CLOSES: the negative CLI cases ran against a bare scratch tree that carried only
+#: `scripts/` and two `docs/` subdirectories. The gate's `_current_binding_problems` IMPORTETH the freeze authority
+#: (`ci/check_candidate_binding.py`) and its citation backstop resolve `test:` symbols under `ios/`/`android/`, so a
+#: tree without them DIED ON `ModuleNotFoundError: No module named 'check_candidate_binding'` -- **the stale-count case
+#: then reddened on the fixture's own defect (`structured_discharge_problems`) instead of on the persisted/derived drift
+#: it provoketh, so its "DISAGREES" refusal never appeared.*** **These trees are provisioned exactly as the state-mutation
+#: court (`test_closure_state_mutations.py`) provisioneth its own `_Fixture`, so both courts judge against the same real
+#: authority rather than a test alias.**
+SYMLINKED_TREES = ("ios", "android", "content", "tools")
+#: Trees COPIED rather than linked: the campaign mutates the gate's source and the ledger, so both must be private.
+COPIED_TREES = ("scripts", "docs")
+#: *** `ci/` IS REFRESHED FROM THE LIVE AUTHORITY, NOT TRUSTED FROM THE WORKTREE'S DETACHED HEAD. ***
+#: *MEASURED (bg741): the detached worktree already carrieth a stale `ci/check_candidate_binding.py` with no
+#: prospective-attestation constant, so the gate's freeze import refused before any arm ran. Copied from live, the
+#: scratch `ci/` is the same bytes the gate reads in production.*
+REFRESHED_TREES = ("ci",)
+
+
+class _ClosureFixture:
+    """*** A DISPOSABLE `git worktree` OF HEAD, PROVISIONED SO THE GATE'S OWN CITATIONS AND ITS FREEZE IMPORT RESOLVE. ***
+
+    *The live control-plane documents are only ever READ: every mutation happeneth in this tree, which dieth with the
+    process. It is the same fixture shape the state-mutation court useth, so a refusal here is a refusal against the
+    real authority the production gate readeth.*
+    """
+
+    def __init__(self) -> None:
+        self._td = tempfile.TemporaryDirectory(prefix="godstone-closure-law-fixture-")
+        self.root = Path(self._td.name) / "repo"
+
+    def __enter__(self) -> "_ClosureFixture":
+        subprocess.run(["git", "worktree", "add", "--force", "--detach", str(self.root), "HEAD"],
+                       cwd=str(REPO), check=True, capture_output=True, timeout=600)
+        for tree in SYMLINKED_TREES:
+            src, dst = REPO / tree, self.root / tree
+            if src.exists() and not dst.exists():
+                dst.symlink_to(src, target_is_directory=True)
+        for tree in COPIED_TREES + REFRESHED_TREES:
+            src, dst = REPO / tree, self.root / tree
+            if not src.is_dir():
+                continue
+            if dst.is_dir():
+                shutil.rmtree(dst)
+            shutil.copytree(src, dst, symlinks=True)
+        return self
+
+    def __exit__(self, *exc) -> bool:
+        subprocess.run(["git", "worktree", "remove", "--force", str(self.root)],
+                       cwd=str(REPO), capture_output=True, timeout=600)
+        subprocess.run(["git", "worktree", "prune"], cwd=str(REPO), capture_output=True, timeout=600)
+        self._td.cleanup()
+        return False
+
+    @property
+    def gate(self) -> Path:
+        return self.root / "scripts" / GATE.name
+
+    @property
+    def closure(self) -> Path:
+        return self.root / "docs" / "production-readiness" / CLOSURE.name
+
+    @property
+    def ledger(self) -> Path:
+        return self.root / "docs" / "remediation" / "REMEDIATION_STATE.json"
+
+    def restore_gate(self) -> None:
+        """*** RESET THE GATE SOURCE TO THE COMMITTED BYTES BEFORE EVERY CASE. ***
+        *A source mutation left over from the previous case would change the next one's starting state.*
+        """
+        self.gate.write_bytes(GATE.read_bytes())
+
+    def write_ledger(self, doc: dict) -> None:
+        self.ledger.write_text(json.dumps(doc, indent=1, ensure_ascii=False), encoding="utf-8")
+
+    def write_closure(self, doc: dict) -> None:
+        self.closure.write_text(json.dumps(doc, indent=1), encoding="utf-8")
+
+    def check(self) -> subprocess.CompletedProcess:
+        return subprocess.run(["python3", str(self.gate), "--check"],
+                              capture_output=True, text=True, cwd=str(self.root), timeout=600)
+
+
+_FIXTURE: "_ClosureFixture | None" = None
+_PRISTINE_LEDGER: str = ""
+
+
+def setUpModule() -> None:
+    global _FIXTURE, _PRISTINE_LEDGER
+    _FIXTURE = _ClosureFixture().__enter__()
+    _PRISTINE_LEDGER = _FIXTURE.ledger.read_text(encoding="utf-8")
+
+
+def tearDownModule() -> None:
+    if _FIXTURE is not None:
+        _FIXTURE.__exit__(None, None, None)
+
+
+def _baseline_green() -> str | None:
+    """*** THE UNMUTATED FIXTURE MUST SATISFY THE LAW BEFORE A MUTATION IS JUDGED. ***
+
+    *Restores the committed gate, the pristine ledger and a `REMEDIATION_IN_PROGRESS` closure, runs `--check`, and
+    returneth the refusal detail when the baseline is NOT green (`None` when it is).* **A negative case whose refusal
+    is an unrelated fixture defect is not a kill -- and the fixture defect that broke the stale-count case (a missing
+    `ci/` authority) made EVERY drift case redden before it reached the rule under test.**
+    """
+    assert _FIXTURE is not None
+    _FIXTURE.restore_gate()
+    _FIXTURE.write_ledger(json.loads(_PRISTINE_LEDGER))
+    _FIXTURE.write_closure({"status": "REMEDIATION_IN_PROGRESS", "verified_fixed": 0})
+    proc = _FIXTURE.check()
+    out = (proc.stdout or "") + (proc.stderr or "")
+    if proc.returncode == 0 and "::error::" not in out:
+        return None
+    return (f"rc={proc.returncode}\n--- stdout ---\n{(proc.stdout or '')[:1500]}\n"
+            f"--- stderr ---\n{(proc.stderr or '')[:1500]}")
+
+
 class CitationTokens(unittest.TestCase):
     """*** A TYPED TOKEN IS THE ONLY THING THAT COUNTS AS EVIDENCE. ***"""
 
@@ -127,39 +246,37 @@ class TheLawStillRefuses(unittest.TestCase):
     `status = READY_FOR_EXTERNAL_REAUDIT` WHILE 25 OBLIGATIONS ARE OPEN** -- the AUDIT-B1-CTRL-001 violation the law
     exists to catch, self-inflicted by the test meant to guard it. It would also churn a supply-chain-digested file.*
 
-    **SO THE GATE IS RUN AGAINST A TEMPORARY REPO**: the real `CLOSURE`/`LEDGER` are copied into a scratch tree, the
-    gate script is copied beside them, and the mutation happens THERE. The live document is only ever READ, and if
-    this process dies the scratch tree dies with it.
+    **SO THE GATE IS RUN AGAINST A PROVISIONED `git worktree` OF HEAD** (the module fixture), where the real
+    `CLOSURE`/`LEDGER` are copied, the `ci/` freeze authority is refreshed from live, and the mutation happens THERE.
+    The live document is only ever READ, and if this process dies the scratch tree dies with it.
     """
 
     def _run_gate_against_scratch(self, mutate, *, inject_open_obligation_into_gate: bool = False) -> subprocess.CompletedProcess:
-        with tempfile.TemporaryDirectory() as tmp:
-            scratch = Path(tmp) / "repo"
-            (scratch / "scripts").mkdir(parents=True)
-            (scratch / "docs" / "production-readiness").mkdir(parents=True)
-            (scratch / "docs" / "remediation").mkdir(parents=True)
-            shutil.copy2(GATE, scratch / "scripts" / GATE.name)
-            if inject_open_obligation_into_gate:
-                # *** THE OBLIGATION IS AUTHORED IN THE GATE'S OWN SOURCE, WHERE OBLIGATIONS LIVE. ***
-                gt = scratch / "scripts" / GATE.name
-                text = gt.read_text(encoding="utf-8")
-                anchor = '"GS-FINAL-003": ['
-                assert anchor in text, "the gate source carries no GS-FINAL-003 list to insert into"
-                text = text.replace(
-                    anchor, anchor + '\n        {"id": "law-refuses.inserted-open", "text": "an inserted open '
-                    'obligation", "status": "OPEN", "evidence": []},', 1)
-                gt.write_text(text, encoding="utf-8")
-            shutil.copy2(CLOSURE, scratch / "docs" / "production-readiness" / CLOSURE.name)
-            shutil.copy2(self.mod.LEDGER, scratch / "docs" / "remediation" / Path(self.mod.LEDGER).name)
-            # THE MUTATION HAPPENS ON THE COPY. The live document is untouched even if this raises.
-            target = scratch / "docs" / "production-readiness" / CLOSURE.name
-            doc = json.loads(target.read_text(encoding="utf-8"))
-            mutate(doc)
-            target.write_text(json.dumps(doc, indent=2), encoding="utf-8")
-            return subprocess.run(
-                ["python3", str(scratch / "scripts" / GATE.name), "--check"],
-                capture_output=True, text=True, cwd=str(scratch), timeout=600,
-            )
+        """*** MUTATE A PROVISIONED FIXTURE, RUN `--check`, AND RETURN THE RUN. ***
+
+        *THE GREEN BASELINE IS `_baseline_green()`'s job, asserted by each NEGATIVE arm below: an unrelated fixture
+        refusal (a missing `ci/` authority, an unresolved citation) is NEVER the negative evidence a case exists to
+        produce.* **This helper only applies the mutation to a fixture whose `ci/` authority and citation trees are
+        already provisioned.**
+        """
+        assert _FIXTURE is not None
+        _FIXTURE.restore_gate()
+        _FIXTURE.write_ledger(json.loads(_PRISTINE_LEDGER))
+        if inject_open_obligation_into_gate:
+            # *** THE OBLIGATION IS AUTHORED IN THE GATE'S OWN SOURCE, WHERE OBLIGATIONS LIVE. ***
+            gt = _FIXTURE.gate
+            text = gt.read_text(encoding="utf-8")
+            anchor = '"GS-FINAL-003": ['
+            assert anchor in text, "the gate source carries no GS-FINAL-003 list to insert into"
+            text = text.replace(
+                anchor, anchor + '\n        {"id": "law-refuses.inserted-open", "text": "an inserted open '
+                'obligation", "status": "OPEN", "evidence": []},', 1)
+            gt.write_text(text, encoding="utf-8")
+        # THE MUTATION HAPPENS ON THE FIXTURE COPY. The live document is untouched even if this raises.
+        doc = json.loads(CLOSURE.read_text(encoding="utf-8"))
+        mutate(doc)
+        _FIXTURE.write_closure(doc)
+        return _FIXTURE.check()
 
     def setUp(self) -> None:
         self.mod = _load()
@@ -167,6 +284,9 @@ class TheLawStillRefuses(unittest.TestCase):
 
     def test_the_live_document_is_never_written(self) -> None:
         """A guard that mutates the thing it guards is the defect, not the check."""
+        baseline = _baseline_green()
+        self.assertIsNone(baseline, "the provisioned fixture must be GREEN before its mutation is judged:\n"
+                                    f"{baseline}")
         self._run_gate_against_scratch(lambda d: d.update(status="READY_FOR_EXTERNAL_REAUDIT"))
         self.assertEqual(
             CLOSURE.read_bytes(), self.live_before,
@@ -201,6 +321,9 @@ class TheLawStillRefuses(unittest.TestCase):
         extra OPEN obligation (the same shape `test_closure_state_mutations.py` useth), and the refusal is required
         to be the readiness law's own words.*
         """
+        baseline = _baseline_green()
+        self.assertIsNone(baseline, "the provisioned fixture must be GREEN before its forced-READY kill is judged "
+                                    f"(an unrelated refusal is not this case's evidence):\n{baseline}")
         proc = self._run_gate_against_scratch(
             lambda d: d.update(status="READY_FOR_EXTERNAL_REAUDIT"),
             inject_open_obligation_into_gate=True)
@@ -212,11 +335,93 @@ class TheLawStillRefuses(unittest.TestCase):
         self.assertIn("MAY NOT", proc.stdout, "and the refusal must SAY WHY, naming the open work")
 
     def test_verified_fixed_may_not_be_written_by_this_builder(self) -> None:
+        baseline = _baseline_green()
+        self.assertIsNone(baseline, "the provisioned fixture must be GREEN before its `verified_fixed` kill is "
+                                    f"judged:\n{baseline}")
         proc = self._run_gate_against_scratch(lambda d: d.update(verified_fixed=1))
         self.assertEqual(
             proc.returncode, 1,
             "only an INDEPENDENT audit may write `verified_fixed`, and this builder must refuse to carry it",
         )
+
+
+class TerminalHistoryMayNotHideALiveDefect(unittest.TestCase):
+    """*** A DISCHARGED OBLIGATION'S SOURCE-REVIEW HISTORY MAY CARRY ONLY REPAIRED DEFECTS. ***
+
+    *THE GUARD REGRESSION THIS CLOSES (found by the authoritative review, 98% confidence): the earned closure renamed
+    `KNOWN_INTERNAL_GAPS` -> `REVIEW_GAP_HISTORY`, dropped the "gap on terminal work is stale" refusal, and attached
+    the history to the DISCHARGED obligation. **So a review record updated to `LIVE`/`PARTIAL`, or carrying NO status
+    at all, would ride along as "history" on a terminal obligation, and `structured_semantics` would omit it from
+    `known_internal_gaps` because the obligation is terminal -- an unresolved defect DISAPPEARING through the rename.**
+
+    *The fix requires every attached defect on a terminal obligation to be explicitly `REPAIRED_STALE`. These arms
+    exercise the rule by BEHAVIOUR on an authored closure, so they keep biting after every real discharge -- never on a
+    live record's incidental shape and never by re-reading source text.*
+    """
+
+    def setUp(self) -> None:
+        self.mod = _load()
+
+    def _problems(self, review_status):
+        """Coverage over an ISOLATED fixture: one DISCHARGED obligation with one attached defect.
+
+        *Both authored maps are isolated to the synthetic obligation, so the only coverage facts in play are the ones
+        this arm authored -- never whatever the live register happens to carry.*
+        """
+        defect = {"source": "SyntheticReview", "defect": "SYNTHETIC-DEFECT"}
+        if review_status is not None:
+            defect["review_status"] = review_status
+        obls = [{"id": "synthetic.discharged", "text": "t", "status": "DISCHARGED",
+                 "structured_discharge": json.loads(json.dumps(
+                     StructuredDischargeContradiction.VALID_DISCHARGE)),
+                 "evidence": ["`path:scripts/build_structured_closure.py`"]}]
+        closure = {"SYNTHETIC": {"internal_status": "COMPLETE", "internal_obligations": obls}}
+        saved_sd, saved_hist = self.mod.STRUCTURED_DISCHARGES, self.mod.REVIEW_GAP_HISTORY
+        try:
+            self.mod.STRUCTURED_DISCHARGES = {"synthetic.discharged": json.loads(json.dumps(
+                StructuredDischargeContradiction.VALID_DISCHARGE))}
+            self.mod.REVIEW_GAP_HISTORY = {"synthetic.discharged": [defect]}
+            return self.mod.authoring_coverage_problems(closure)
+        finally:
+            self.mod.STRUCTURED_DISCHARGES, self.mod.REVIEW_GAP_HISTORY = saved_sd, saved_hist
+
+    def test_a_repaired_defect_on_a_terminal_obligation_is_permitted(self) -> None:
+        """*The repaired control: a `REPAIRED_STALE` defect is HISTORY and the coverage gate carries NO problem.*"""
+        self.assertEqual(self._problems("REPAIRED_STALE"), [],
+                         "a REPAIRED_STALE defect riding as history on a discharge must be permitted")
+
+    def test_a_live_defect_on_a_terminal_obligation_is_refused(self) -> None:
+        problems = self._problems("LIVE")
+        self.assertTrue(any("synthetic.discharged" in p for p in problems),
+                        "a LIVE review defect may NOT disappear behind a discharge's history")
+
+    def test_a_partial_defect_on_a_terminal_obligation_is_refused(self) -> None:
+        problems = self._problems("PARTIAL")
+        self.assertTrue(any("synthetic.discharged" in p for p in problems),
+                        "a PARTIAL review defect may NOT disappear behind a discharge's history")
+
+    def test_an_unreconciled_defect_on_a_terminal_obligation_is_refused(self) -> None:
+        problems = self._problems(None)
+        self.assertTrue(any("synthetic.discharged" in p for p in problems),
+                        "a defect with NO review_status is UNRECONCILED and may not ride a discharge as history")
+
+    def test_an_unknown_review_state_on_a_terminal_obligation_is_refused(self) -> None:
+        problems = self._problems("FIXED")
+        self.assertTrue(any("synthetic.discharged" in p for p in problems))
+
+    def test_an_orphan_history_id_is_still_refused(self) -> None:
+        saved_sd, saved_hist = self.mod.STRUCTURED_DISCHARGES, self.mod.REVIEW_GAP_HISTORY
+        try:
+            self.mod.STRUCTURED_DISCHARGES = {}
+            self.mod.REVIEW_GAP_HISTORY = {"no.such.obligation": [
+                {"source": "s", "defect": "d", "review_status": "REPAIRED_STALE"}]}
+            problems = self.mod.authoring_coverage_problems(
+                {"SYNTHETIC": {"internal_status": "COMPLETE", "internal_obligations": []}})
+        finally:
+            self.mod.STRUCTURED_DISCHARGES, self.mod.REVIEW_GAP_HISTORY = saved_sd, saved_hist
+        self.assertTrue(any("no.such.obligation" in p for p in problems),
+                        "a history record with no subject obligation must be refused by name")
+
 
 
 if __name__ == "__main__":
@@ -347,7 +552,7 @@ class FindingStatusFollowsItsObligations(unittest.TestCase):
             o["status"] = "DISCHARGED"
         closure[fid]["internal_status"] = "COMPLETE"
         self.assertEqual(
-            self.mod.finding_state_problems(closure), [],
+            [p for p in self.mod.finding_state_problems(closure) if fid in p], [],
             "a COMPLETE finding whose obligations are all DISCHARGED is the CORRECT state, not a defect",
         )
 
@@ -357,40 +562,37 @@ class FindingStatusFollowsItsObligations(unittest.TestCase):
         fid = next(f for f, e in closure.items() if not e.get("internal_obligations"))
         closure[fid]["internal_status"] = "OPEN"
         self.assertEqual(
-            self.mod.finding_state_problems(closure), [],
+            [p for p in self.mod.finding_state_problems(closure) if fid in p], [],
             "a finding with no authored obligations is governed by its recorded status, not by an empty set",
         )
 
     def test_the_ledger_population_refuses_an_inconsistent_finding(self) -> None:
-        """*** THE RULE IS ENFORCED WHERE THE FINDING IS BUILT, AND WITH THE LIVE WORK, NOT A SYNTHETIC DISCHARGE. ***
+        """*** THE RULE IS ENFORCED WHERE THE FINDING IS BUILT, ON AN AUTHORED SUBJECT. ***
 
-        *The earlier draft authored an all-DISCHARGED obligation set -- which the 2026-10-02 reopen now DEMOTES to
-        OPEN, so the refusal it expected could not fire (the arm passed only while the live register happened to carry
-        discharges).* **The reachable production shape is the OTHER direction: a finding RECORDED as fixed over
-        obligations that are live.**
+        *PROVENANCE: `build()` DERIVES `recorded_status` beside `internal_status` and does NOT refuse this direction
+        (a finding is returned with `recorded_status='FIX_SUBMITTED'`, `internal_status='OPEN'`); the refusal liveth in
+        `finding_state_problems()`, which `--check` runs.*
 
-        *** AND THE ASSERTION MUST NAME THE FUNCTION THAT ACTUALLY CARRIES THE RULE. *** *MEASURED, BY DIRECT CALL:
-        `build()` DERIVES `recorded_status` beside `internal_status` and does NOT refuse this direction (the finding is
-        returned with `recorded_status='FIX_SUBMITTED'`, `internal_status='OPEN'`); the refusal liveth in
-        `finding_state_problems()`, which `--check` runs -- so the old `assertRaises(SystemExit)` around `build()` was
-        asserting a behaviour the gate never had.* **This arm now drives the ledger in ITS OWN TRACK and judges the
-        real refusal by name.**
+        *** AND THE SUBJECT IS AUTHORED HERE, NOT TAKEN FROM THE LIVE FRONTIER. *** *The earlier draft demanded a
+        ledger-track finding with live obligations; once the honest discharges landed that candidate could be a
+        SYNTHESIZED finding not present in either ledger track, and the arm died on `assertIsNotNone` -- pinned to the
+        live frontier rather than to the rule. So this arm authors a ledger with ONE finding recorded `FIX_SUBMITTED`
+        over one OPEN obligation and judges the refusal by name, whatever the live frontier carries.*
         """
         ledger = json.loads(self.mod.LEDGER.read_text(encoding="utf-8"))
-        tracks = (ledger["findings"], ledger["independent_audit_new_findings"]["findings"])
-        fids = [fid for fid, obligations in self.mod.PARTIAL_OBLIGATIONS.items()
-                if any(o.get("status") in self.mod.UNRESOLVED_OBLIGATION_STATES for o in obligations)]
-        target = next(((track, fid) for track in tracks for fid in fids if fid in track), None)
-        self.assertIsNotNone(target, "no PARTIAL_OBLIGATIONS finding with live work is present in either ledger track "
-                                     f"-- the arm would mutate nothing (candidates: {fids})")
-        track, fid = target
-        self.assertIn(track[fid].get("my_status"), ("OPEN", "PARTIAL"),
-                      f"{fid} must be recorded as live work before the arm claims it fixed")
-        track[fid]["my_status"] = "FIX_SUBMITTED"
-        closure = self.mod.build(ledger)
+        ledger["findings"]["SYNTHETIC-RECORDED-FIXED"] = {"severity": "High", "my_status": "FIX_SUBMITTED"}
+        saved = self.mod.PARTIAL_OBLIGATIONS
+        try:
+            self.mod.PARTIAL_OBLIGATIONS = dict(saved)
+            self.mod.PARTIAL_OBLIGATIONS["SYNTHETIC-RECORDED-FIXED"] = [
+                {"id": "synthetic.recorded.fixed", "text": "t", "status": "OPEN",
+                 "evidence": ["`path:scripts/build_structured_closure.py`"]}]
+            closure = self.mod.build(ledger)
+        finally:
+            self.mod.PARTIAL_OBLIGATIONS = saved
         problems = self.mod.finding_state_problems(closure)
-        self.assertTrue(any(fid in p and "UNRESOLVED" in p for p in problems),
-                        f"{fid}: a RECORDED FIX_SUBMITTED over live obligations must be refused by the closure law, "
+        self.assertTrue(any("SYNTHETIC-RECORDED-FIXED" in p and "UNRESOLVED" in p for p in problems),
+                        "a RECORDED FIX_SUBMITTED over live obligations must be refused by the closure law, "
                         f"got {problems[:3]}")
 
     def test_both_findings_that_were_inconsistent_now_derive_coherently(self) -> None:
@@ -452,31 +654,44 @@ class PersistedStateAgreesWithDerivation(unittest.TestCase):
     derivation produced **18** -- two disagreeing structured representations of the same state, which is exactly the
     narrative/state drift this control plane exists to eliminate. And `--check` never read them.*
 
-    *These mutate the PERSISTED ledger in a scratch tree and require `--check` to refuse, so the field cannot go
+    *These mutate the PERSISTED ledger in the provisioned `git worktree` fixture (which carrieth the `ci/` freeze
+    authority and the citation trees the gate resolves against) and require `--check` to refuse, so the field cannot go
     stale while the checker stays green.*
+
+    *** EVERY ARM ESTABLISHES ITS UNMUTATED GREEN BASELINE FIRST. *** *The measured defect this closes: the bare
+    scratch tree carried only `scripts/` and two `docs/` subdirectories, so the gate died on
+    `ModuleNotFoundError: No module named 'check_candidate_binding'` in `structured_discharge_problems` and the
+    stale-count arm reddened on the missing authority -- **an unrelated fixture refusal masquerading as the drift
+    kill.*** *`_baseline_green()` runs the same fixture unmutated and requires rc=0 with no `::error::`, exactly the
+    negative control the state-mutation court useth.*
     """
 
-    def _run_check_with_ledger(self, mutate) -> subprocess.CompletedProcess:
-        with tempfile.TemporaryDirectory() as td:
-            scratch = Path(td) / "repo"
-            (scratch / "scripts").mkdir(parents=True)
-            shutil.copy2(GATE, scratch / "scripts" / GATE.name)
-            (scratch / "docs" / "production-readiness").mkdir(parents=True)
-            (scratch / "docs" / "remediation").mkdir(parents=True)
-            shutil.copy2(CLOSURE, scratch / "docs" / "production-readiness" / CLOSURE.name)
-            led = json.loads((REPO / "docs" / "remediation" / "REMEDIATION_STATE.json").read_text(encoding="utf-8"))
-            mutate(led)
-            (scratch / "docs" / "remediation" / "REMEDIATION_STATE.json").write_text(
-                json.dumps(led, indent=1, ensure_ascii=False), encoding="utf-8")
-            return subprocess.run(["python3", str(scratch / "scripts" / GATE.name), "--check"],
-                                  capture_output=True, text=True, cwd=str(scratch), timeout=600)
+    def _run_check_with_ledger(self, mutate, expect: str) -> subprocess.CompletedProcess:
+        """*** APPLY `mutate` TO A PRISTINE FIXTURE LEDGER, RUN `--check`, AND REQUIRE `expect` BY NAME. ***
+
+        *The mutation is the ONLY difference from the green baseline, so the refusal is attributable to it; the
+        `expect` needle names the field-level ground rather than the exit code alone.*
+        """
+        assert _FIXTURE is not None
+        baseline = _baseline_green()
+        assert baseline is None, f"the provisioned fixture must be GREEN before this kill is judged:\n{baseline}"
+        _FIXTURE.restore_gate()
+        led = json.loads(_PRISTINE_LEDGER)
+        mutate(led)
+        _FIXTURE.write_ledger(led)
+        _FIXTURE.write_closure({"status": "REMEDIATION_IN_PROGRESS", "verified_fixed": 0})
+        proc = _FIXTURE.check()
+        out = (proc.stdout or "") + (proc.stderr or "")
+        assert proc.returncode == 1, ("the mutated persisted state must be REFUSED, not the fixture reddened "
+                                      f"elsewhere:\n{out[:2000]}")
+        assert expect in out, (f"the refusal must name the drifted field {expect!r} rather than refuse for an "
+                               f"unrelated reason:\n{out[:2000]}")
+        return proc
 
     def test_a_stale_count_is_refused(self) -> None:
         def m(led):
             led["current_assessment"]["structured_counts"]["internal_obligations_open"] += 1
-        proc = self._run_check_with_ledger(m)
-        self.assertEqual(proc.returncode, 1, "an altered persisted COUNT must be refused")
-        self.assertIn("DISAGREES", proc.stdout, "and the refusal must SAY which field disagreed")
+        self._run_check_with_ledger(m, "structured_counts.internal_obligations_open")
 
     def test_a_stale_obligation_status_is_refused(self) -> None:
         def m(led):
@@ -489,8 +704,7 @@ class PersistedStateAgreesWithDerivation(unittest.TestCase):
                         o["status"] = "OPEN"
                         return
             raise AssertionError("the persisted closure carries no obligation status to alter")
-        proc = self._run_check_with_ledger(m)
-        self.assertEqual(proc.returncode, 1, "an altered persisted STATUS must be refused")
+        self._run_check_with_ledger(m, "status persisted")
 
     def test_a_deleted_obligation_is_refused(self) -> None:
         def m(led):
@@ -498,8 +712,7 @@ class PersistedStateAgreesWithDerivation(unittest.TestCase):
                 if f.get("internal_obligations"):
                     f["internal_obligations"].pop()
                     return
-        proc = self._run_check_with_ledger(m)
-        self.assertEqual(proc.returncode, 1, "a DELETED persisted obligation must be refused")
+        self._run_check_with_ledger(m, "MISSING from the persisted closure")
 
     def test_an_orphan_obligation_is_refused(self) -> None:
         def m(led):
@@ -507,8 +720,7 @@ class PersistedStateAgreesWithDerivation(unittest.TestCase):
                 f.setdefault("internal_obligations", []).append(
                     {"id": "orphan.not-in-derivation", "status": "OPEN"})
                 return
-        proc = self._run_check_with_ledger(m)
-        self.assertEqual(proc.returncode, 1, "an ORPHAN persisted obligation must be refused")
+        self._run_check_with_ledger(m, "ORPHANED from the derived closure")
 
     def test_the_real_tree_agrees(self) -> None:
         proc = subprocess.run(["python3", str(GATE), "--check"], capture_output=True, text=True,
@@ -688,19 +900,6 @@ class StructuredDischargeContradiction(unittest.TestCase):
             self.mod.STRUCTURED_DISCHARGES.clear()
             self.mod.STRUCTURED_DISCHARGES.update(original)
 
-    def test_a_measured_gap_must_sit_on_a_live_obligation(self) -> None:
-        """*A gap recorded against terminal work is stale by construction.*"""
-        closure = self._closure()  # a terminal DISCHARGED subject
-        original = {k: json.loads(json.dumps(v)) for k, v in self.mod.KNOWN_INTERNAL_GAPS.items()}
-        try:
-            self.mod.KNOWN_INTERNAL_GAPS.clear()
-            self.mod.KNOWN_INTERNAL_GAPS["synthetic.discharged"] = [{"defect": "stale"}]
-            problems = self.mod.authoring_coverage_problems(closure)
-            self.assertTrue(any("live gap against" in p for p in problems),
-                            f"a gap against terminal work must be refused as stale, got {problems[:3]}")
-        finally:
-            self.mod.KNOWN_INTERNAL_GAPS.clear()
-            self.mod.KNOWN_INTERNAL_GAPS.update(original)
 
 
 class StructuredSemanticsAreMeasured(unittest.TestCase):
@@ -840,25 +1039,38 @@ class ReopenDerivesFindingStatus(unittest.TestCase):
     def setUp(self) -> None:
         self.mod = _load()
 
-    def test_the_live_reopened_findings_derive_open(self) -> None:
-        """*** A FINDING LIVES IN ONE OF TWO POPULATIONS; THE ARM MUST ASK THE RIGHT ONE. ***
+    def test_a_reopened_obligation_makes_its_finding_derive_open(self) -> None:
+        """*** THE RULE IS EXERCISED ON AN AUTHORED PAIR, SO IT KEEPS BITING AFTER EVERY DISCHARGE. ***
 
-        *THE DEFECT THIS CLOSES, MEASURED: this arm indexed `ledger["findings"]` directly, but `GS-FINAL-003` and
-        `GS-UX-001` are INDEPENDENT-audit findings -- they live under
-        `independent_audit_new_findings.findings` -- so the arm raised KeyError rather than judging the rule.* **It now
-        reads the DERIVED closure (which merges both populations) and asserts the invariant: a finding whose
-        obligations include unresolved work derives OPEN from those obligations.**
+        *THE DEFECT THIS CLOSES, MEASURED: the earlier arm pinned the LIVE frontier ("GS-FINAL-003, GS-UX-001,
+        AUDIT-B1-CTRL-001 carry unresolved obligations") -- so the moment those obligations were legitimately
+        discharged the arm reddened on the DISCHARGE rather than on the rule, exactly the premise-bound coupling that
+        makes a guard disappear when the work is done.* **The arm now asserts the INVARIANT on an authored finding with
+        one OPEN obligation (it must derive OPEN) and its mirror (all obligations terminal -> derives COMPLETE), and
+        then checks the SAME invariant holds across whatever the live frontier happens to be.**
         """
+        open_obligation = {"id": "synthetic.open", "text": "t", "status": "OPEN", "evidence": []}
+        entry_open = {"internal_obligations": [dict(open_obligation)]}
+        self.assertFalse(self.mod.obligations_are_terminal(entry_open),
+                         "a finding carrying an OPEN obligation may not derive terminal")
+        self.assertEqual("OPEN" if not self.mod.obligations_are_terminal(entry_open) else "COMPLETE", "OPEN",
+                         "a reopened obligation must make its finding internally OPEN")
+        entry_done = {"internal_obligations": [
+            {"id": "synthetic.done", "text": "t", "status": "DISCHARGED",
+             "structured_discharge": json.loads(json.dumps(StructuredDischargeContradiction.VALID_DISCHARGE)),
+             "evidence": ["`path:scripts/build_structured_closure.py`"]}]}
+        self.assertTrue(self.mod.obligations_are_terminal(entry_done),
+                        "a finding whose obligations are all terminal derives terminal")
+        # AND THE LIVE TREE OBEYS THE SAME INVARIANT, READ FROM ITS OWN STATE.
         closure = self.mod.build(json.loads(self.mod.LEDGER.read_text(encoding="utf-8")))
-        for fid in ("GS-FINAL-003", "GS-UX-001", "AUDIT-B1-CTRL-001"):
+        for fid, entry in closure.items():
+            obls = entry.get("internal_obligations") or []
+            if not obls:
+                continue
             with self.subTest(finding=fid):
-                entry = closure[fid]
-                obls = entry.get("internal_obligations") or []
-                self.assertTrue(obls, f"{fid} must carry authored obligations")
-                self.assertFalse(self.mod.obligations_are_terminal(entry),
-                                 f"{fid} carries unresolved obligations, so it may not derive terminal")
-                self.assertEqual(entry["internal_status"], "OPEN")
-                self.assertEqual(entry["internal_status_source"], "derived_from_obligations")
+                expected = "OPEN" if not self.mod.obligations_are_terminal(entry) else "COMPLETE"
+                self.assertEqual(entry["internal_status"], expected,
+                                 f"{fid} must derive its status from its own obligation set")
 
     def test_an_unknown_finding_state_is_refused(self) -> None:
         closure = json.loads(json.dumps(self.mod.build(json.loads(self.mod.LEDGER.read_text(encoding="utf-8")))))

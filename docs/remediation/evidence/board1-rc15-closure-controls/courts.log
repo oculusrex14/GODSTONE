@@ -1,0 +1,110 @@
+  findings total            : 68
+  findings INTERNAL OPEN    : 1
+  internal obligations OPEN : 4
+  external obligations      : 5
+  wrote `finding_closure` + `structured_counts` into the ledger
+  findings total            : 68
+  findings INTERNAL OPEN    : 1
+  internal obligations OPEN : 4
+  external obligations      : 5
+test_every_discharged_obligation_carries_a_typed_token (test_closure_law_refuses.CitationTokens.test_every_discharged_obligation_carries_a_typed_token)
+*** A DISCHARGED OBLIGATION WITH PROSE-ONLY EVIDENCE IS A STATUS THIS BUILDER MAY NOT CARRY. *** ... ok
+test_negative_cases_do_not_resolve (test_closure_law_refuses.CitationTokens.test_negative_cases_do_not_resolve) ... ok
+test_positive_cases_resolve (test_closure_law_refuses.CitationTokens.test_positive_cases_resolve) ... ok
+test_a_complete_finding_with_all_obligations_discharged_is_PERMITTED (test_closure_law_refuses.FindingStatusFollowsItsObligations.test_a_complete_finding_with_all_obligations_discharged_is_PERMITTED)
+*The mirror defect: a guard that refuses the state it exists to permit is not a guard.* ... ok
+test_a_finding_with_no_obligations_is_not_covered_by_the_rule (test_closure_law_refuses.FindingStatusFollowsItsObligations.test_a_finding_with_no_obligations_is_not_covered_by_the_rule)
+*Terminality cannot be derived from a set that does not exist, so such a finding keeps its status.* ... ok
+test_an_open_finding_with_all_obligations_discharged_is_refused (test_closure_law_refuses.FindingStatusFollowsItsObligations.test_an_open_finding_with_all_obligations_discharged_is_refused) ... ok
+test_both_findings_that_were_inconsistent_now_derive_coherently (test_closure_law_refuses.FindingStatusFollowsItsObligations.test_both_findings_that_were_inconsistent_now_derive_coherently)
+*The two MEASURED offenders -- pinned by name so a return to the old state is loud.* ... ok
+test_the_ledger_population_refuses_an_inconsistent_finding (test_closure_law_refuses.FindingStatusFollowsItsObligations.test_the_ledger_population_refuses_an_inconsistent_finding)
+*** THE RULE IS ENFORCED WHERE THE FINDING IS BUILT, ON AN AUTHORED SUBJECT. *** ... ok
+test_the_live_closure_carries_no_such_inconsistency (test_closure_law_refuses.FindingStatusFollowsItsObligations.test_the_live_closure_carries_no_such_inconsistency) ... ok
+test_an_unknown_status_is_refused (test_closure_law_refuses.ObligationStateMachine.test_an_unknown_status_is_refused)
+*A state this instrument does not recognise is neither terminal nor unresolved -- guessing is a false ... ok
+test_one_open_obligation_prevents_zero (test_closure_law_refuses.ObligationStateMachine.test_one_open_obligation_prevents_zero) ... ok
+test_one_partial_obligation_prevents_zero (test_closure_law_refuses.ObligationStateMachine.test_one_partial_obligation_prevents_zero)
+*** THE CASE THE OLD `== "OPEN"` FILTER GOT WRONG. *** ... ok
+test_only_all_discharged_reaches_zero (test_closure_law_refuses.ObligationStateMachine.test_only_all_discharged_reaches_zero) ... ok
+test_the_legal_state_set_is_explicit (test_closure_law_refuses.ObligationStateMachine.test_the_legal_state_set_is_explicit) ... ok
+test_the_real_map_carries_only_legal_states (test_closure_law_refuses.ObligationStateMachine.test_the_real_map_carries_only_legal_states) ... ok
+test_a_deleted_obligation_is_refused (test_closure_law_refuses.PersistedStateAgreesWithDerivation.test_a_deleted_obligation_is_refused) ... ok
+test_a_stale_count_is_refused (test_closure_law_refuses.PersistedStateAgreesWithDerivation.test_a_stale_count_is_refused) ... ok
+test_a_stale_obligation_status_is_refused (test_closure_law_refuses.PersistedStateAgreesWithDerivation.test_a_stale_obligation_status_is_refused) ... ok
+test_an_orphan_obligation_is_refused (test_closure_law_refuses.PersistedStateAgreesWithDerivation.test_an_orphan_obligation_is_refused) ... ok
+test_the_real_tree_agrees (test_closure_law_refuses.PersistedStateAgreesWithDerivation.test_the_real_tree_agrees) ... ok
+test_a_finding_status_open_alone_blocks_readiness (test_closure_law_refuses.ReadinessRequiresBothPopulations.test_a_finding_status_open_alone_blocks_readiness)
+*The mutation: every OBLIGATION discharged, but a finding still OPEN. The law must still refuse.* ... ok
+test_the_status_population_is_reported_separately (test_closure_law_refuses.ReadinessRequiresBothPopulations.test_the_status_population_is_reported_separately) ... ok
+test_a_reopened_obligation_makes_its_finding_derive_open (test_closure_law_refuses.ReopenDerivesFindingStatus.test_a_reopened_obligation_makes_its_finding_derive_open)
+*** THE RULE IS EXERCISED ON AN AUTHORED PAIR, SO IT KEEPS BITING AFTER EVERY DISCHARGE. *** ... ok
+test_an_unknown_finding_state_is_refused (test_closure_law_refuses.ReopenDerivesFindingStatus.test_an_unknown_finding_state_is_refused) ... ok
+test_every_open_obligation_carries_a_measured_gap_record (test_closure_law_refuses.ReopenDerivesFindingStatus.test_every_open_obligation_carries_a_measured_gap_record)
+*** THE REVIEW-SOURCE MAPPING MUST TRAVEL WITH THE OBLIGATION, BY CANONICAL IDENTITY. *** ... ok
+test_known_internal_gaps_only_while_open (test_closure_law_refuses.ReopenDerivesFindingStatus.test_known_internal_gaps_only_while_open)
+*An OPEN finding's live gaps must be named; a discharged finding's gap prose is HISTORY.* ... ok
+test_the_gap_records_name_their_review_source (test_closure_law_refuses.ReopenDerivesFindingStatus.test_the_gap_records_name_their_review_source)
+*An authored gap records where it came from; the inline prose gaps are normalised to `defect` and need not.* ... ok
+test_the_scan_carries_no_closure_authority (test_closure_law_refuses.ReopenDerivesFindingStatus.test_the_scan_carries_no_closure_authority)
+*The scan may point at a discharge; it may never move a count. A word list is not a measurement.* ... ok
+test_a_binding_without_the_external_identity_is_refused (test_closure_law_refuses.StructuredDischargeContradiction.test_a_binding_without_the_external_identity_is_refused)
+*`candidate_binding` was OPTIONAL and its external identity unconstrained; both are now mandatory.* ... ok
+test_a_court_only_reachability_contradicts_a_discharge (test_closure_law_refuses.StructuredDischargeContradiction.test_a_court_only_reachability_contradicts_a_discharge) ... ok
+test_a_missing_required_field_is_refused (test_closure_law_refuses.StructuredDischargeContradiction.test_a_missing_required_field_is_refused) ... ok
+test_a_non_prospective_attestation_path_is_refused (test_closure_law_refuses.StructuredDischargeContradiction.test_a_non_prospective_attestation_path_is_refused) ... ok
+test_a_non_terminal_obligation_may_not_carry_a_discharge_block (test_closure_law_refuses.StructuredDischargeContradiction.test_a_non_terminal_obligation_may_not_carry_a_discharge_block) ... ok
+test_a_self_referential_candidate_sha_is_refused (test_closure_law_refuses.StructuredDischargeContradiction.test_a_self_referential_candidate_sha_is_refused) ... ok
+test_a_terminal_obligation_with_no_semantics_is_refused (test_closure_law_refuses.StructuredDischargeContradiction.test_a_terminal_obligation_with_no_semantics_is_refused)
+*** THE BYPASS THE OLD CHECK PERMITTED: `if sd is None: continue` skipped every legacy discharge. *** ... ok
+test_an_embedded_candidate_identity_is_refused (test_closure_law_refuses.StructuredDischargeContradiction.test_an_embedded_candidate_identity_is_refused) ... ok
+test_the_authored_semantics_must_match_the_closure (test_closure_law_refuses.StructuredDischargeContradiction.test_the_authored_semantics_must_match_the_closure)
+*** A DISCHARGE AUTHORED FOR NON-TERMINAL WORK IS A CLAIM ABOUT WORK THAT DOES NOT EXIST. *** ... ok
+test_the_historical_attestation_cannot_discharge_the_current_candidate (test_closure_law_refuses.StructuredDischargeContradiction.test_the_historical_attestation_cannot_discharge_the_current_candidate) ... ok
+test_the_historical_candidate_ref_is_refused (test_closure_law_refuses.StructuredDischargeContradiction.test_the_historical_candidate_ref_is_refused) ... ok
+test_the_live_tree_carries_no_discharge_contradiction (test_closure_law_refuses.StructuredDischargeContradiction.test_the_live_tree_carries_no_discharge_contradiction) ... ok
+test_the_prospective_binding_is_admitted (test_closure_law_refuses.StructuredDischargeContradiction.test_the_prospective_binding_is_admitted) ... ok
+test_the_valid_baseline_carries_no_contradiction (test_closure_law_refuses.StructuredDischargeContradiction.test_the_valid_baseline_carries_no_contradiction)
+*Without this, every kill below could be the fixture's own defect rather than the falsifier's.* ... ok
+test_a_terminal_obligation_without_semantics_is_never_present (test_closure_law_refuses.StructuredSemanticsAreMeasured.test_a_terminal_obligation_without_semantics_is_never_present)
+*The mutation: a DISCHARGED obligation stripped of its block must move to `refused_controls`, not stay ... ok
+test_every_discharged_prose_hit_carries_a_disposition (test_closure_law_refuses.StructuredSemanticsAreMeasured.test_every_discharged_prose_hit_carries_a_disposition)
+*** A TERMINAL OBLIGATION WHOSE OWN PROSE MENTIONS A GAP CONCEPT MUST CARRY A DISPOSITION. *** ... ok
+test_internal_and_external_dependencies_are_different_populations (test_closure_law_refuses.StructuredSemanticsAreMeasured.test_internal_and_external_dependencies_are_different_populations)
+*An EXTERNAL obligation must never appear in the INTERNAL dependency list, and vice versa.* ... ok
+test_present_controls_carry_authored_semantics (test_closure_law_refuses.StructuredSemanticsAreMeasured.test_present_controls_carry_authored_semantics) ... ok
+test_the_scan_and_the_semantics_never_feed_a_count (test_closure_law_refuses.StructuredSemanticsAreMeasured.test_the_scan_and_the_semantics_never_feed_a_count)
+*Neither the gap-word scan nor the semantics block may move a closure count.* ... ok
+test_a_live_defect_on_a_terminal_obligation_is_refused (test_closure_law_refuses.TerminalHistoryMayNotHideALiveDefect.test_a_live_defect_on_a_terminal_obligation_is_refused) ... ok
+test_a_partial_defect_on_a_terminal_obligation_is_refused (test_closure_law_refuses.TerminalHistoryMayNotHideALiveDefect.test_a_partial_defect_on_a_terminal_obligation_is_refused) ... ok
+test_a_repaired_defect_on_a_terminal_obligation_is_permitted (test_closure_law_refuses.TerminalHistoryMayNotHideALiveDefect.test_a_repaired_defect_on_a_terminal_obligation_is_permitted)
+*The repaired control: a `REPAIRED_STALE` defect is HISTORY and the coverage gate carries NO problem.* ... ok
+test_an_orphan_history_id_is_still_refused (test_closure_law_refuses.TerminalHistoryMayNotHideALiveDefect.test_an_orphan_history_id_is_still_refused) ... ok
+test_an_unknown_review_state_on_a_terminal_obligation_is_refused (test_closure_law_refuses.TerminalHistoryMayNotHideALiveDefect.test_an_unknown_review_state_on_a_terminal_obligation_is_refused) ... ok
+test_an_unreconciled_defect_on_a_terminal_obligation_is_refused (test_closure_law_refuses.TerminalHistoryMayNotHideALiveDefect.test_an_unreconciled_defect_on_a_terminal_obligation_is_refused) ... ok
+test_a_forced_ready_status_is_refused_while_gaps_remain (test_closure_law_refuses.TheLawStillRefuses.test_a_forced_ready_status_is_refused_while_gaps_remain)
+*** THE LAW IS EXERCISED ON WORK THE ARM AUTHORS, SO IT KEEPETH BITING AFTER EVERY REAL DISCHARGE. *** ... ok
+test_the_live_document_is_never_written (test_closure_law_refuses.TheLawStillRefuses.test_the_live_document_is_never_written)
+A guard that mutates the thing it guards is the defect, not the check. ... ok
+test_verified_fixed_may_not_be_written_by_this_builder (test_closure_law_refuses.TheLawStillRefuses.test_verified_fixed_may_not_be_written_by_this_builder) ... ok
+
+----------------------------------------------------------------------
+Ran 56 tests in 29.692s
+
+OK
+test_case_0_the_unmutated_fixture_is_green (test_closure_state_mutations.ClosureStateMutations.test_case_0_the_unmutated_fixture_is_green)
+*** THE BASELINE, WITHOUT WHICH EVERY OTHER KILL IS UNATTRIBUTABLE. *** ... ok
+test_every_required_mutation_is_killed_for_its_own_reason (test_closure_state_mutations.ClosureStateMutations.test_every_required_mutation_is_killed_for_its_own_reason)
+*** EVERY MUTATION MUST BE REFUSED, AND REFUSED FOR THE REASON IT PROVOKES. *** ... ok
+test_the_campaign_is_the_required_size (test_closure_state_mutations.ClosureStateMutations.test_the_campaign_is_the_required_size)
+*** AT LEAST THIRTEEN MUTATIONS, EVERY ONE CARRYING AN EXPECTED CATEGORY. *** ... ok
+test_the_live_gate_accepts_the_committed_tree (test_closure_state_mutations.ClosureStateMutations.test_the_live_gate_accepts_the_committed_tree)
+*A campaign that reddened the real tree would prove the campaign, not the tree.* ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 29.942s
+
+OK
+
+
+Wall time: 65.89 seconds

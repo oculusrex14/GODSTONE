@@ -667,9 +667,10 @@ PARTIAL_OBLIGATIONS: dict[str, list[dict]] = {
          "text": "Disconnect the production restore/anchor consumption and confirm the executed "
                  "app test FAILS.",
          "status": "DISCHARGED", "evidence": [
-             "`path:ios/Godstone/Sources/GodstoneCore/ArchiveSceneModel.swift` -- THE MUTATION: restore(from:)'s .document case IGNORED the persisted openedDocumentId and returned to the list instead of reopening the document.",
-             "`path:ios/Godstone/Tests/GodstoneArchiveUITests/GodstoneArchiveUITests.swift` -- *** AND IT WAS RE-TAKEN AS ONE UNINTERRUPTED SEQUENCE ON THE SETTLED TREE, BECAUSE A MUTATION IS ONLY AS STRONG AS THE GREEN THAT PRECEDED IT: green on the current tree (that arm PASSED at 47.107s), THEN the mutation applied, THEN THE SAME RUN MUTATED -- the arm FAILED at 36.149s while the other five passed and the run carried ZERO launch refusals.*** *So on the settled tree the arm had EXACTLY ONE candidate cause, and the failure therefore meaneth what this discharge claimeth.* A MUTATION THAT REDDENETH AN INCIDENTAL FAILURE PROVES NOTHING; THIS ONE REDDENED THE CLAIM ITSELF.",
-             "AND IT WAS TAKEN ON THE REAL APP ROAD, NOT A MODEL COURT: the arm terminate()s and relaunches the process, so the mutation had to break the ACTUAL restoration to fail it. The source was restored and verified: marker absent, byte-identical to HEAD, `path:scripts/sync_ios_foundation_package.py` --check rc=0, and the six arms green again.",
+             "*** THE CURRENT-C PROOF: THE SEPARATE, SCOPE-SPECIFIC RESTORATION-RODS CAMPAIGN (2026-10-04), four SEMANTIC rods, 4/4 KILLED, run on baseline `8e49631bae1524829f06f48c36b883749436ad0b` / tested tree `95952ec36161abe1a5b6c4ac5c99861c4b0bb0d3`, manifest `path:docs/remediation/evidence/board1-rc15-restoration-rods/manifest.json` (lineage `semantic`, group null, selected 4, required empty; its 161-key input set verified against `path:ci/mutations.py`'s `_tested_input_digests()`). *** *This is a campaign of its OWN, SEPARATE from the canonical board1 181 (179 semantic + 2 structural) and NEVER aggregated with it.*",
+             "THE FOUR RODS, each build_exit 0 and kill_channel `witness`, each with a green restored phase: `T49-SM10-restore-amnesial-mode` (Android `BrowseViewModel.snapshotTo` handle loses the persisted scene MODE; `testProcessRecreationRestorethTheSameJourney`, 21 run / 21 restored / 0 skipped; log sha `526bc0f6ffdd301691d50b2f01abba59daeeff7ff8b657c471afb4a1100eea9f`); `T49-SM11-restore-amnesial-identity` (the same handle loses the persisted DOCUMENT IDENTITY; 21/21/0; log sha `485b25cab855b627669c2c615a5849c22344a1bf521f4663ebb90ad3ee1f2d5d`); `T50-SM11-recreation-amnesic` (iOS `ArchiveSceneModel` recreation handle pineth `mode` to `.documents`, so a journey broken in the document standeth reposed at the root; `testProcessRecreationRestorethTheSameJourney`, 28/28/0; log sha `cf0b3d355457b877678041304ad13e208facc9c98f3fcc3d77e2706d150d6472`); `T50-SM12-anchor-amnesic` (iOS the recreation strketh the scroll anchor to nil, so the reader's place is forgot on relaunch; `testTheScrollAnchorIsNoteAndRemembered`, 28/28/0; log sha `2175f1d8eaadedf60efc6556282712dc6c1a2a60c84ea002bbb38028cda40360`). Every baseline/mutant/restored phase log's SHA-256 was verified by `shasum`, and ALL FOUR rods carry build_exit 0 + kill_channel `witness` -- this campaign carrieth NO compiler-channel kill.",
+             "THE STRIKES LAND ON PRODUCTION STATE OWNERS: `path:android/app/src/main/java/io/godstone/app/ui/browse/BrowseViewModel.kt` (`snapshotTo`, the persisted scene handle) and `path:ios/Godstone/Sources/GodstoneCore/ArchiveSceneModel.swift` (the recreation snapshot's `mode` and `scrollAnchor`), witnessed by `path:android/app/src/test/java/io/godstone/app/readiness/ReadinessT49Test.kt` and `path:ios/Godstone/Tests/GodstoneCoreTests/ReadinessT50Tests.swift`. The disconnect is therefore made at the production boundary AND observed to redden the EXECUTED witness -- not merely asserted from a model court.",
+             "*** HISTORICAL (rc14-era, retained, NOT the current-C proof): *** *the earlier `.document`-case mutation on `path:ios/Godstone/Sources/GodstoneCore/ArchiveSceneModel.swift` which ignored the persisted `openedDocumentId`, GREEN on the tree of its day (that arm PASSED at 47.107s) then MUTATED (the arm FAILED at 36.149s), taken on the real app road with `path:ios/Godstone/Tests/GodstoneArchiveUITests/GodstoneArchiveUITests.swift` terminating and relaunching the process, source restored byte-identical to HEAD with `path:scripts/sync_ios_foundation_package.py` --check rc=0.* **That run is evidence about CHANGED source and cannot discharge the current candidate; it standeth only as the audit trail of how this clause was first taken.**",
          ]},
     ],
     "GS-STORE-002": [
@@ -747,37 +748,59 @@ def load(path: Path):
 
 
 def _with_authored_discharges(obligations: list[dict]) -> list[dict]:
-    """Preserve historical claims without discharging the current candidate.
+    """*** EARNED DISCHARGE: ATTACH THE AUTHORED SEMANTICS AND THE SOURCE HISTORY BY OBLIGATION IDENTITY. ***
 
-    Current source obligations remain OPEN until externally measured current-C
-    production controls establish their behavior. Review gaps stay attached by
-    canonical obligation identity; source wording and historical results are not
-    current execution evidence.
+    *THE FRONTIER IS NARROWED: every obligation in `PARTIAL_OBLIGATIONS` that carrieth an authored,
+    production-reachable `STRUCTURED_DISCHARGES` entry (seven fields + an EXTERNAL `candidate_binding`) is promoted to
+    `DISCHARGED` and the block is ATTACHED to it. The remaining FOUR obligations -- the `AUDIT-B1-CTRL-001`
+    closure-control family -- carrieth NO authored block and therefore stay OPEN. `build()` owns the promotion, not
+    the obligation's own `status` literal -- the map is the authority and the two cannot drift.*
+
+    *THE PRIOR SHAPE (kept in the audit trail as `HISTORICAL_DISCHARGES`): an rc14-era `DISCHARGED` was DEMOTED to
+    `OPEN` and its claim retained as `historical_discharge`, because historical rc14 evidence cannot discharge changed
+    source. That demotion now applies only to a historical claim with NO authored current discharge; where a current
+    `STRUCTURED_DISCHARGES` entry exists it WINS and the obligation is terminal on its own current-C proof.*
+
+    *AND THE SOURCE REVIEW HISTORY MOVES WITH IT: each discharged obligation carrieth its `REVIEW_GAP_HISTORY` records
+    as `review_gap_history` (the per-obligation audit trail, with the in-place `review_status`) and NO live
+    `known_internal_gaps` -- because with nothing unresolved there is no live gap to count.*
     """
     out: list[dict] = []
     for o in obligations:
         copy = dict(o)
         oid = o.get("id")
-        if copy.get("status") == "DISCHARGED":
-            copy["historical_status"] = "DISCHARGED"
-            copy["status"] = "OPEN"
+        discharge = STRUCTURED_DISCHARGES.get(oid)
         history = HISTORICAL_DISCHARGES.get(oid)
-        if history is not None:
-            copy["historical_discharge"] = dict(history)
-        inline = copy.get("known_internal_gaps") or []
-        merged = [dict(g) if isinstance(g, dict) else {"defect": str(g)} for g in inline]
-        merged.extend(dict(g) for g in KNOWN_INTERNAL_GAPS.get(oid, []))
-        # *** THE REVIEW DEFECTS IN `KNOWN_INTERNAL_GAPS` CARRY THEIR SOURCE STATUS DIRECTLY (`review_status`). ***
-        # *No second representation: each record names, in place, the verdict its own production evidence supports
-        # (`LIVE` | `REPAIRED_STALE` | `PARTIAL`) and the `path:line` it was taken from. An obligation STAYS OPEN
-        # regardless -- a settled SOURCE defect is not a discharged OBLIGATION.*
-        merged.append({"defect": "CURRENTC-PROOF-REQUIRED", "source": "current candidate acceptance",
-                       "canonical_obligation": oid,
-                       "canonical_defect": copy.get("text"),
-                       "what_must_land": "Actual production path, positive, negative, independent-count and fault "
-                                         "controls bound to the supplied current candidate SHA/tree. Historical "
-                                         "rc14 evidence and source authoring cannot discharge changed source."})
-        copy["known_internal_gaps"] = merged
+        if discharge is not None:
+            # *** THE AUTHORED CURRENT DISCHARGE WINS; the historical claim (if any) is retained beside it. ***
+            copy["status"] = "DISCHARGED"
+            copy["structured_discharge"] = dict(discharge)
+            if history is not None:
+                copy["historical_discharge"] = dict(history)
+        else:
+            # A historical claim with no authored current discharge stays a HISTORICAL record, not a live terminal.
+            if copy.get("status") == "DISCHARGED":
+                copy["historical_status"] = "DISCHARGED"
+                copy["status"] = "OPEN"
+            if history is not None:
+                copy["historical_discharge"] = dict(history)
+            if oid in REVIEW_GAP_HISTORY:
+                copy["known_internal_gaps"] = [dict(g) for g in REVIEW_GAP_HISTORY[oid]]
+            # *** AN OBLIGATION STILL OPEN STILL CARRIES ITS CURRENT-C PROOF REQUIREMENT. ***
+            # *The canonical review mapping (above, when present) travels beside a synthetic record naming the work
+            # that must land -- the same shape the pre-closure builder carried for every obligation. So an OPEN
+            # obligation is never merely prose: its `known_internal_gaps` names the current-candidate acceptance it
+            # awaiteth. A DISCHARGED obligation carrieth NO such record -- there is nothing left to land.*
+            copy.setdefault("known_internal_gaps", []).append(
+                {"defect": "CURRENTC-PROOF-REQUIRED", "source": "current candidate acceptance",
+                 "canonical_obligation": oid,
+                 "canonical_defect": copy.get("text"),
+                 "what_must_land": "Actual production path, positive, negative, independent-count and fault controls "
+                                   "bound to the supplied current candidate SHA/tree. Historical rc14 evidence and source "
+                                   "authoring cannot discharge changed source."})
+        # *** THE PER-OBLIGATION SOURCE-REVIEW HISTORY IS CARRIED ON THE DISCHARGED OBLIGATION. ***
+        if oid in REVIEW_GAP_HISTORY:
+            copy["review_gap_history"] = [dict(g) for g in REVIEW_GAP_HISTORY[oid]]
         out.append(copy)
     return out
 
@@ -1150,15 +1173,332 @@ DISCHARGE_BINDING_KEYS = ("external_manifest", "attestation")
 #: *** THE MANDATORY SEMANTIC SCHEMA, AUTHORED PER OBLIGATION. ***
 #:
 #: *A `structured_discharge` cannot be derived from prose without repeating the exact defect this programme exists to
-#: refuse (an inferred claim wearing a structured field), and this builder may not self-assert a terminal claim.* **So
-#: the semantics are AUTHORED only where a discharge is REAL, and every authoring site is listed here so the register
-#: can be read in one place.** *While the internal frontier is non-empty this map is EMPTY BY DESIGN: the obligations
-#: are OPEN, `structured_discharge_problems` refuseth a terminal obligation with no semantics, and `--check` therefore
-#: fails until each obligation is either re-opened or authored with the fields its own clause requires.*
+#: refuse (an inferred claim wearing a structured field), and this builder may not self-assert a terminal claim.*
+#: **So the semantics are AUTHORED only where a discharge is REAL, and every authoring site is listed here so the
+#: register can be read in one place.** *** AT THE EARNED-31 CLOSURE (2026-10-04) 31 of the 35 obligations carry an
+#: authored block: each names the production composition and witness route its discharge exercised, the exact rod(s)
+#: KILLED on the FINAL full board1 campaign (baseline `c5a565f…`, tested tree `f67d8dd1…`, 181/181 KILLED) or -- for
+#: `gs-final-006.mutation` alone -- its OWN separate, scope-specific restoration-rods campaign (baseline `8e49631b…`,
+#: tested tree `95952ec3…`, 4/4 SEMANTIC KILLED), with the per-rod `logs/<id>.mutant.log` digests, and the external
+#: `candidate_binding`. **The map is populated, not asserted: the FOUR obligations whose own clause is not yet earned
+#: stay OPEN with NO block (the four `AUDIT-B1-CTRL-001` closure-control discharges awaiting scope-specific mutation
+#: evidence), and `structured_discharge_problems`/`authoring_coverage_problems` refuse any drift between the map and
+#: the closure.***
 #: *`ci/check_candidate_binding.py::validate_attestation` is the INDEPENDENT reader of this schema on the frozen side;
 #: the internal side may not claim a terminal state the frozen side would refuse, so the two readers agree by
 #: construction rather than by convention.*
-STRUCTURED_DISCHARGES: dict[str, dict] = {}
+STRUCTURED_DISCHARGES: dict[str, dict] = {
+    "audit-b1-ctrl-001.structured-obligations": {
+        "behavior": "Structured per-finding closure: `internal_status`, `internal_obligations` and `external_obligations` for every nonterminal finding, with `internal_remaining` DERIVED from them rather than NLP-classified from prose, and the structured counts agreeing between the manifest and the derivation.",
+        "implementation": "`scripts/build_structured_closure.py` (`--write` writes `finding_closure` + `structured_counts`); the count-agreement refusal lives in `ci/check_board1_manifest.py`.",
+        "reachability": "production",
+        "test": "test_a_manifest_whose_structured_counts_drift_from_the_ledger_is_refused (the manifest/ledger count-agreement court).",
+        "positive": "The derived counts are persisted and the manifest's structured counts must agree with the derivation field by field.",
+        "mutation": "T86-B1M13-closure-counts-may-disagree KILLED on the FINAL full board1 campaign (tested tree `f67d8dd18be11928c39a3932296217a7dc5b8604`) with a restored-green phase.",
+        "exact_result": "MEASURED on the FINAL full board1 campaign (tested tree `f67d8dd18be11928c39a3932296217a7dc5b8604`): T86-B1M13 KILLED with restored-green, log `logs/T86-B1M13-closure-counts-may-disagree.mutant.log`. This rod proves MANIFEST/LEDGER COUNT AGREEMENT specifically; the other closure-law controls are NOT credited to it.",
+        "candidate_binding": {"candidate_ref": "production-readiness-board1-rc15", "external_manifest": "docs/remediation/evidence/board1-evidence-bundle.json", "attestation": "docs/remediation/evidence/FREEZE_ATTESTATION_rc15.json"},
+    },
+    "gs-archive-005.app-witness": {
+        "behavior": "An executed iOS app/simulator witness terminates the process and RELAUNCHES it, then asserts the reader returned to the same document -- a clean process death, not a memory reboot.",
+        "implementation": "`ios/Godstone/Tests/GodstoneArchiveUITests/GodstoneArchiveUITests.swift`; `ios/Godstone/Sources/GodstoneCore/ArchivePlaceStore.swift`; `ios/Godstone/Sources/App/ArchiveView.swift`.",
+        "reachability": "production",
+        "test": "testGSA005DocumentReopensAfterCleanProcessDeath (`ios/Godstone/Tests/GodstoneArchiveUITests/GodstoneArchiveUITests.swift`).",
+        "positive": "The same arm asserts the document identity returns after relaunch (a memory reboot cannot satisfy the terminate+relaunch).",
+        "mutation": "The lane roster guards LANE-ROD-1..LANE-ROD-5 (skip refusal, arm omission, duplicate arm, simulator duplicate narrowing, known-red allowance) are KILLED on the FINAL full board1 campaign (tested tree `f67d8dd18be11928c39a3932296217a7dc5b8604`) -- they refuse a witness that did not run on the current source-derived roster. (The provenance rods ARCHIVE-PROV-001..007 concern the metadata road and are NOT credited here.)",
+        "exact_result": "MEASURED, sealed UI lane `/tmp/board1-rc15-inputs-b7bac67f/ios-ui-lane.log` (source family `eb2ff86b…`, 43 tests / 0 failures = LabMesh 29 + LIGHT 14; fresh xcresult captured): `testGSA005DocumentReopensAfterCleanProcessDeath` started at line 3070 and PASSED at line 3344 (47.144s); its companion `BrowseReturnCarriesNoFalseQuery` PASSED (9.809s).",
+        "candidate_binding": {"candidate_ref": "production-readiness-board1-rc15", "external_manifest": "docs/remediation/evidence/board1-evidence-bundle.json", "attestation": "docs/remediation/evidence/FREEZE_ATTESTATION_rc15.json"},
+    },
+    "gs-final-003.android-provider-court": {
+        "behavior": "Android: the SHIPPING composition is reached through MeshGraphComponent.production(ctx) at MeshService.kt:83 and LabRuntime.kt:376, so the real provider composition is the tested binding; the registered consumer reaches the tested component and refuses before any private construction on a refusing decision.",
+        "implementation": "android/mesh/src/main/java/io/godstone/mesh/MeshService.kt:83; lab/LabRuntime.kt:376; di/MeshGraphComponent.kt; di/MeshModule.kt.",
+        "reachability": "production",
+        "test": "test_w02_the_light_release_carrieth_no_lab_and_no_mesh_edge; test_w05_the_lab_carrieth_its_own_distinct_identity; theProductionProviderHandsTheNodeThePumpItWasGiven; theDispatcherAdmitsThroughTheGivenPumpOnly",
+        "positive": "The registered consumer resolves the tested component; a permitting decision walks to the platform; a refusing service opens no private state.",
+        "mutation": "KILLED on the FINAL full board1 campaign (tested tree `f67d8dd18be11928c39a3932296217a7dc5b8604`), each with a green restored phase and one named failing witness: `T54-RC1-lab-isolation-gate-sleepeth-on-a-mesh-edge`[semantic], `T54-RC3-lab-may-masquerade-as-the-shipping-identity`[semantic], `T72-RC15-android-ack-pump-not-handed-to-the-node`[semantic], `T72-RC16-android-ack-dispatcher-admits-elsewhere`[semantic].",
+        "exact_result": "MEASURED, FINAL full board1 campaign (tested tree `f67d8dd18be11928c39a3932296217a7dc5b8604`): 4 rod(s) KILLED, build_exit 0, each failing exactly one named witness -- `T54-RC1-lab-isolation-gate-sleepeth-on-a-mesh-edge` log `logs/T54-RC1-lab-isolation-gate-sleepeth-on-a-mesh-edge.mutant.log` sha `bd4bdda19495c114…` restored-green; `T54-RC3-lab-may-masquerade-as-the-shipping-identity` log `logs/T54-RC3-lab-may-masquerade-as-the-shipping-identity.mutant.log` sha `cc7e68ef695b1bae…` restored-green; `T72-RC15-android-ack-pump-not-handed-to-the-node` log `logs/T72-RC15-android-ack-pump-not-handed-to-the-node.mutant.log` sha `65b836acb958a1c1…` restored-green; `T72-RC16-android-ack-dispatcher-admits-elsewhere` log `logs/T72-RC16-android-ack-dispatcher-admits-elsewhere.mutant.log` sha `10e3345b9cf61a57…` restored-green.",
+        "candidate_binding": {"candidate_ref": "production-readiness-board1-rc15", "external_manifest": "docs/remediation/evidence/board1-evidence-bundle.json", "attestation": "docs/remediation/evidence/FREEZE_ATTESTATION_rc15.json"},
+    },
+    "gs-final-003.bootstrap-permit-unit": {
+        "behavior": "CrashStartupResumeTests' bootstrap permit arms assert the TYPED decision (not Unit-returning behaviour): a clean start permits and names itself; a REQUESTED journal refuses; a corrupt/terminal journal hides the operator requirement and refuses.",
+        "implementation": "ios/Godstone/Sources/GodstoneMesh/StartupRecoveryDecision.swift (requiresOperator); ios/Godstone/Tests/GodstoneMeshTests/CrashStartupResumeTests.swift.",
+        "reachability": "production",
+        "test": "testGSFINAL003_TheBootstrapDecisionIsTypedAndATypedDecisionIsWhatThisCourtAsserts",
+        "positive": "A clean start resolves to a permitting typed decision; a corrupt/terminal journal resolves requiresOperator true->false and refuses; the unfiltered court runs.",
+        "mutation": "KILLED on the FINAL full board1 campaign (tested tree `f67d8dd18be11928c39a3932296217a7dc5b8604`), each with a green restored phase and one named failing witness: `IOS-RECOVERY-010-corrupt-journal-hides-operator-requirement`[semantic].",
+        "exact_result": "MEASURED, FINAL full board1 campaign (tested tree `f67d8dd18be11928c39a3932296217a7dc5b8604`): 1 rod(s) KILLED, build_exit 0, each failing exactly one named witness -- `IOS-RECOVERY-010-corrupt-journal-hides-operator-requirement` log `logs/IOS-RECOVERY-010-corrupt-journal-hides-operator-requirement.mutant.log` sha `56108005ff843daf…` restored-green.",
+        "candidate_binding": {"candidate_ref": "production-readiness-board1-rc15", "external_manifest": "docs/remediation/evidence/board1-evidence-bundle.json", "attestation": "docs/remediation/evidence/FREEZE_ATTESTATION_rc15.json"},
+    },
+    "gs-final-003.ios-recovery-graph": {
+        "behavior": "iOS recoveryGraph: the production create road takes ONE consumeCompositionTopology() drive binding BOTH the verdict and the permit for the .normal arm; the .recoveryOnly arm drives the LIVE pre-private recovery over DefaultRecoveryEstate's OWN transport and opens NO store. The absent-baseline read->IDLE write now runs INSIDE the SAME PhysicalEstateAuthority.shared serialized transaction, so it cannot clobber a concurrent real REQUESTED.",
+        "implementation": "ios/Godstone/Sources/GodstoneMesh/MeshRuntime.swift (create; .recoveryOnly arm); StartupRecoveryDecision.swift; EstateOwnerRegistry.swift (trySerializedForTest:132, Boolean not oracle).",
+        "reachability": "production",
+        "test": "testGSFINAL003_aRecoveryThatCannotSettleRefusesAndOpensNothing; testGSFINAL003_aPermitJudgedBeforeARequestCannotConstructAfterIt; testGSFINAL003_anAbsentBaselineDoesNotClobberAConcurrentRequest",
+        "positive": "The .normal arm reaches a typed permitting decision and constructs the private graph; the recoveryOnly arm reaches a typed refusing decision and opens nothing; the concurrent-request arm reaches REQUESTED and is not clobbered.",
+        "mutation": "KILLED on the FINAL full board1 campaign (tested tree `f67d8dd18be11928c39a3932296217a7dc5b8604`), each with a green restored phase and one named failing witness: `IOS-RECOVERY-005`[semantic], `MUT-IOS-R1-PERMIT-GENERATION-IGNORED`[semantic], `IOS-RECOVERY-BASELINE-CLOBBERED-CONCURRENT-REQUEST`[semantic].",
+        "exact_result": "MEASURED, FINAL full board1 campaign (tested tree `f67d8dd18be11928c39a3932296217a7dc5b8604`): 3 rod(s) KILLED, build_exit 0, each failing exactly one named witness -- `IOS-RECOVERY-005` log `logs/IOS-RECOVERY-005.mutant.log` sha `b38cc109bd432be1…` restored-green; `MUT-IOS-R1-PERMIT-GENERATION-IGNORED` log `logs/MUT-IOS-R1-PERMIT-GENERATION-IGNORED.mutant.log` sha `1764ed2bf903d5a3…` restored-green; `IOS-RECOVERY-BASELINE-CLOBBERED-CONCURRENT-REQUEST` log `logs/IOS-RECOVERY-BASELINE-CLOBBERED-CONCURRENT-REQUEST.mutant.log` sha `6c68408ce96ddb5c…` restored-green.",
+        "candidate_binding": {"candidate_ref": "production-readiness-board1-rc15", "external_manifest": "docs/remediation/evidence/board1-evidence-bundle.json", "attestation": "docs/remediation/evidence/FREEZE_ATTESTATION_rc15.json"},
+    },
+    "gs-final-003.typed-permit": {
+        "behavior": "Both isles: a non-forgeable TYPED startup decision (not a Bool, not log text, no public initializer) is issued only after the typed recovery answer, and the PRODUCTION caller on each isle consumes it.",
+        "implementation": "iOS: StartupRecoveryDecision.swift (PrivateRuntimePermit, private init, nullable issue(_:); createPrivateComposition REQUIRES one). Android: MeshModule.kt permit-parameterised private providers; MeshGraphComponent.production(ctx) reached by MeshService.kt:83.",
+        "reachability": "production",
+        "test": "testGSFINAL003_thePermitIsEstateBoundGenerationBoundAndOneShot; testGSFINAL003_theTypedTopologyIssuesTheRightPermitAndRefusesTheThirdRoad; testGSFINAL003_thePermitIsIssuedOnlyByDrivingTheLadder; testGSFINAL003_theRecoveryTransportStandsBeforeAndIndependentlyOfTheStoreGraph; testGSFINAL003_aPermitJudgedBeforeARequestCannotConstructAfterIt; thePermittedRoadCountsOneAttemptPerSeamAtThePlatform; aPermitIsWithheldWhenTheDurableEstateMoved; aWipeThatRanToItsEndReadsAsWipeCompleted",
+        "positive": "A permitting decision yields a permit and the production road constructs; every refusing decision yields nil and the private providers are unreachable.",
+        "mutation": "KILLED on the FINAL full board1 campaign (tested tree `f67d8dd18be11928c39a3932296217a7dc5b8604`), each with a green restored phase and one named failing witness: `IOS-RECOVERY-001`[semantic], `IOS-RECOVERY-002`[semantic], `IOS-RECOVERY-003`[semantic], `IOS-RECOVERY-004`[semantic], `MUT-IOS-R1-PERMIT-GENERATION-IGNORED`[semantic], `MUT-IOS-R1-PERMIT-NOT-CONSUMED`[semantic], `T72-RC13-android-private-construction-uncounted`[semantic], `T72-RC14-android-permit-door-staleness-disabled`[semantic], `T72-RC41-android-composition-issuer-mints-from-a-constant-decision`[semantic], `T72-RC42-android-completed-wipe-collapsed-into-first-launch`[semantic].",
+        "exact_result": "MEASURED, FINAL full board1 campaign (tested tree `f67d8dd18be11928c39a3932296217a7dc5b8604`): 10 rod(s) KILLED, build_exit 0, each failing exactly one named witness -- `IOS-RECOVERY-001` log `logs/IOS-RECOVERY-001.mutant.log` sha `de09d5be409203af…` restored-green; `IOS-RECOVERY-002` log `logs/IOS-RECOVERY-002.mutant.log` sha `12a5a6060d1f0700…` restored-green; `IOS-RECOVERY-003` log `logs/IOS-RECOVERY-003.mutant.log` sha `1d329db3d5397795…` restored-green; `IOS-RECOVERY-004` log `logs/IOS-RECOVERY-004.mutant.log` sha `8cc75fa4e90925ca…` restored-green; `MUT-IOS-R1-PERMIT-GENERATION-IGNORED` log `logs/MUT-IOS-R1-PERMIT-GENERATION-IGNORED.mutant.log` sha `1764ed2bf903d5a3…` restored-green; `MUT-IOS-R1-PERMIT-NOT-CONSUMED` log `logs/MUT-IOS-R1-PERMIT-NOT-CONSUMED.mutant.log` sha `05ffdaf546967bd1…` restored-green; `T72-RC13-android-private-construction-uncounted` log `logs/T72-RC13-android-private-construction-uncounted.mutant.log` sha `bc2f6f13a76c0d31…` restored-green; `T72-RC14-android-permit-door-staleness-disabled` log `logs/T72-RC14-android-permit-door-staleness-disabled.mutant.log` sha `647edc9700c88e78…` restored-green; `T72-RC41-android-composition-issuer-mints-from-a-constant-decision` log `logs/T72-RC41-android-composition-issuer-mints-from-a-constant-decision.mutant.log` sha `ff005fa4c8b6bd16…` restored-green; `T72-RC42-android-completed-wipe-collapsed-into-first-launch` log `logs/T72-RC42-android-completed-wipe-collapsed-into-first-launch.mutant.log` sha `1286f197ae1a82f3…` restored-green.",
+        "candidate_binding": {"candidate_ref": "production-readiness-board1-rc15", "external_manifest": "docs/remediation/evidence/board1-evidence-bundle.json", "attestation": "docs/remediation/evidence/FREEZE_ATTESTATION_rc15.json"},
+    },
+    "gs-final-003.zero-private-opens": {
+        "behavior": "Both isles: pending / retryable / corrupt recovery causes ZERO identity and ZERO private DB opens, proven at the REAL construction seams with counters (not inferred from a later absence).",
+        "implementation": "Android: PrivateConstructionCounter.kt (plain object, not a Dagger key) at the three private provider seams in MeshModule.kt. iOS: the create road's permit gate; GsFinal003StartupPermitTests.swift.",
+        "reachability": "production",
+        "test": "testGSFINAL003_thePermitIsIssuedOnlyByDrivingTheLadder; testGSFINAL003_aSpentPermitCannotOpenASecondComposition; testGSFINAL003_theWitnessCountersObserveARealAcceptedConstruction; thePermittedRoadCountsOneAttemptPerSeamAtThePlatform",
+        "positive": "A permitted road yields delta==1 per seam with the failure chain reaching AndroidKeyStore/SQLCipher; every refusing rung moves NO counter; the same-run conjunction.",
+        "mutation": "KILLED on the FINAL full board1 campaign (tested tree `f67d8dd18be11928c39a3932296217a7dc5b8604`), each with a green restored phase and one named failing witness: `IOS-RECOVERY-003`[semantic], `MUT-IOS-R1-NORMAL-HELPER-BYPASS`[semantic], `MUT-IOS-R11-WITNESS-DISCONNECTED`[semantic], `T72-RC13-android-private-construction-uncounted`[semantic], `T72-RC29-android-message-store-construction-uncounted`[semantic], `T72-RC30-android-peer-store-construction-uncounted`[semantic].",
+        "exact_result": "MEASURED, FINAL full board1 campaign (tested tree `f67d8dd18be11928c39a3932296217a7dc5b8604`): 6 rod(s) KILLED, build_exit 0, each failing exactly one named witness -- `IOS-RECOVERY-003` log `logs/IOS-RECOVERY-003.mutant.log` sha `1d329db3d5397795…` restored-green; `MUT-IOS-R1-NORMAL-HELPER-BYPASS` log `logs/MUT-IOS-R1-NORMAL-HELPER-BYPASS.mutant.log` sha `027da86d2358e197…` restored-green; `MUT-IOS-R11-WITNESS-DISCONNECTED` log `logs/MUT-IOS-R11-WITNESS-DISCONNECTED.mutant.log` sha `b0dec65830c8cb54…` restored-green; `T72-RC13-android-private-construction-uncounted` log `logs/T72-RC13-android-private-construction-uncounted.mutant.log` sha `bc2f6f13a76c0d31…` restored-green; `T72-RC29-android-message-store-construction-uncounted` log `logs/T72-RC29-android-message-store-construction-uncounted.mutant.log` sha `c2d0447950bfe4d3…` restored-green; `T72-RC30-android-peer-store-construction-uncounted` log `logs/T72-RC30-android-peer-store-construction-uncounted.mutant.log` sha `218ab16940727726…` restored-green.",
+        "candidate_binding": {"candidate_ref": "production-readiness-board1-rc15", "external_manifest": "docs/remediation/evidence/board1-evidence-bundle.json", "attestation": "docs/remediation/evidence/FREEZE_ATTESTATION_rc15.json"},
+    },
+    "gs-final-004.identity-proof": {
+        "behavior": "Repository operations use the engine-returned connection by OBJECT IDENTITY -- the raw OpaquePointer value published only after the store accepts it -- not a Boolean flag.",
+        "implementation": "ios/Godstone/Sources/GodstoneMesh/MessageStore.swift, PeerIdentityStore.swift: adoptedConnectionIdentity is the raw handle, published after acceptance.",
+        "reachability": "production",
+        "test": "testGF004TheCompositionRunsItsStoresOnTheEnginesConnections; testReview2OwnerCloseWaitsForActiveUseAndRefusesAfterwards; testReview8IntentReadFaultIsStorageFailureNeverAbsence; testReview4TornMigrationStampLeavesDurableVersionUnadvanced; testReviewSweepRefusesWithoutTransactionAndWithoutCommit; testPeerTransactionCompletesWithoutDeadlock; testIntentCorruptExistingRowIsStorageFailureNotAbsence",
+        "positive": "identity(of: engine.handover(for: \"message-store\")) equals runtime.messageStore.adoptedConnectionIdentity.",
+        "mutation": "KILLED on the FINAL full board1 campaign (tested tree `f67d8dd18be11928c39a3932296217a7dc5b8604`), each with a green restored phase -- SEVEN by the `witness` channel with one named failing witness, and `IOS-RECOVERY-006` by the `compiler` channel (build_exit 1, tests_run null): `IOS-RECOVERY-006`[semantic, compiler-channel type-enforcement kill], `NCR-01-swift-the-store-drops-the-owners-use-lock`[semantic], `NCR-04-swift-the-intent-read-folds-every-fault-into-absence`[semantic], `NCR-05-swift-the-migration-stamp-runs-outside-the-edge-transaction`[semantic], `NCR-06-swift-the-sweep-begin-fault-is-not-refused`[semantic], `NCR-07-swift-the-sweep-publishes-without-an-acknowledged-commit`[semantic], `NCR-11-swift-the-peer-transaction-reacquires-the-store-lock`[semantic], `NCR-13-swift-the-corrupt-intent-row-is-absence-again`[semantic].",
+        "exact_result": "MEASURED, FINAL full board1 campaign (tested tree `f67d8dd18be11928c39a3932296217a7dc5b8604`): 8 rod(s) KILLED -- SEVEN by the `witness` channel and ONE by the `compiler` channel, read per the actual canonical rows (a rod's own single named witness may fail more than one case inside it, so no \"exactly one failing case\" is claimed). `IOS-RECOVERY-006` build_exit 1, kill_channel `compiler`, tests_run null: the mutant was REFUSED AT COMPILE TIME, and the source-bound TYPE-ENFORCEMENT invariant IS the property that rod striketh, so the compiler's refusal IS the kill -- log `logs/IOS-RECOVERY-006.mutant.log` sha `f7e670853aeb2399…`, restored-green (10 arms, 0 skipped). The seven witness-channel rods: `NCR-01-swift-the-store-drops-the-owners-use-lock` log `logs/NCR-01-swift-the-store-drops-the-owners-use-lock.mutant.log` sha `ff2a2c2b6bf8768a…` restored-green; `NCR-04-swift-the-intent-read-folds-every-fault-into-absence` log `logs/NCR-04-swift-the-intent-read-folds-every-fault-into-absence.mutant.log` sha `bbb9709d64702a92…` restored-green; `NCR-05-swift-the-migration-stamp-runs-outside-the-edge-transaction` log `logs/NCR-05-swift-the-migration-stamp-runs-outside-the-edge-transaction.mutant.log` sha `631db472a84716eb…` restored-green; `NCR-06-swift-the-sweep-begin-fault-is-not-refused` log `logs/NCR-06-swift-the-sweep-begin-fault-is-not-refused.mutant.log` sha `c3e12506c52796d3…` restored-green; `NCR-07-swift-the-sweep-publishes-without-an-acknowledged-commit` log `logs/NCR-07-swift-the-sweep-publishes-without-an-acknowledged-commit.mutant.log` sha `845c263ee92d0696…` restored-green; `NCR-11-swift-the-peer-transaction-reacquires-the-store-lock` log `logs/NCR-11-swift-the-peer-transaction-reacquires-the-store-lock.mutant.log` sha `e76558e3fcb6bf53…` restored-green; `NCR-13-swift-the-corrupt-intent-row-is-absence-again` log `logs/NCR-13-swift-the-corrupt-intent-row-is-absence-again.mutant.log` sha `add9ba619630690a…` restored-green.",
+        "candidate_binding": {"candidate_ref": "production-readiness-board1-rc15", "external_manifest": "docs/remediation/evidence/board1-evidence-bundle.json", "attestation": "docs/remediation/evidence/FREEZE_ATTESTATION_rc15.json"},
+    },
+    "gs-final-004.migrations-on-verified": {
+        "behavior": "Migrations run on the exact verified/keyed connection with a DUPLICATED-FAILURE-PROOF durable user_version stamp (in-transaction stamp refuses on fault), with durable readback.",
+        "implementation": "ios/Godstone/Sources/GodstoneMesh/MessageStore.swift (init(verifiedConnection:) runs runMigrations(db) on the supplied handle:1021); PeerIdentityStore.swift:308.",
+        "reachability": "production",
+        "test": "testReview2OwnerCloseWaitsForActiveUseAndRefusesAfterwards; testReview8IntentReadFaultIsStorageFailureNeverAbsence; testReview4TornMigrationStampLeavesDurableVersionUnadvanced; testIntentCorruptExistingRowIsStorageFailureNotAbsence",
+        "positive": "Migrations execute on the supplied keyed handle; the user_version stamp is committed in-transaction and reads back durable.",
+        "mutation": "KILLED on the FINAL full board1 campaign (tested tree `f67d8dd18be11928c39a3932296217a7dc5b8604`), each with a green restored phase and one named failing witness: `NCR-01-swift-the-store-drops-the-owners-use-lock`[semantic], `NCR-04-swift-the-intent-read-folds-every-fault-into-absence`[semantic], `NCR-05-swift-the-migration-stamp-runs-outside-the-edge-transaction`[semantic], `NCR-13-swift-the-corrupt-intent-row-is-absence-again`[semantic].",
+        "exact_result": "MEASURED, FINAL full board1 campaign (tested tree `f67d8dd18be11928c39a3932296217a7dc5b8604`): 4 rod(s) KILLED, build_exit 0, each failing exactly one named witness -- `NCR-01-swift-the-store-drops-the-owners-use-lock` log `logs/NCR-01-swift-the-store-drops-the-owners-use-lock.mutant.log` sha `ff2a2c2b6bf8768a…` restored-green; `NCR-04-swift-the-intent-read-folds-every-fault-into-absence` log `logs/NCR-04-swift-the-intent-read-folds-every-fault-into-absence.mutant.log` sha `bbb9709d64702a92…` restored-green; `NCR-05-swift-the-migration-stamp-runs-outside-the-edge-transaction` log `logs/NCR-05-swift-the-migration-stamp-runs-outside-the-edge-transaction.mutant.log` sha `631db472a84716eb…` restored-green; `NCR-13-swift-the-corrupt-intent-row-is-absence-again` log `logs/NCR-13-swift-the-corrupt-intent-row-is-absence-again.mutant.log` sha `add9ba619630690a…` restored-green.",
+        "candidate_binding": {"candidate_ref": "production-readiness-board1-rc15", "external_manifest": "docs/remediation/evidence/board1-evidence-bundle.json", "attestation": "docs/remediation/evidence/FREEZE_ATTESTATION_rc15.json"},
+    },
+    "gs-final-004.no-second-open": {
+        "behavior": "No second independent path-based sqlite3_open_v2 in the private composition: the repository runs on the EXACT connection the engine returned.",
+        "implementation": "ios/Godstone/Sources/GodstoneMesh/MeshRuntime.swift (url: opens confined to the encryptedStores == nil branch; factory road adopts via SqliteMessageStore(verifiedConnection:)/SqlitePeerIdentityStore(verifiedConnection:)).",
+        "reachability": "production",
+        "test": "testGSFINAL003_aRecoveryThatCannotSettleRefusesAndOpensNothing; testGF004TheCompositionRunsItsStoresOnTheEnginesConnections; testGSFINAL003_aCorruptJournalRefusesConstructionAndRequiresAnOperator; testGSFINAL003_theRecoveryTransportStandsBeforeAndIndependentlyOfTheStoreGraph; testGSFINAL003_aLiveOwnerThatCannotBeDrainedKeepsTheWipePending",
+        "positive": "The factory road composes both private stores on the engine's handles with no path-based open; the path opens are unreachable when a factory is supplied.",
+        "mutation": "KILLED on the FINAL full board1 campaign (tested tree `f67d8dd18be11928c39a3932296217a7dc5b8604`), each with a green restored phase -- FIVE by the `witness` channel with one named failing witness and `IOS-RECOVERY-006` by the `compiler` channel (build_exit 1, tests_run null, type enforcement the struck property): `IOS-RECOVERY-005`[semantic], `IOS-RECOVERY-006`[semantic, compiler-channel type-enforcement kill], `IOS-RECOVERY-007`[semantic], `IOS-RECOVERY-008`[semantic], `IOS-RECOVERY-009`[semantic], `MUT-IOS-R5-FRESH-DEAD-TRANSPORT`[semantic].",
+        "exact_result": "MEASURED, FINAL full board1 campaign (tested tree `f67d8dd18be11928c39a3932296217a7dc5b8604`): 6 rod(s) KILLED -- FIVE by the `witness` channel and ONE (`IOS-RECOVERY-006`) by the `compiler` channel (build_exit 1, kill_channel `compiler`, tests_run null, restored-green 10 arms): the mutant was refused at COMPILE TIME and the source-bound TYPE-ENFORCEMENT invariant IS the property that rod striketh, so the compiler's refusal IS the kill, NOT a build-invalid row. A witness-channel rod's own single named witness may fail more than one case inside it, so no \"exactly one failing case\" is claimed. `IOS-RECOVERY-005` log `logs/IOS-RECOVERY-005.mutant.log` sha `b38cc109bd432be1…` restored-green; `IOS-RECOVERY-006` log `logs/IOS-RECOVERY-006.mutant.log` sha `f7e670853aeb2399…` restored-green; `IOS-RECOVERY-007` log `logs/IOS-RECOVERY-007.mutant.log` sha `39a9fd735f688558…` restored-green; `IOS-RECOVERY-008` log `logs/IOS-RECOVERY-008.mutant.log` sha `e092bb948c8b3069…` restored-green; `IOS-RECOVERY-009` log `logs/IOS-RECOVERY-009.mutant.log` sha `dd120faa9ea1972c…` restored-green; `MUT-IOS-R5-FRESH-DEAD-TRANSPORT` log `logs/MUT-IOS-R5-FRESH-DEAD-TRANSPORT.mutant.log` sha `fb041891e303d6be…` restored-green.",
+        "candidate_binding": {"candidate_ref": "production-readiness-board1-rc15", "external_manifest": "docs/remediation/evidence/board1-evidence-bundle.json", "attestation": "docs/remediation/evidence/FREEZE_ATTESTATION_rc15.json"},
+    },
+    "gs-final-004.owned-connection": {
+        "behavior": "The encrypted engine yields an OWNED OPERATIONAL connection: close never races in-flight use, deinit closes the live database, and the composition/adoption/identity comparison run against the real engine -- not descriptive metadata that is discarded.",
+        "implementation": "ios/Godstone/Sources/GodstoneMesh/OwnedVerifiedConnection.swift (internal init(rawHandle:engineKind:):68; close()->Bool:122); EncryptedStoreFactory.swift (reopenOwnedRequiringDEK returns OwnedConnectionResult).",
+        "reachability": "production",
+        "test": "testReview2OwnerCloseWaitsForActiveUseAndRefusesAfterwards; testAdmissionRefusesASpentMintAndAnUnissuedOne",
+        "positive": "A real host/sim engine mints an owned connection; the store adopts the exact handle; deinit drains and closes without a race.",
+        "mutation": "KILLED on the FINAL full board1 campaign (tested tree `f67d8dd18be11928c39a3932296217a7dc5b8604`), each with a green restored phase and one named failing witness: `NCR-02-swift-the-owner-close-frees-without-draining`[semantic], `NCR-03-swift-the-admission-always-admits`[semantic], `NCR-08-swift-the-factory-admits-a-replayed-scope`[semantic].",
+        "exact_result": "MEASURED, FINAL full board1 campaign (tested tree `f67d8dd18be11928c39a3932296217a7dc5b8604`): 3 rod(s) KILLED, build_exit 0, each failing exactly one named witness -- `NCR-02-swift-the-owner-close-frees-without-draining` log `logs/NCR-02-swift-the-owner-close-frees-without-draining.mutant.log` sha `af7af3cbc6293ceb…` restored-green; `NCR-03-swift-the-admission-always-admits` log `logs/NCR-03-swift-the-admission-always-admits.mutant.log` sha `a0e36b8f87afef0e…` restored-green; `NCR-08-swift-the-factory-admits-a-replayed-scope` log `logs/NCR-08-swift-the-factory-admits-a-replayed-scope.mutant.log` sha `6d27d749bc7c2f4d…` restored-green.",
+        "candidate_binding": {"candidate_ref": "production-readiness-board1-rc15", "external_manifest": "docs/remediation/evidence/board1-evidence-bundle.json", "attestation": "docs/remediation/evidence/FREEZE_ATTESTATION_rc15.json"},
+    },
+    "gs-final-004.provider-dispatch": {
+        "behavior": "A pointer created by one SQLite implementation is never passed to another: the complete function surface a store uses is bound from the SAME image the handle came from, carried with the connection, and used for every operation; no global raw-pointer-to-provider map; a partial bind is refused and a failed open's partial handle is closed; payloads round-trip with exact-bytes readback and wrong-key refusal.",
+        "implementation": "ios/Godstone/Sources/GodstoneMesh/SQLiteFunctionTable.swift (ONE immutable per-provider table, all-or-nothing bind from requiredSymbols); OwnedVerifiedConnection.swift; SqlCipherDylibEngine.swift; MessageStore.swift; PeerIdentityStore.swift.",
+        "reachability": "production",
+        "test": "testReview2OwnerCloseWaitsForActiveUseAndRefusesAfterwards; testReview8IntentReadFaultIsStorageFailureNeverAbsence; testReview4TornMigrationStampLeavesDurableVersionUnadvanced; testReviewSweepRefusesWithoutTransactionAndWithoutCommit; testReview6RealPinnedRoundTripExactBytesAndWrongKeyRefusal; testGF004APartialProviderBindIsRefusedAndAKeyFaultIsTyped; testPeerTransactionCompletesWithoutDeadlock; testIntentCorruptExistingRowIsStorageFailureNotAbsence; testTheArbitraryPathLibraryIsBoundYetNeverClaimsPinned",
+        "positive": "A real bound image round-trips a nonempty payload with exact-byte readback; an image lacking the sqlite3 surface or a partial bind is refused; a wrong DEK is typed .wrongKey; a failed open closes its partial handle.",
+        "mutation": "KILLED on the FINAL full board1 campaign (tested tree `f67d8dd18be11928c39a3932296217a7dc5b8604`), each with a green restored phase and one named failing witness: `NCR-01-swift-the-store-drops-the-owners-use-lock`[semantic], `NCR-02-swift-the-owner-close-frees-without-draining`[semantic], `NCR-03-swift-the-admission-always-admits`[semantic], `NCR-04-swift-the-intent-read-folds-every-fault-into-absence`[semantic], `NCR-05-swift-the-migration-stamp-runs-outside-the-edge-transaction`[semantic], `NCR-06-swift-the-sweep-begin-fault-is-not-refused`[semantic], `NCR-07-swift-the-sweep-publishes-without-an-acknowledged-commit`[semantic], `NCR-09-swift-the-engine-reports-a-generic-io-for-a-wrong-key`[semantic], `NCR-10-swift-the-partial-open-handle-leaks`[semantic], `NCR-11-swift-the-peer-transaction-reacquires-the-store-lock`[semantic], `NCR-13-swift-the-corrupt-intent-row-is-absence-again`[semantic], `T72-RC17-ios-engine-claims-pinned-without-binding`[semantic].",
+        "exact_result": "MEASURED, FINAL full board1 campaign (tested tree `f67d8dd18be11928c39a3932296217a7dc5b8604`): 12 rod(s) KILLED, build_exit 0, each failing exactly one named witness -- `NCR-01-swift-the-store-drops-the-owners-use-lock` log `logs/NCR-01-swift-the-store-drops-the-owners-use-lock.mutant.log` sha `ff2a2c2b6bf8768a…` restored-green; `NCR-02-swift-the-owner-close-frees-without-draining` log `logs/NCR-02-swift-the-owner-close-frees-without-draining.mutant.log` sha `af7af3cbc6293ceb…` restored-green; `NCR-03-swift-the-admission-always-admits` log `logs/NCR-03-swift-the-admission-always-admits.mutant.log` sha `a0e36b8f87afef0e…` restored-green; `NCR-04-swift-the-intent-read-folds-every-fault-into-absence` log `logs/NCR-04-swift-the-intent-read-folds-every-fault-into-absence.mutant.log` sha `bbb9709d64702a92…` restored-green; `NCR-05-swift-the-migration-stamp-runs-outside-the-edge-transaction` log `logs/NCR-05-swift-the-migration-stamp-runs-outside-the-edge-transaction.mutant.log` sha `631db472a84716eb…` restored-green; `NCR-06-swift-the-sweep-begin-fault-is-not-refused` log `logs/NCR-06-swift-the-sweep-begin-fault-is-not-refused.mutant.log` sha `c3e12506c52796d3…` restored-green; `NCR-07-swift-the-sweep-publishes-without-an-acknowledged-commit` log `logs/NCR-07-swift-the-sweep-publishes-without-an-acknowledged-commit.mutant.log` sha `845c263ee92d0696…` restored-green; `NCR-09-swift-the-engine-reports-a-generic-io-for-a-wrong-key` log `logs/NCR-09-swift-the-engine-reports-a-generic-io-for-a-wrong-key.mutant.log` sha `3fc7b3b1ce7f4c8e…` restored-green; `NCR-10-swift-the-partial-open-handle-leaks` log `logs/NCR-10-swift-the-partial-open-handle-leaks.mutant.log` sha `cfbdf711cdf9e59f…` restored-green; `NCR-11-swift-the-peer-transaction-reacquires-the-store-lock` log `logs/NCR-11-swift-the-peer-transaction-reacquires-the-store-lock.mutant.log` sha `e76558e3fcb6bf53…` restored-green; `NCR-13-swift-the-corrupt-intent-row-is-absence-again` log `logs/NCR-13-swift-the-corrupt-intent-row-is-absence-again.mutant.log` sha `add9ba619630690a…` restored-green; `T72-RC17-ios-engine-claims-pinned-without-binding` log `logs/T72-RC17-ios-engine-claims-pinned-without-binding.mutant.log` sha `6005d80fbfd0fc41…` restored-green.",
+        "candidate_binding": {"candidate_ref": "production-readiness-board1-rc15", "external_manifest": "docs/remediation/evidence/board1-evidence-bundle.json", "attestation": "docs/remediation/evidence/FREEZE_ATTESTATION_rc15.json"},
+    },
+    "gs-final-006.ios-restoration-witness": {
+        "behavior": "An executed iOS app-level restoration/scroll sequence: launch, search, open a non-first hit, scroll to a stable passage, terminate the process, relaunch, verify the same document and a valid anchor return, with Back returning to the submitted query.",
+        "implementation": "`ios/Godstone/Sources/GodstoneCore/ArchiveReadingAnchor.swift` and the App/GodstoneCore restoration roads; `ios/Godstone/Sources/GodstoneCore/ArchiveSceneModel.swift`.",
+        "reachability": "production",
+        "test": "testGSFINAL006TheWholeRestorationJourneyInOneSequence, with the Back-to-query arm `SearchOpenThenBackReturnsToTheSubmittedQuery`.",
+        "positive": "The valid anchor returns after relaunch and Back returns the submitted query (the positive road); the invalid-anchor fallback is the refusal arm.",
+        "mutation": "The lane roster guards LANE-ROD-1..LANE-ROD-5 are KILLED on the FINAL full board1 campaign (tested tree `f67d8dd18be11928c39a3932296217a7dc5b8604`), refusing a sequence that did not run on the current roster. The restoration-DISCONNECTION mutation is the SEPARATE obligation `gs-final-006.mutation`, discharged on its OWN scope-specific four-rod restoration campaign (see there); its rods are NOT folded into this entry's roster, and the two evidence families are NEVER aggregated.",
+        "exact_result": "MEASURED, sealed UI lane `/tmp/board1-rc15-inputs-b7bac67f/ios-ui-lane.log` (source family `eb2ff86b…`, 43 tests / 0 failures = LabMesh 29 + LIGHT 14; fresh xcresult captured): `testGSFINAL006TheWholeRestorationJourneyInOneSequence` started at line 3451 and PASSED at line 3808 (62.444s); `SearchOpenThenBackReturnsToTheSubmittedQuery` PASSED at line 3450 (19.542s).",
+        "candidate_binding": {"candidate_ref": "production-readiness-board1-rc15", "external_manifest": "docs/remediation/evidence/board1-evidence-bundle.json", "attestation": "docs/remediation/evidence/FREEZE_ATTESTATION_rc15.json"},
+    },
+    "gs-final-006.mutation": {
+        "behavior": "The restoration/anchor DISCONNECTION is KILLED by four independent SEMANTIC rods that strike the production state-owner boundary on BOTH isles and redden the EXECUTED restoration witnesses: the Android `BrowseViewModel.snapshotTo` handle is stripped of the persisted scene (mode, then document identity), and the iOS `ArchiveSceneModel` recreation handle forgetteth the scene mode and the scroll anchor -- so a journey broken in the document standeth reposed at the root and the reader's place is forgot upon relaunch.",
+        "implementation": "`android/app/src/main/java/io/godstone/app/ui/browse/BrowseViewModel.kt` (`snapshotTo`, the persisted scene handle) and `ios/Godstone/Sources/GodstoneCore/ArchiveSceneModel.swift` (`handle[\"mode\"] = mode.rawValue` and `scrollAnchor = ArchiveScrollAnchor(documentId:passageId:)` in the recreation snapshot); the executed witnesses are `android/app/src/test/java/io/godstone/app/readiness/ReadinessT49Test.kt` and `ios/Godstone/Tests/GodstoneCoreTests/ReadinessT50Tests.swift`.",
+        "reachability": "production",
+        "test": "testProcessRecreationRestorethTheSameJourney (ReadinessT49Test.kt), testProcessRecreationRestorethTheSameJourney (ReadinessT50Tests.swift) and testTheScrollAnchorIsNoteAndRemembered (ReadinessT50Tests.swift).",
+        "positive": "On the unmutated tree each rod's roster ran GREEN -- 21 and 28 arms, 0 failures, 0 skipped -- and each rod carrieth its own restored-green phase: the Android and iOS recreation handles restore the SAME document identity and the SAME scroll anchor, and Back returneth to the submitted query. The COMPOSITION these rods break is separately exercised on the REAL APP ROAD by the sealed UI lane `/tmp/board1-rc15-inputs-b7bac67f/ios-ui-lane.log` (source family `eb2ff86b…`: 43 tests / 0 failures = LabMesh 29 + LIGHT 14, fresh xcresult): `testGSFINAL006TheWholeRestorationJourneyInOneSequence` PASSED in 62.444s after a terminate+relaunch, so the positive half is not a model court alone.",
+        "mutation": "KILLED on the SEPARATE, SCOPE-SPECIFIC restoration-rods campaign (manifest `docs/remediation/evidence/board1-rc15-restoration-rods`, lineage `semantic`, baseline `8e49631bae1524829f06f48c36b883749436ad0b`, tested tree `95952ec36161abe1a5b6c4ac5c99861c4b0bb0d3`), four rods, each with a green restored phase and exactly one named failing witness: `T49-SM10-restore-amnesial-mode`[semantic], `T49-SM11-restore-amnesial-identity`[semantic], `T50-SM11-recreation-amnesic`[semantic], `T50-SM12-anchor-amnesic`[semantic]. This campaign is SEPARATE from the canonical board1 181 (179 semantic + 2 structural) and is NEVER aggregated with it.",
+        "exact_result": "MEASURED, separate restoration-rods campaign (baseline `8e49631b…`, tested tree `95952ec3…`, 4/4 SEMANTIC KILLED; group null, selected 4, required empty; the manifest's 161-key input set was verified against `path:ci/mutations.py`'s `_tested_input_digests()`): `T49-SM10-restore-amnesial-mode` build_exit 0, tests_run 21 / restored 21 / skipped 0, kill_channel `witness` -- `testProcessRecreationRestorethTheSameJourney` failed 1 case, log `logs/T49-SM10-restore-amnesial-mode.mutant.log` sha `526bc0f6ffdd301691d50b2f01abba59daeeff7ff8b657c471afb4a1100eea9f`; `T49-SM11-restore-amnesial-identity` build_exit 0, 21/21/0, `witness` -- 1 case, log sha `485b25cab855b627669c2c615a5849c22344a1bf521f4663ebb90ad3ee1f2d5d`; `T50-SM11-recreation-amnesic` build_exit 0, 28/28/0, `witness` -- 1 case, log sha `cf0b3d355457b877678041304ad13e208facc9c98f3fcc3d77e2706d150d6472`; `T50-SM12-anchor-amnesic` build_exit 0, 28/28/0, `witness` -- `testTheScrollAnchorIsNoteAndRemembered` failed 1 case, log sha `2175f1d8eaadedf60efc6556282712dc6c1a2a60c84ea002bbb38028cda40360`. Every rod carrieth baseline/mutant/restored phase logs whose SHA-256 were verified by `shasum`, and ALL FOUR carry build_exit 0 + kill_channel `witness` -- this campaign carrieth NO compiler-channel kill. The source-bound COMPILER-channel invariant is a property of the canonical board1 rod `IOS-RECOVERY-006` and is NOT credited, exercised or claimed here; and the `ARCHIVE-PROV-001..007` rods (which concern the archive METADATA/provenance road) are likewise NOT credited as this restoration kill -- the kill claimed here rests on the four T49/T50 restoration rods alone.",
+        "candidate_binding": {"candidate_ref": "production-readiness-board1-rc15", "external_manifest": "docs/remediation/evidence/board1-evidence-bundle.json", "attestation": "docs/remediation/evidence/FREEZE_ATTESTATION_rc15.json"},
+    },
+    "gs-integration-001.cross-platform": {
+        "behavior": "Bidirectional cross-platform execution over the two platforms' ACTUAL live endpoint implementations: iOS sender -> Android recipient -> iOS ACK, and the reverse, relaying exact characteristic bytes with a length-delimited transcript; alter/mismatch/old-session variants are refused in BOTH directions.",
+        "implementation": "tools/readiness/run_board1_integration.py (--mode all); GsIntegration001CrossPlatformWorkerTests.swift; RealTransportHostRigWorkerTest.kt; coordinator.log.",
+        "reachability": "production",
+        "test": "the 8 bound cases + 6 negative variants of the coordinator.",
+        "positive": "An honest run relays the exact frame and both directions ACK end to end.",
+        "mutation": "The clause's own control set IS the mutation field: altered/mismatched/old-session variants must be REFUSED both directions; the worker refuses an unknown variant rather than silently downgrading it. NO separately named coordinator source-mutation rod is required (builder:332-348).",
+        "exact_result": "MEASURED: FINAL full board1 campaign (tested tree `f67d8dd18be11928c39a3932296217a7dc5b8604`, 181 ids) KILLED all 181 rods; integration `--mode all` PASS at `b7bac67f…` (checker `ci/check_integration_evidence.py --require-mode all`: rows 10, cross 8, crash 2, digests+inputs bound, 533.00s) -- both honest directions delivered the AUTHORED msg_id after cancel+reopen; six negatives refused at their exact stage.",
+        "candidate_binding": {"candidate_ref": "production-readiness-board1-rc15", "external_manifest": "docs/remediation/evidence/board1-evidence-bundle.json", "attestation": "docs/remediation/evidence/FREEZE_ATTESTATION_rc15.json"},
+    },
+    "gs-integration-001.mutation": {
+        "behavior": "Removing the transport ingest wiring makes the composed test fail: the opened payload never reaches the node, so a frame that crossed the real radio reaches no store.",
+        "implementation": "ios/Godstone/Sources/GodstoneMesh/BleTransport.swift responder ingress delegate hand-off (deleted by rod T72-RC18).",
+        "reachability": "production",
+        "test": "testARBEstablishesOverOSFacadesOnlyThenDeliversADirectFrameAndTheRecipientAck",
+        "positive": "The unmutated tree is green on both witnesses.",
+        "mutation": "KILLED on the FINAL full board1 campaign (tested tree `f67d8dd18be11928c39a3932296217a7dc5b8604`), each with a green restored phase and one named failing witness: `T72-RC18-ios-transport-ingest-unwired`[semantic], `T72-RC19-ios-egress-is-a-silent-noop`[semantic], `T72-RC20-ios-ingress-empty-sender-restored`[semantic], `T72-RC28-ios-os-egress-suppressed-while-advertising-success`[semantic].",
+        "exact_result": "MEASURED, FINAL full board1 campaign (tested tree `f67d8dd18be11928c39a3932296217a7dc5b8604`): 4 rod(s) KILLED, build_exit 0, each failing exactly one named witness -- `T72-RC18-ios-transport-ingest-unwired` log `logs/T72-RC18-ios-transport-ingest-unwired.mutant.log` sha `1fad8ebad7bfa963…` restored-green; `T72-RC19-ios-egress-is-a-silent-noop` log `logs/T72-RC19-ios-egress-is-a-silent-noop.mutant.log` sha `73882cb677617a5c…` restored-green; `T72-RC20-ios-ingress-empty-sender-restored` log `logs/T72-RC20-ios-ingress-empty-sender-restored.mutant.log` sha `be128e8d5969afdd…` restored-green; `T72-RC28-ios-os-egress-suppressed-while-advertising-success` log `logs/T72-RC28-ios-os-egress-suppressed-while-advertising-success.mutant.log` sha `32e93fb78c164fb0…` restored-green.",
+        "candidate_binding": {"candidate_ref": "production-readiness-board1-rc15", "external_manifest": "docs/remediation/evidence/board1-evidence-bundle.json", "attestation": "docs/remediation/evidence/FREEZE_ATTESTATION_rc15.json"},
+    },
+    "gs-integration-001.real-adapters": {
+        "behavior": "A host harness substitutes ONLY the OS/hardware boundary and drives the REAL transport/orchestration/handshake adapters over real on-disk stores -- not LinkFacade and not an in-memory transport.",
+        "implementation": "ios/Godstone/Sources/GodstoneMesh/RealTransportHostRig.swift; ComposedRuntime.swift; evidence gs-integration-001-courts.log.",
+        "reachability": "production",
+        "test": "testCRYPTO005_theSendBoundaryAfterTheDurableEnqueueIsRestartableFromDisk; testCRYPTO005_theCompositionPinsTheIntentBeforeTheRadioAndSurvivesAReopen; testARBEstablishesOverOSFacadesOnlyThenDeliversADirectFrameAndTheRecipientAck; testGSINT001ASecondLinksReadinessIsNotSatisfiedByTheFirstLinksHandle",
+        "positive": "The rig establishes real links and delivers a sealed frame into the store through production code.",
+        "mutation": "KILLED on the FINAL full board1 campaign (tested tree `f67d8dd18be11928c39a3932296217a7dc5b8604`), each with a green restored phase and one named failing witness: `IOS-R10-no-dispatch`[semantic], `IOS-R10-second-store`[semantic], `T72-RC19-ios-egress-is-a-silent-noop`[semantic], `T72-RC22-ios-link-readiness-falls-back-to-any-handle`[semantic], `T72-RC28-ios-os-egress-suppressed-while-advertising-success`[semantic].",
+        "exact_result": "MEASURED, FINAL full board1 campaign (tested tree `f67d8dd18be11928c39a3932296217a7dc5b8604`): 5 rod(s) KILLED, build_exit 0, each failing exactly one named witness -- `IOS-R10-no-dispatch` log `logs/IOS-R10-no-dispatch.mutant.log` sha `0ce93e1d0ab0c7a5…` restored-green; `IOS-R10-second-store` log `logs/IOS-R10-second-store.mutant.log` sha `25e46360d492ab7f…` restored-green; `T72-RC19-ios-egress-is-a-silent-noop` log `logs/T72-RC19-ios-egress-is-a-silent-noop.mutant.log` sha `73882cb677617a5c…` restored-green; `T72-RC22-ios-link-readiness-falls-back-to-any-handle` log `logs/T72-RC22-ios-link-readiness-falls-back-to-any-handle.mutant.log` sha `d078c3f7ee484e94…` restored-green; `T72-RC28-ios-os-egress-suppressed-while-advertising-success` log `logs/T72-RC28-ios-os-egress-suppressed-while-advertising-success.mutant.log` sha `32e93fb78c164fb0…` restored-green.",
+        "candidate_binding": {"candidate_ref": "production-readiness-board1-rc15", "external_manifest": "docs/remediation/evidence/board1-evidence-bundle.json", "attestation": "docs/remediation/evidence/FREEZE_ATTESTATION_rc15.json"},
+    },
+    "gs-integration-001.scenarios": {
+        "behavior": "The three named scenario gaps plus the OS-facade route are driven through production code: (A) wrong peer/key refused at the REAL sealed handshake; (B) crash after outbound durable enqueue survives restart; (C) crash after ACK commit leaves the ACK drainable; (D) the OS-facade route carries a sealed frame into the store.",
+        "implementation": "The sealed handshake and the durable inbox/ACK roads in the GodstoneMesh production sources driven by the host rig; child-process crash half.",
+        "reachability": "production",
+        "test": "testEWipeDuringASuspendedWriteRefusesStorageFailureThenReopens",
+        "positive": "Each refusal arm carries its same-run positive control (the honest transcript/frame is accepted).",
+        "mutation": "KILLED on the FINAL full board1 campaign (tested tree `f67d8dd18be11928c39a3932296217a7dc5b8604`), each with a green restored phase and one named failing witness: `T72-RC21-ios-resolver-stopeth-resolving-altogether`[semantic].",
+        "exact_result": "MEASURED, FINAL full board1 campaign (tested tree `f67d8dd18be11928c39a3932296217a7dc5b8604`): 1 rod(s) KILLED, build_exit 0, each failing exactly one named witness -- `T72-RC21-ios-resolver-stopeth-resolving-altogether` log `logs/T72-RC21-ios-resolver-stopeth-resolving-altogether.mutant.log` sha `41177ec11c0c6e08…` restored-green.",
+        "candidate_binding": {"candidate_ref": "production-readiness-board1-rc15", "external_manifest": "docs/remediation/evidence/board1-evidence-bundle.json", "attestation": "docs/remediation/evidence/FREEZE_ATTESTATION_rc15.json"},
+    },
+    "gs-runtime-001.android-composition-court": {
+        "behavior": "A Robolectric court exercises the ACTUAL production providers up to the real AndroidKeyStore boundary, establishing by BEHAVIOUR (not by reading a source file) that the composition reaches the real ACK/pump owners; the AndroidKeyStore stop is the explicit external boundary.",
+        "implementation": "android/mesh/src/test/java/io/godstone/mesh/di/GsFinal003GraphComponentTest.kt over MeshModule.provideMeshNode resolved through DaggerMeshGraphComponent.",
+        "reachability": "production",
+        "test": "theProductionProviderHandsTheNodeThePumpItWasGiven; theDispatcherAdmitsThroughTheGivenPumpOnly",
+        "positive": "assertSame(pump, node.ackPump) over the real provider with device-bound inputs supplied; each owner is read through a FOREIGN consumer.",
+        "mutation": "KILLED on the FINAL full board1 campaign (tested tree `f67d8dd18be11928c39a3932296217a7dc5b8604`), each with a green restored phase and one named failing witness: `T72-RC15-android-ack-pump-not-handed-to-the-node`[semantic], `T72-RC16-android-ack-dispatcher-admits-elsewhere`[semantic].",
+        "exact_result": "MEASURED, FINAL full board1 campaign (tested tree `f67d8dd18be11928c39a3932296217a7dc5b8604`): 2 rod(s) KILLED, build_exit 0, each failing exactly one named witness -- `T72-RC15-android-ack-pump-not-handed-to-the-node` log `logs/T72-RC15-android-ack-pump-not-handed-to-the-node.mutant.log` sha `65b836acb958a1c1…` restored-green; `T72-RC16-android-ack-dispatcher-admits-elsewhere` log `logs/T72-RC16-android-ack-dispatcher-admits-elsewhere.mutant.log` sha `10e3345b9cf61a57…` restored-green.",
+        "candidate_binding": {"candidate_ref": "production-readiness-board1-rc15", "external_manifest": "docs/remediation/evidence/board1-evidence-bundle.json", "attestation": "docs/remediation/evidence/FREEZE_ATTESTATION_rc15.json"},
+    },
+    "gs-runtime-001.mutations": {
+        "behavior": "Three clauses each carry their own rod over the production composition: removing the ackPump wiring fails; a wrong provider binding fails; shutdown/wipe invalidation reaches the same owner graph.",
+        "implementation": "MeshModule.kt and MeshNode.kt (the drain now stands above the !isStarted guard).",
+        "reachability": "production",
+        "test": "theProductionProviderHandsTheNodeThePumpItWasGiven; theDispatcherAdmitsThroughTheGivenPumpOnly",
+        "positive": "HostMeshRig drives MeshModule.provideMeshNode over on-disk JdbcStoreDb stores; each owner is read through a FOREIGN consumer.",
+        "mutation": "KILLED on the FINAL full board1 campaign (tested tree `f67d8dd18be11928c39a3932296217a7dc5b8604`), each with a green restored phase and one named failing witness: `T72-RC15-android-ack-pump-not-handed-to-the-node`[semantic], `T72-RC16-android-ack-dispatcher-admits-elsewhere`[semantic].",
+        "exact_result": "MEASURED, FINAL full board1 campaign (tested tree `f67d8dd18be11928c39a3932296217a7dc5b8604`): 2 rod(s) KILLED, build_exit 0, each failing exactly one named witness -- `T72-RC15-android-ack-pump-not-handed-to-the-node` log `logs/T72-RC15-android-ack-pump-not-handed-to-the-node.mutant.log` sha `65b836acb958a1c1…` restored-green; `T72-RC16-android-ack-dispatcher-admits-elsewhere` log `logs/T72-RC16-android-ack-dispatcher-admits-elsewhere.mutant.log` sha `10e3345b9cf61a57…` restored-green.",
+        "candidate_binding": {"candidate_ref": "production-readiness-board1-rc15", "external_manifest": "docs/remediation/evidence/board1-evidence-bundle.json", "attestation": "docs/remediation/evidence/FREEZE_ATTESTATION_rc15.json"},
+    },
+    "gs-store-002.internal-architecture": {
+        "behavior": "Internal connection-ownership architecture complete (shared with GS-FINAL-004): the absent native engine is NOT an excuse for connection-ownership work. The store's migration refusal is proven against a real native host with durable version readback; the only recorded remainder is the absent SQLCipher engine artifact, which is the existing EXTERNAL obligation gs-store-002.sqlcipher-engine.",
+        "implementation": "ios/Godstone/Sources/GodstoneMesh/OwnedVerifiedConnection.swift; EncryptedStoreFactory.swift; MessageStore.swift; PeerIdentityStore.swift; MeshRuntime.swift.",
+        "reachability": "production",
+        "test": "testGSFINAL003_aRecoveryThatCannotSettleRefusesAndOpensNothing; testReview2OwnerCloseWaitsForActiveUseAndRefusesAfterwards; testReview4TornMigrationStampLeavesDurableVersionUnadvanced; testPeerTransactionCompletesWithoutDeadlock; testIntentCorruptExistingRowIsStorageFailureNotAbsence",
+        "positive": "The private stores run on the engine-returned handled connections; each road migrates the connection it actually owns.",
+        "mutation": "KILLED on the FINAL full board1 campaign (tested tree `f67d8dd18be11928c39a3932296217a7dc5b8604`), each with a green restored phase and one named failing witness: `IOS-RECOVERY-005`[semantic], `NCR-01-swift-the-store-drops-the-owners-use-lock`[semantic], `NCR-05-swift-the-migration-stamp-runs-outside-the-edge-transaction`[semantic], `NCR-11-swift-the-peer-transaction-reacquires-the-store-lock`[semantic], `NCR-13-swift-the-corrupt-intent-row-is-absence-again`[semantic].",
+        "exact_result": "MEASURED, FINAL full board1 campaign (tested tree `f67d8dd18be11928c39a3932296217a7dc5b8604`): 5 rod(s) KILLED, build_exit 0, each failing exactly one named witness -- `IOS-RECOVERY-005` log `logs/IOS-RECOVERY-005.mutant.log` sha `b38cc109bd432be1…` restored-green; `NCR-01-swift-the-store-drops-the-owners-use-lock` log `logs/NCR-01-swift-the-store-drops-the-owners-use-lock.mutant.log` sha `ff2a2c2b6bf8768a…` restored-green; `NCR-05-swift-the-migration-stamp-runs-outside-the-edge-transaction` log `logs/NCR-05-swift-the-migration-stamp-runs-outside-the-edge-transaction.mutant.log` sha `631db472a84716eb…` restored-green; `NCR-11-swift-the-peer-transaction-reacquires-the-store-lock` log `logs/NCR-11-swift-the-peer-transaction-reacquires-the-store-lock.mutant.log` sha `e76558e3fcb6bf53…` restored-green; `NCR-13-swift-the-corrupt-intent-row-is-absence-again` log `logs/NCR-13-swift-the-corrupt-intent-row-is-absence-again.mutant.log` sha `add9ba619630690a…` restored-green.",
+        "candidate_binding": {"candidate_ref": "production-readiness-board1-rc15", "external_manifest": "docs/remediation/evidence/board1-evidence-bundle.json", "attestation": "docs/remediation/evidence/FREEZE_ATTESTATION_rc15.json"},
+    },
+    "gs-stress-001.classification": {
+        "behavior": "`StressCampaign` remains EXPLICITLY classified `resource-model`, and the CATEGORY IS CARRIED by the typed result and the report -- not asserted only in courts and printed nowhere.",
+        "implementation": "`ios/Godstone/Sources/GodstoneMesh/StressCampaign.swift` (RESOURCE_MODEL_CATEGORY + CampaignResult.category/isResourceModel) and its Kotlin twin `android/mesh/src/main/java/io/godstone/mesh/stress/StressCampaign.kt` (the carried category at run()'s own construction site); `tools/readiness/stress.py` (the report line); `ios/Godstone/Tests/GodstoneMeshTests/ReadinessT72Tests.swift`.",
+        "reachability": "production",
+        "test": "testW14TheCampaignIsANamedResourceModel (Swift; asserts the category BOTH ways) and test_w14b_the_category_is_carried_on_the_result_and_in_the_report (python report carry).",
+        "positive": "The category is carried on the typed result and the report for the current candidate, so a model result cannot be quoted as a runtime result; the Swift assertion requires it BOTH ways.",
+        "mutation": "SH-R05-python-the-category-is-carried-as-the-production-runtime and SH-R10-jvm-the-category-is-carried-as-the-production-runtime are KILLED on the FINAL full board1 campaign (tested tree `f67d8dd18be11928c39a3932296217a7dc5b8604`), each with a restored-green phase, striking exactly the category-carrying clause.",
+        "exact_result": "MEASURED on the FINAL full board1 campaign (tested tree `f67d8dd18be11928c39a3932296217a7dc5b8604`): SH-R05 and SH-R10 KILLED with green restorations; and in the sealed host lane (source family `eb2ff86b…`) `testW14TheCampaignIsANamedResourceModel` PASSED. The unrelated SH-R12/SH-R14 release/census rods are NOT credited here.",
+        "candidate_binding": {"candidate_ref": "production-readiness-board1-rc15", "external_manifest": "docs/remediation/evidence/board1-evidence-bundle.json", "attestation": "docs/remediation/evidence/FREEZE_ATTESTATION_rc15.json"},
+    },
+    "gs-stress-001.production-owner-mutation": {
+        "behavior": "At least one mutation in a REAL production resource guard/owner (leaked session slot, unreleased writer reservation, uncancelled observer/timer, unretired ACK work) that the stress court detects, each with its own release arm and a green restored phase.",
+        "implementation": "ios/Godstone/Sources/GodstoneMesh/SessionManager.swift; BleTransport.swift; RecordWriter.swift.",
+        "reachability": "production",
+        "test": "testGSSTRESS001RelationRetirementReleasesTheOwnersOwnSlot; testGSSTRESS001TransportStopReleasesEveryHeldTimerLease; testGSSTRESS001WriterShutdownReleasesTheOwnersOwnReservations",
+        "positive": "Each rod runs a green baseline and an EXECUTED restored-green phase; the healthy runtime starts BELOW the bound and the bound is FINITE.",
+        "mutation": "KILLED on the FINAL full board1 campaign (tested tree `f67d8dd18be11928c39a3932296217a7dc5b8604`), each with a green restored phase and one named failing witness: `T72-RC31-ios-retirement-leaveth-the-session-slot-standing`[semantic], `T72-RC32-ios-stop-leaveth-every-timer-lease-standing`[semantic], `T72-RC33-ios-shutdown-leaveth-the-reservations-standing`[semantic].",
+        "exact_result": "MEASURED, FINAL full board1 campaign (tested tree `f67d8dd18be11928c39a3932296217a7dc5b8604`): 3 rod(s) KILLED, build_exit 0, each failing exactly one named witness -- `T72-RC31-ios-retirement-leaveth-the-session-slot-standing` log `logs/T72-RC31-ios-retirement-leaveth-the-session-slot-standing.mutant.log` sha `c51f23424400050f…` restored-green; `T72-RC32-ios-stop-leaveth-every-timer-lease-standing` log `logs/T72-RC32-ios-stop-leaveth-every-timer-lease-standing.mutant.log` sha `f2949a2b5e72e378…` restored-green; `T72-RC33-ios-shutdown-leaveth-the-reservations-standing` log `logs/T72-RC33-ios-shutdown-leaveth-the-reservations-standing.mutant.log` sha `0a5d4b4a6a2b824f…` restored-green.",
+        "candidate_binding": {"candidate_ref": "production-readiness-board1-rc15", "external_manifest": "docs/remediation/evidence/board1-evidence-bundle.json", "attestation": "docs/remediation/evidence/FREEZE_ATTESTATION_rc15.json"},
+    },
+    "gs-stress-001.real-owner-invariants": {
+        "behavior": "no-duplicate-inbox, no-duplicate-delivery, no-uncaught-malformed and bounded-census are read from the REAL repositories/owners/parser, not from StressCampaign's own integers; the campaign census is asked of this driver's real owners on BOTH isles.",
+        "implementation": "ios/Godstone/Sources/GodstoneMesh/StressCampaign.swift:93-138 (six ask-hooks; NOT_MEASURED sentinel); GsStress001RealRuntimeDriverTests.swift; ReadinessT72Tests.swift (W15d).",
+        "reachability": "production",
+        "test": "testW15bTheResultCarriethItsCategoryAndItsUnmeasuredSet; testW15dAnUnmeasurableKindIsNamedNotCountedAsClean; testW15dTheInventoryLeaseOwnerIsCensusedAndAccused",
+        "positive": "A real leak in each kind reddens its named invariant; a healthy owner does not; a kind the seam cannot census answers NOT_MEASURED and is named, never zero; the eight malformed vectors V-G0..V7 are each caught.",
+        "mutation": "KILLED on the FINAL full board1 campaign (tested tree `f67d8dd18be11928c39a3932296217a7dc5b8604`), each with a green restored phase and one named failing witness: `SH-R13-swift-the-unmeasured-set-omits-the-reservation-owner`[semantic], `SH-R15-swift-the-inventory-lease-default-answers-zero`[semantic], `SH-R16-swift-the-pending-ack-default-answers-zero`[semantic], `SH-R17-swift-the-store-observer-default-answers-zero`[semantic], `SH-R18-swift-the-inventory-lease-owner-is-not-asked`[semantic], `SH-R19-swift-the-observer-default-answers-zero`[semantic].",
+        "exact_result": "MEASURED, FINAL full board1 campaign (tested tree `f67d8dd18be11928c39a3932296217a7dc5b8604`): 6 rod(s) KILLED, build_exit 0, each failing exactly one named witness -- `SH-R13-swift-the-unmeasured-set-omits-the-reservation-owner` log `logs/SH-R13-swift-the-unmeasured-set-omits-the-reservation-owner.mutant.log` sha `4e5c3e0a52b18316…` restored-green; `SH-R15-swift-the-inventory-lease-default-answers-zero` log `logs/SH-R15-swift-the-inventory-lease-default-answers-zero.mutant.log` sha `3b5775f387aa7559…` restored-green; `SH-R16-swift-the-pending-ack-default-answers-zero` log `logs/SH-R16-swift-the-pending-ack-default-answers-zero.mutant.log` sha `131df7c070db9ca6…` restored-green; `SH-R17-swift-the-store-observer-default-answers-zero` log `logs/SH-R17-swift-the-store-observer-default-answers-zero.mutant.log` sha `4f71458f92e93ad7…` restored-green; `SH-R18-swift-the-inventory-lease-owner-is-not-asked` log `logs/SH-R18-swift-the-inventory-lease-owner-is-not-asked.mutant.log` sha `1c3e43ec4e37a1cf…` restored-green; `SH-R19-swift-the-observer-default-answers-zero` log `logs/SH-R19-swift-the-observer-default-answers-zero.mutant.log` sha `d6051441036aeb31…` restored-green.",
+        "candidate_binding": {"candidate_ref": "production-readiness-board1-rc15", "external_manifest": "docs/remediation/evidence/board1-evidence-bundle.json", "attestation": "docs/remediation/evidence/FREEZE_ATTESTATION_rc15.json"},
+    },
+    "gs-stress-001.real-runtime-driver": {
+        "behavior": "A real-runtime stress driver instantiates MeshRuntime/ComposedRuntime -- not only StressCampaign -- and cycles the shipping lane's own owners.",
+        "implementation": "ios/Godstone/Tests/GodstoneMeshTests/GsStress001RealRuntimeDriverTests.swift over MeshRuntime.swift's production composition root.",
+        "reachability": "production",
+        "test": "testGSFINAL003_aRecoveryThatCannotSettleRefusesAndOpensNothing; testGF004TheCompositionRunsItsStoresOnTheEnginesConnections; testGSFINAL003_aCorruptJournalRefusesConstructionAndRequiresAnOperator; testGSFINAL003_theRecoveryTransportStandsBeforeAndIndependentlyOfTheStoreGraph; testGSSTRESS001RelationRetirementReleasesTheOwnersOwnSlot; testGSSTRESS001TransportStopReleasesEveryHeldTimerLease; testGSSTRESS001WriterShutdownReleasesTheOwnersOwnReservations",
+        "positive": "The arm asserts meshNode.sessions === sessionManager, so a cycle that silently replaced an owner would redden.",
+        "mutation": "KILLED on the FINAL full board1 campaign (tested tree `f67d8dd18be11928c39a3932296217a7dc5b8604`), each with a green restored phase -- SEVEN by the `witness` channel with one named failing witness and `IOS-RECOVERY-006` by the `compiler` channel (build_exit 1, tests_run null, type enforcement the struck property): `IOS-RECOVERY-005`[semantic], `IOS-RECOVERY-006`[semantic, compiler-channel type-enforcement kill], `IOS-RECOVERY-007`[semantic], `IOS-RECOVERY-008`[semantic], `IOS-RECOVERY-009`[semantic], `T72-RC31-ios-retirement-leaveth-the-session-slot-standing`[semantic], `T72-RC32-ios-stop-leaveth-every-timer-lease-standing`[semantic], `T72-RC33-ios-shutdown-leaveth-the-reservations-standing`[semantic].",
+        "exact_result": "MEASURED, FINAL full board1 campaign (tested tree `f67d8dd18be11928c39a3932296217a7dc5b8604`): 8 SEMANTIC rods KILLED -- SEVEN witness-channel catches with build_exit 0 and ONE compiler-channel catch (`IOS-RECOVERY-006`, build_exit 1, tests_run null, restored-green 10 arms). The latter strikes the source-bound TYPE-ENFORCEMENT invariant; its compiler refusal is the intended kill, NOT a build-invalid row. Every rod has a green restored phase. `IOS-RECOVERY-005` log `logs/IOS-RECOVERY-005.mutant.log` sha `b38cc109bd432be1…`; `IOS-RECOVERY-006` log `logs/IOS-RECOVERY-006.mutant.log` sha `f7e670853aeb2399…`; `IOS-RECOVERY-007` log `logs/IOS-RECOVERY-007.mutant.log` sha `39a9fd735f688558…`; `IOS-RECOVERY-008` log `logs/IOS-RECOVERY-008.mutant.log` sha `e092bb948c8b3069…`; `IOS-RECOVERY-009` log `logs/IOS-RECOVERY-009.mutant.log` sha `dd120faa9ea1972c…`; `T72-RC31-ios-retirement-leaveth-the-session-slot-standing` log `logs/T72-RC31-ios-retirement-leaveth-the-session-slot-standing.mutant.log` sha `c51f23424400050f…`; `T72-RC32-ios-stop-leaveth-every-timer-lease-standing` log `logs/T72-RC32-ios-stop-leaveth-every-timer-lease-standing.mutant.log` sha `f2949a2b5e72e378…`; `T72-RC33-ios-shutdown-leaveth-the-reservations-standing` log `logs/T72-RC33-ios-shutdown-leaveth-the-reservations-standing.mutant.log` sha `0a5d4b4a6a2b824f…`.",
+        "candidate_binding": {"candidate_ref": "production-readiness-board1-rc15", "external_manifest": "docs/remediation/evidence/board1-evidence-bundle.json", "attestation": "docs/remediation/evidence/FREEZE_ATTESTATION_rc15.json"},
+    },
+    "gs-stress-001.ten-thousand-cycles": {
+        "behavior": "At least 10,000 deterministic host cycles drive twelve action classes, each with its own completion counter asserted against its schedule expectation, with full-graph reopen checkpoints at cycles 1000, 5000, 9000 and after the final stop.",
+        "implementation": "`ios/Godstone/Tests/GodstoneMeshTests/GsStress001RealRuntimeDriverTests.swift` over the production composition root (`ios/Godstone/Sources/GodstoneMesh/MeshRuntime.swift`).",
+        "reachability": "production",
+        "test": "testGSSTRESS001TheRealRuntimeSurvivesTenThousandDeterministicCycles",
+        "positive": "EVERY counter must move (a class that silently stopped firing cannot hide behind the total); the cycle count is ASSERTED so a truncated loop cannot read as a full run.",
+        "mutation": "The release-owner rods T72-RC31 (session slot surviveth retirement) and T72-RC32 (stop leaveth every timer lease standing) are the NEGATIVE-OWNER controls -- they are single-method release mutations, NOT the cycle campaign, and they are credited only as the separate production-owner control.",
+        "exact_result": "MEASURED, sealed host lane `/tmp/board1-rc15-inputs-b7bac67f/ios-lane.log` (source family `eb2ff86b…`, 1529 host tests, 0 failures): line 5115 marks the 10k arm's start and line 6771 records `testGSSTRESS001TheRealRuntimeSurvivesTenThousandDeterministicCycles` **PASSED (214.031s)**, twelve-class tally and reopen checkpoints asserted by the test itself. The 3 single-method rods are NOT claimed to have executed cycles.",
+        "candidate_binding": {"candidate_ref": "production-readiness-board1-rc15", "external_manifest": "docs/remediation/evidence/board1-evidence-bundle.json", "attestation": "docs/remediation/evidence/FREEZE_ATTESTATION_rc15.json"},
+    },
+    "gs-stress-001.thirty-thousand-cycles": {
+        "behavior": "The same real-runtime campaign at 30,000 cycles through the same driver and the SAME fixed owner bounds, with its own exact schedule counts and reopen observations.",
+        "implementation": "The same driver over the production composition root.",
+        "reachability": "production",
+        "test": "testGSSTRESS001TheRealRuntimeSurvivesThirtyThousandDeterministicCycles.",
+        "positive": "Two independent runs must agree byte-for-byte on the twelve-class tallies; the cycle count is ASSERTED.",
+        "mutation": "The release-owner rods T72-RC31/RC32/RC33 remain the distinct negative-owner control, never the long-run result.",
+        "exact_result": "MEASURED, sealed host lane `/tmp/board1-rc15-inputs-b7bac67f/ios-lane.log` (source family `eb2ff86b…`): line 6772 marks the 30k arm's start and line 11746 records `testGSSTRESS001TheRealRuntimeSurvivesThirtyThousandDeterministicCycles` **PASSED (1086.775s)**; the pre-rc15 sample proofs under `docs/remediation/evidence/gs-stress-001-30k-samples/` are kept as HISTORY only where their source binding differs. The 3 release rods are NOT claimed to have executed cycles.",
+        "candidate_binding": {"candidate_ref": "production-readiness-board1-rc15", "external_manifest": "docs/remediation/evidence/board1-evidence-bundle.json", "attestation": "docs/remediation/evidence/FREEZE_ATTESTATION_rc15.json"},
+    },
+    "gs-ux-001.accessibility": {
+        "behavior": "Internally verify rendered semantics (labels, identifiers, roles, state descriptions, 44pt bounds) WITHOUT claiming human/device accessibility acceptance. The iOS rendered-ROLE half is read from the resolved element TYPE (XCUITest carries no traits API, named as a proxy) for the FULL essential roster on both the LABMESH and LIGHT profiles in all four combinations; human VoiceOver/TalkBack acceptance stays EXTERNAL.",
+        "implementation": "ios/Godstone/Tests/LabMeshUITests/LabMeshAccessibilityUITests.swift (assertEssentialRole + essentialRoleExpectations, closed expect-set; four combination arms); ios/Godstone/Tests/GodstoneArchiveUITests/GodstoneArchiveUITests.swift:1289-1306 (four LIGHT arms); ios/Godstone/Sources/GodstoneMesh/AccessibilityContract.swift; android/labmesh JourneyScreen.kt + LabMeshJourneySemanticsTest.kt/LabMeshLiveAccessibilityRosterTest.kt; ios/Godstone/Sources/App/ArchiveView.swift.",
+        "reachability": "production",
+        "test": "testGSINT001TheEssentialRetryControlStandsAndActs; testW04AClippedStatusIsRefusedAtLargeText; testW06TheTouchTargetMinimumsDifferByPlatform",
+        "positive": "Each essential control resolves to its real role (closed expect-set reddens BY NAME on a fold), carries a non-empty name and its current value, and meets 44pt where a frame is computable; the LIGHT profile asserts its OWN roster and the LABMESH-only controls' ABSENCE.",
+        "mutation": "KILLED on the FINAL full board1 campaign (tested tree `f67d8dd18be11928c39a3932296217a7dc5b8604`), each with a green restored phase and one named failing witness: `IOS-SOS-RETRY-001`[semantic], `T60-RC11-ios-a-clipped-status-is-accepted`[semantic], `T60-RC12-ios-the-touch-target-minimum-vanish`[semantic].",
+        "exact_result": "MEASURED, FINAL full board1 campaign (tested tree `f67d8dd18be11928c39a3932296217a7dc5b8604`): 3 rod(s) KILLED, build_exit 0, each failing exactly one named witness -- `IOS-SOS-RETRY-001` log `logs/IOS-SOS-RETRY-001.mutant.log` sha `eb6c71e6844af995…` restored-green; `T60-RC11-ios-a-clipped-status-is-accepted` log `logs/T60-RC11-ios-a-clipped-status-is-accepted.mutant.log` sha `cfbfda71ae97842c…` restored-green; `T60-RC12-ios-the-touch-target-minimum-vanish` log `logs/T60-RC12-ios-the-touch-target-minimum-vanish.mutant.log` sha `ff5b8c4a1c2277c0…` restored-green.",
+        "candidate_binding": {"candidate_ref": "production-readiness-board1-rc15", "external_manifest": "docs/remediation/evidence/board1-evidence-bundle.json", "attestation": "docs/remediation/evidence/FREEZE_ATTESTATION_rc15.json"},
+    },
+    "gs-ux-001.facade": {
+        "behavior": "A public facade/adapter INSIDE GodstoneMesh wraps the real owners and preserves module encapsulation: the facade and root share ONE estate authority, and the lab send uses the owned durable store for routing/ACK/intents/SOS with a REAL trust resolver (no disconnected store, no author-own-DH).",
+        "implementation": "ios/Godstone/Sources/GodstoneMesh/MeshTrustFacade.swift; TrustUXModel.swift; MeshUXModel.swift; ios/project.yml (both ports stay UNPUBLISHED).",
+        "reachability": "production",
+        "test": "testW14ANonTerminalMessageIsResumableEvenWhenTheProjectionUnderReportsIt; testW15ATerminalStateIsRefusedAndTheRefusalNamesIt; testW02ARefusedCasNeverShowethUserVerified; testW03TheDisplayedCandidateIsTheOneApproved; testW06TheComposeBoundIsBytesNotCharacters; testW07TheSosControlRequirethAnArm; testW04AnIncomingDuplicateIsOneRow",
+        "positive": "The facade and root composition operate over the SAME estate; a lab send resolves through the contact trust authority rather than the author's own DH key.",
+        "mutation": "KILLED on the FINAL full board1 campaign (tested tree `f67d8dd18be11928c39a3932296217a7dc5b8604`), each with a green restored phase and one named failing witness: `IOS-RETRY-001`[semantic], `IOS-RETRY-002`[semantic], `T56-RC1-verified-shown-before-the-durable-cas`[semantic], `T56-RC5-the-displayed-candidate-is-not-what-travels`[semantic], `T58-RC7-the-compose-bound-is-characters`[semantic], `T58-RC8-a-bare-confirm-placeth-a-call`[semantic], `T58-RC10-a-duplicate-arrival-becometh-two-rows`[semantic].",
+        "exact_result": "MEASURED, FINAL full board1 campaign (tested tree `f67d8dd18be11928c39a3932296217a7dc5b8604`): 7 rod(s) KILLED, build_exit 0, each failing exactly one named witness -- `IOS-RETRY-001` log `logs/IOS-RETRY-001.mutant.log` sha `9a018b5fce3df570…` restored-green; `IOS-RETRY-002` log `logs/IOS-RETRY-002.mutant.log` sha `2a5a66ecda090587…` restored-green; `T56-RC1-verified-shown-before-the-durable-cas` log `logs/T56-RC1-verified-shown-before-the-durable-cas.mutant.log` sha `ee0dab51735f261d…` restored-green; `T56-RC5-the-displayed-candidate-is-not-what-travels` log `logs/T56-RC5-the-displayed-candidate-is-not-what-travels.mutant.log` sha `2e08358804af83aa…` restored-green; `T58-RC7-the-compose-bound-is-characters` log `logs/T58-RC7-the-compose-bound-is-characters.mutant.log` sha `5a61d4c654dfaf44…` restored-green; `T58-RC8-a-bare-confirm-placeth-a-call` log `logs/T58-RC8-a-bare-confirm-placeth-a-call.mutant.log` sha `7967f83ab8d88fd8…` restored-green; `T58-RC10-a-duplicate-arrival-becometh-two-rows` log `logs/T58-RC10-a-duplicate-arrival-becometh-two-rows.mutant.log` sha `01f5fe82c6c0f954…` restored-green.",
+        "candidate_binding": {"candidate_ref": "production-readiness-board1-rc15", "external_manifest": "docs/remediation/evidence/board1-evidence-bundle.json", "attestation": "docs/remediation/evidence/FREEZE_ATTESTATION_rc15.json"},
+    },
+    "gs-ux-001.rendered-controls": {
+        "behavior": "The rendered LabMesh UI exercises the real authority/projection for the complete internally testable journey: recipient selection; UTF-8 bounded compose; Send; fingerprint compare/confirmation; exact rotation-candidate approval; revoke; visible durable state after recreation; visible wipe/recovery state. Displayed state derives from the real authority/projection; the wipe/recovery surface reads the runtime's own durable journal/readback, and the generation/rung are the EXISTING durable API's words (nil = unacknowledged, never a fabricated 0).",
+        "implementation": "ios/Godstone/Sources/GodstoneMesh/LabRuntime.swift (durableWipeWords().generation/rung read WipeJournalDurabilityAdapter.durableEpoch/readJournal); ios/Godstone/Sources/LabMesh/LabMeshRootApp.swift (lab.diagnostics.generation, lab.diagnostics.liverung); ios/Godstone/Tests/LabMeshUITests/LabMeshUITests.swift:373.",
+        "reachability": "production",
+        "test": "testGSINT001TheWipeControlReportsTheRuntimesOwnState; testAStaleOrMismatchedConfirmationChangesNothing; testAConfirmationWhoseReadbackDisagreesRollsBackRatherThanReportingSuccess; test07bTheDistressJourneyIsDurableOnDiskAcrossRelaunches",
+        "positive": "Every named journey's rendered arm moves the RENDERED outcome; the 3-process witness observes the acknowledged generation/rung/artifacts surviving terminate+relaunch.",
+        "mutation": "KILLED on the FINAL full board1 campaign (tested tree `f67d8dd18be11928c39a3932296217a7dc5b8604`), each with a green restored phase and one named failing witness: `IOS-WIPE-UX-002`[semantic], `T72-RC24-ios-confirmation-cas-ignores-the-displayed-generation`[semantic], `T72-RC25-ios-confirmation-cas-ignores-the-key-digest`[semantic], `T72-RC26-ios-confirmation-trusts-its-intent-not-the-readback`[semantic], `T72-RC27-ios-lab-composes-the-author-over-memory-not-the-estate`[semantic].",
+        "exact_result": "MEASURED, FINAL full board1 campaign (tested tree `f67d8dd18be11928c39a3932296217a7dc5b8604`): 5 rod(s) KILLED, build_exit 0, each failing exactly one named witness -- `IOS-WIPE-UX-002` log `logs/IOS-WIPE-UX-002.mutant.log` sha `2722f0b4c159f86b…` restored-green; `T72-RC24-ios-confirmation-cas-ignores-the-displayed-generation` log `logs/T72-RC24-ios-confirmation-cas-ignores-the-displayed-generation.mutant.log` sha `b138089dc6a5ff9b…` restored-green; `T72-RC25-ios-confirmation-cas-ignores-the-key-digest` log `logs/T72-RC25-ios-confirmation-cas-ignores-the-key-digest.mutant.log` sha `0da3db025906f3ac…` restored-green; `T72-RC26-ios-confirmation-trusts-its-intent-not-the-readback` log `logs/T72-RC26-ios-confirmation-trusts-its-intent-not-the-readback.mutant.log` sha `0f62488531cbf470…` restored-green; `T72-RC27-ios-lab-composes-the-author-over-memory-not-the-estate` log `logs/T72-RC27-ios-lab-composes-the-author-over-memory-not-the-estate.mutant.log` sha `0198d7d4ffc9b964…` restored-green.",
+        "candidate_binding": {"candidate_ref": "production-readiness-board1-rc15", "external_manifest": "docs/remediation/evidence/board1-evidence-bundle.json", "attestation": "docs/remediation/evidence/FREEZE_ATTESTATION_rc15.json"},
+    },
+    "gs-ux-001.ui-test-target": {
+        "behavior": "A repo-owned simulator/UI test target interacts with the rendered controls, covering the full journey list plus SOS hold/cancel/accessible alternative, executing the CURRENT source-derived roster bound to this candidate.",
+        "implementation": "docs/remediation/evidence/gs-integration-001-courts.log + ios-ui-lane.log; ci/check_lane_results.py (source-derived arm roster; --selftest-ui 15/15 mutations killed).",
+        "reachability": "production",
+        "test": "lane-selftest:--selftest-foundation; lane-selftest:--selftest-simulator; lane-selftest:--selftest-ui",
+        "positive": "Both suites execute every source-derived arm; the Retry witnesses refresh the projection before asserting; raw-rc=0.",
+        "mutation": "KILLED on the FINAL full board1 campaign (tested tree `f67d8dd18be11928c39a3932296217a7dc5b8604`), each with a green restored phase and one named failing witness: `LANE-ROD-1-skip-refusal-disabled`[semantic], `LANE-ROD-2-foundation-arm-omission-unguarded`[semantic], `LANE-ROD-3-foundation-duplicate-arm-unrefused`[semantic], `LANE-ROD-4-simulator-duplicate-narrowed-to-required`[semantic], `LANE-ROD-5-known-red-allowance-repopulated`[semantic].",
+        "exact_result": "MEASURED, FINAL full board1 campaign (tested tree `f67d8dd18be11928c39a3932296217a7dc5b8604`): 5 rod(s) KILLED, build_exit 0, each failing exactly one named witness -- `LANE-ROD-1-skip-refusal-disabled` log `logs/LANE-ROD-1-skip-refusal-disabled.mutant.log` sha `81478ea5f6c86612…` restored-green; `LANE-ROD-2-foundation-arm-omission-unguarded` log `logs/LANE-ROD-2-foundation-arm-omission-unguarded.mutant.log` sha `59165648c9fc8e88…` restored-green; `LANE-ROD-3-foundation-duplicate-arm-unrefused` log `logs/LANE-ROD-3-foundation-duplicate-arm-unrefused.mutant.log` sha `bfa991be34c15a4f…` restored-green; `LANE-ROD-4-simulator-duplicate-narrowed-to-required` log `logs/LANE-ROD-4-simulator-duplicate-narrowed-to-required.mutant.log` sha `fce8a07ecae0bf54…` restored-green; `LANE-ROD-5-known-red-allowance-repopulated` log `logs/LANE-ROD-5-known-red-allowance-repopulated.mutant.log` sha `dd1db40656149557…` restored-green.",
+        "candidate_binding": {"candidate_ref": "production-readiness-board1-rc15", "external_manifest": "docs/remediation/evidence/board1-evidence-bundle.json", "attestation": "docs/remediation/evidence/FREEZE_ATTESTATION_rc15.json"},
+    },
+}
 HISTORICAL_DISCHARGES: dict[str, dict] = {}
 
 
@@ -1194,7 +1534,16 @@ def _binding() -> dict:
 #: (never as new findings): C1 -> `gs-final-004.owned-connection`/`gs-store-002` close-versus-use, C2 ->
 #: `gs-final-004.provider-dispatch` image lease, C3 -> the permit obligations, C4 -> `gs-final-004.provider-dispatch`'s
 #: pinned-image clause.**
-KNOWN_INTERNAL_GAPS: dict[str, list[dict]] = {
+#: *** RENAMED from `KNOWN_INTERNAL_GAPS` AT THE EARNED CLOSURE (2026-10-04). ***
+#: *Every record here is unchanged and remains the canonical per-obligation audit trail of the source reviews and
+#: their in-place `review_status`. What changed is the LIVE population: for each obligation whose authored discharge
+#: is earned, NO obligation is unresolved, so a "gap on a live obligation" no longer exists to be counted; only the
+#: four unearned `AUDIT-B1-CTRL-001` closure-control obligations remain live. `review_gap_history`
+#: therefore carries each record as HISTORY on its discharged obligation, and the live `known_internal_gaps` block in
+#: `structured_semantics` carrieth ONLY the still-OPEN finding's obligations. `_with_authored_discharges` attaches the
+#: history by obligation identity; `_review_status_rollup()` still counts the in-place source statuses (42
+#: REPAIRED_STALE / 0 PARTIAL / 0 LIVE).*
+REVIEW_GAP_HISTORY: dict[str, list[dict]] = {
     "gs-final-003.ios-recovery-graph": [
         {"source": "SqliteReview / IosReview IOS-R1,IOS-R5", "defect": "IOSR1-permit-replay-aba", "review_status": "REPAIRED_STALE", "review_status_evidence": "`path:ios/Godstone/Sources/GodstoneMesh/MeshRuntime.swift:454-459` -- the production `create` road now takes ONE `consumeCompositionTopology()` drive that binds the verdict AND the permit for the `.normal` arm; the `.recoveryOnly` arm (MeshRuntime.swift:~487-520) drives the LIVE pre-private recovery over `DefaultRecoveryEstate` (the estate's OWN transport) and opens no store, throwing the typed decision; the deferred seams (:448-451) defer EVERY effect because the runtime does not yet stand, which is the legitimate pre-runtime shape. New rod `IOS-RECOVERY-005` witness `testGSFINAL003_aRecoveryThatCannotSettleRefusesAndOpensNothing` strikes it. *Current-C runtime proof still pending.*",
          "canonical_defect": "ios-recovery-graph: the production road (MeshRuntime) still mints its create-time "
@@ -1763,7 +2112,7 @@ def review_status_problems() -> list[str]:
     refused -- it is simply an unreconciled gap, read as LIVE by its own present-tense claim.
     """
     problems: list[str] = []
-    for obligation_id, gaps in sorted(KNOWN_INTERNAL_GAPS.items()):
+    for obligation_id, gaps in sorted(REVIEW_GAP_HISTORY.items()):
         for g in gaps:
             if not isinstance(g, dict):
                 continue
@@ -1786,7 +2135,7 @@ def review_status_problems() -> list[str]:
 def _review_status_rollup() -> dict:
     """The rollup of the in-place source statuses, for a reader (derived; never an authority)."""
     counts: dict[str, int] = {}
-    for gaps in KNOWN_INTERNAL_GAPS.values():
+    for gaps in REVIEW_GAP_HISTORY.values():
         for g in gaps:
             if isinstance(g, dict) and g.get("review_status"):
                 counts[g["review_status"]] = counts.get(g["review_status"], 0) + 1
@@ -2030,15 +2379,37 @@ def authoring_coverage_problems(closure: dict) -> list[str]:
         elif status != "DISCHARGED":
             problems.append(f"STRUCTURED_DISCHARGES authors a discharge for {oid!r} while its status is {status!r} -- "
                             f"a discharge block on non-terminal work is the overclaim this plane refuseth")
-    # *** AND A MEASURED GAP MUST SIT ON A LIVE OBLIGATION, OR IT IS A GAP ABOUT WORK THAT NO LONGER EXISTS. ***
-    for oid in sorted(KNOWN_INTERNAL_GAPS):
+    # *** AND THE PER-OBLIGATION SOURCE-REVIEW HISTORY MUST SIT ON AN OBLIGATION, AND MAY NOT VANISH A LIVE DEFECT. ***
+    #
+    # *THE GUARD REGRESSION THIS CLOSES (found by the authoritative review): the first earned closure dropped the
+    # "gap on terminal work is stale" refusal and then attached the history to the DISCHARGED obligation, so a review
+    # record updated to `LIVE`/`PARTIAL` -- or carrying NO status at all -- would be PROMOTED to a terminal
+    # obligation and attached only as history, and `structured_semantics` would omit it from `known_internal_gaps`
+    # because the obligation is terminal. An unresolved defect would thus DISAPPEAR through the rename.*
+    #
+    # **SO A TERMINAL OBLIGATION MAY CARRY REVIEW HISTORY ONLY WHEN EVERY ATTACHED DEFECT IS EXPLICITLY
+    # `REPAIRED_STALE`. A `LIVE`/`PARTIAL`/missing/illegal `review_status` on a terminal obligation is REFUSED BY
+    # NAME; the orphan-ID refusal is retained. The history stays VISIBLE on the discharge -- it is not emptied -- but
+    # an UNRESOLVED defect can never be hidden behind it.** *Every current record is `REPAIRED_STALE`, so this passeth
+    # on the live tree; the moment one is set back to `LIVE` or `PARTIAL`, the closure refuses.*
+    legal_terminal = ("REPAIRED_STALE",)
+    for oid in sorted(REVIEW_GAP_HISTORY):
         status = by_id.get(oid)
         if status is None:
-            problems.append(f"KNOWN_INTERNAL_GAPS names {oid!r}, which no obligation in the closure carrieth -- a "
-                            f"gap with no subject")
-        elif status not in UNRESOLVED_OBLIGATION_STATES:
-            problems.append(f"KNOWN_INTERNAL_GAPS records a live gap against {oid!r} while its status is {status!r} -- "
-                            f"a gap record on terminal work is stale by construction")
+            problems.append(f"REVIEW_GAP_HISTORY names {oid!r}, which no obligation in the closure carrieth -- a "
+                            f"gap history with no subject")
+            continue
+        if status not in TERMINAL_OBLIGATION_STATES:
+            # The obligation is still live: its own `known_internal_gaps` carrieth the history, which is correct.
+            continue
+        for g in REVIEW_GAP_HISTORY[oid]:
+            rs = g.get("review_status") if isinstance(g, dict) else None
+            if rs not in legal_terminal:
+                problems.append(
+                    f"REVIEW_GAP_HISTORY carrieth a defect on the TERMINAL obligation {oid!r} whose "
+                    f"`review_status` is {rs!r}, not one of {legal_terminal} -- a live/unreconciled review defect may "
+                    f"NOT disappear behind a discharge's history; either the defect is repaired in source or the "
+                    f"obligation may not stand DISCHARGED")
     return problems
 
 
@@ -2318,33 +2689,41 @@ def main(argv=None) -> int:
         #
         # Each DISCHARGED obligation must carry at least one citation, and each citation must RESOLVE: a `file:line`,
         # a named `test...` / `func test...` symbol that exists in the tree, or a commit SHA that exists in history.
+        #
+        # *** AT THE EARNED CLOSURE THE DISCHARGED SET IS AUTHORED IN `STRUCTURED_DISCHARGES`, NOT BY AN OBLIGATION'S
+        # OWN `status` LITERAL. *** *So the population this backstop judges follows the AUTHORITY: the authored
+        # discharges (each keyed to a live obligation), with its evidence read from the obligation it names. An
+        # authored discharge whose obligation carries no resolving citation is refused BY NAME -- the same guard as
+        # before, now pointed at where the terminal claim actually lives.*
         problems: list[str] = []
-        for fid, entry in sorted(PARTIAL_OBLIGATIONS.items()):
-            for o in entry:
-                if o.get("status") != "DISCHARGED":
-                    continue
-                cites = [c for c in (o.get("evidence") or []) if isinstance(c, str) and c.strip()]
-                if not cites:
+        _by_oid = {o.get("id"): o for obls in PARTIAL_OBLIGATIONS.values() for o in obls}
+        for oid in sorted(STRUCTURED_DISCHARGES):
+            o = _by_oid.get(oid)
+            if o is None:
+                problems.append(f"{oid}: an authored discharge with NO obligation -- it points at nothing")
+                continue
+            cites = [c for c in (o.get("evidence") or []) if isinstance(c, str) and c.strip()]
+            if not cites:
+                problems.append(
+                    f"{oid}: DISCHARGED with NO evidence -- a status this builder may not carry "
+                    f"unsubstantiated, because this file holds both the counter and its inputs")
+                continue
+            # EVERY citation must carry at least one typed token, and EVERY token must resolve.
+            # *`any(...)` would accept one lucky token in a paragraph of prose -- which is how the first draft
+            # laundered bogus discharges.*
+            tokens: list[tuple[str, str]] = []
+            for c in cites:
+                tokens.extend(_evidence_tokens(c))
+            if not tokens:
+                problems.append(
+                    f"{oid}: DISCHARGED with evidence that carries NO TYPED TOKEN -- prose is allowed and "
+                    f"ignored, but the CLAIM must be carried by `path:`/`commit:`/`test:` tokens a reader can check")
+                continue
+            for kind, value in tokens:
+                if not _citation_token_resolves(kind, value):
                     problems.append(
-                        f"{o['id']}: DISCHARGED with NO evidence -- a status this builder may not carry "
-                        f"unsubstantiated, because this file holds both the counter and its inputs")
-                    continue
-                # EVERY citation must carry at least one typed token, and EVERY token must resolve.
-                # *`any(...)` would accept one lucky token in a paragraph of prose -- which is how the first draft
-                # laundered bogus discharges.*
-                tokens: list[tuple[str, str]] = []
-                for c in cites:
-                    tokens.extend(_evidence_tokens(c))
-                if not tokens:
-                    problems.append(
-                        f"{o['id']}: DISCHARGED with evidence that carries NO TYPED TOKEN -- prose is allowed and "
-                        f"ignored, but the CLAIM must be carried by `path:`/`commit:`/`test:` tokens a reader can check")
-                    continue
-                for kind, value in tokens:
-                    if not _citation_token_resolves(kind, value):
-                        problems.append(
-                            f"{o['id']}: DISCHARGED but the citation token `{kind}:{value}` DOES NOT RESOLVE -- "
-                            f"the record points at something that is not there")
+                        f"{oid}: DISCHARGED but the citation token `{kind}:{value}` DOES NOT RESOLVE -- "
+                        f"the record points at something that is not there")
         for msg in problems:
             print(f"  ::error:: {msg}")
         if problems:
