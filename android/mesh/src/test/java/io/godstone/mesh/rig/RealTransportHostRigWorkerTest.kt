@@ -1088,7 +1088,7 @@ internal class RealTransportHostRigWorkerTest {
                         emit("observe", header = mapOf(
                             "reopened" to true,
                             "durable_row" to if (heldId != null) "present" else "absent",
-                            "msg_id" to (idFromDelivery ?: heldId)?.let { hex(it) } ?: "",
+                            "msg_id" to ((idFromDelivery ?: heldId)?.let { hex(it) } ?: ""),
                             "delivery" to (deliveryState ?: "none"),
                             "cancellation_state" to (cancelRow?.let { DeliveryState.fromCode(it.state)?.name } ?: ""),
                             "cancellation_msg_id" to (cancelId?.let { hex(it) } ?: ""),
