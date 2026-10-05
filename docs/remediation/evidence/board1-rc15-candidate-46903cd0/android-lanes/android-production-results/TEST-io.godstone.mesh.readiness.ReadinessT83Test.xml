@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.godstone.mesh.readiness.ReadinessT83Test" tests="15" skipped="0" failures="0" errors="0" timestamp="2026-10-04T22:16:26" hostname="Naraharikripas-Mac-mini.local" time="0.487">
+  <properties/>
+  <testcase name="testGlobalQuotaSaturationRefusesExplicitlyAndWipePreservesOriginals" classname="io.godstone.mesh.readiness.ReadinessT83Test" time="0.171"/>
+  <testcase name="testStorageFailureYieldsNeitherAckNorClaimedAcceptance" classname="io.godstone.mesh.readiness.ReadinessT83Test" time="0.006"/>
+  <testcase name="testDuplicateValidMessageRegeneratesSameDeterministicAckNoDuplicateInbox" classname="io.godstone.mesh.readiness.ReadinessT83Test" time="0.001"/>
+  <testcase name="testForgedCandidateThenValidSignatureAdmitsBothSlotsDistinguishable" classname="io.godstone.mesh.readiness.ReadinessT83Test" time="0.001"/>
+  <testcase name="testTheRestartRoadCarriethTheSameInitialMetadataAsTheImmediateRoad" classname="io.godstone.mesh.readiness.ReadinessT83Test" time="0.002"/>
+  <testcase name="testSigningKeyUnavailableLeavesRetryableObligationAndNoClaimedDelivery" classname="io.godstone.mesh.readiness.ReadinessT83Test" time="0.0"/>
+  <testcase name="testObligationRetiredOnlyWithFrameTransaction" classname="io.godstone.mesh.readiness.ReadinessT83Test" time="0.001"/>
+  <testcase name="testAKeyThatDriftsBetweenTheGateAndTheVerificationIsRefused" classname="io.godstone.mesh.readiness.ReadinessT83Test" time="0.001"/>
+  <testcase name="testWrongSizedInputsRejectedBeforeAnyWrite" classname="io.godstone.mesh.readiness.ReadinessT83Test" time="0.299"/>
+  <testcase name="testFourCandidateVariantsBoundedPerPair" classname="io.godstone.mesh.readiness.ReadinessT83Test" time="0.001"/>
+  <testcase name="testCrashAfterInboxCommitBeforeSigningResumesDeterministically" classname="io.godstone.mesh.readiness.ReadinessT83Test" time="0.002"/>
+  <testcase name="testPresentButWrongRecipientKeyIsRefusedAsAMismatchNotUnavailability" classname="io.godstone.mesh.readiness.ReadinessT83Test" time="0.0"/>
+  <testcase name="testMessageAndAckCoexistUnderSameMsgIdDistinctNamespaces" classname="io.godstone.mesh.readiness.ReadinessT83Test" time="0.001"/>
+  <testcase name="testUnresolvableRecipientKeyLeavethTheObligationPendingAndStoresNothing" classname="io.godstone.mesh.readiness.ReadinessT83Test" time="0.0"/>
+  <testcase name="testCanonicalAckBytesEndToEnd" classname="io.godstone.mesh.readiness.ReadinessT83Test" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

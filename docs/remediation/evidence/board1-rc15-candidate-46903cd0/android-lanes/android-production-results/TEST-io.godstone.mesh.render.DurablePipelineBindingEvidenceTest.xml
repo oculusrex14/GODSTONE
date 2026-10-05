@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.godstone.mesh.render.DurablePipelineBindingEvidenceTest" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-10-04T22:16:26" hostname="Naraharikripas-Mac-mini.local" time="0.019">
+  <properties/>
+  <testcase name="anAckCandidatesSignedBytesSurviveACloseReopen" classname="io.godstone.mesh.render.DurablePipelineBindingEvidenceTest" time="0.003"/>
+  <testcase name="oneTrackerObjectReportsTheRowAcrossItsWholeLifecycle" classname="io.godstone.mesh.render.DurablePipelineBindingEvidenceTest" time="0.004"/>
+  <testcase name="everyWireFieldsRealValueSurvivesTheEncodeDecodeTransformation" classname="io.godstone.mesh.render.DurablePipelineBindingEvidenceTest" time="0.0"/>
+  <testcase name="aMidTransactionFaultLeavesThePreStateAndTheRollbackIsDurable" classname="io.godstone.mesh.render.DurablePipelineBindingEvidenceTest" time="0.004"/>
+  <testcase name="theOutboundDirectSendsCanonicalFrameAndRecipientBindingSurvive" classname="io.godstone.mesh.render.DurablePipelineBindingEvidenceTest" time="0.005"/>
+  <testcase name="anInboundFramesBytesAndProvenanceSurviveACloseReopen" classname="io.godstone.mesh.render.DurablePipelineBindingEvidenceTest" time="0.003"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

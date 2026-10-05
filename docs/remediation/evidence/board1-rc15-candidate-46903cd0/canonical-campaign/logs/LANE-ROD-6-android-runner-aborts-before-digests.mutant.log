@@ -1,0 +1,4 @@
+sh -n rc=0
+guard: sh tools/readiness/tests/mutation_runner_keepalive_probe.sh tools/readiness/run_android_lanes.sh
+guard rc=1
+KEEP-ALIVE ABSENT: the runner aborted before its post-run step (the mutant's red)

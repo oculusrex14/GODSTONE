@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.godstone.app.ui.send.SendDurableProofTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-10-04T22:14:01" hostname="Naraharikripas-Mac-mini.local" time="0.598">
+  <properties/>
+  <testcase name="repeatingTheSameIntentReusesTheStandingIdAndAuthorsNothingNew" classname="io.godstone.app.ui.send.SendDurableProofTest" time="0.478"/>
+  <testcase name="theTypedOctetsReachTheRecipientAndTheLogicalIdSurvivesARelaunch" classname="io.godstone.app.ui.send.SendDurableProofTest" time="0.058"/>
+  <testcase name="theRenderedFieldAuthorsAtTheOctetBudgetAndRefusesOneOverWithoutAuthoring" classname="io.godstone.app.ui.send.SendDurableProofTest" time="0.062"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

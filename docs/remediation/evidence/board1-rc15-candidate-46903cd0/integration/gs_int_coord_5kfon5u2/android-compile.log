@@ -1,0 +1,69 @@
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.9/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+Calculating task graph as no cached configuration is available for tasks: :mesh:compileDebugUnitTestKotlin :mesh:compileDebugUnitTestJavaWithJavac
+
+> Configure project :app
+WARNING: The option setting 'android.experimental.enableTestFixturesKotlinSupport=true' is experimental.
+The current default is 'false'.
+
+> Task :core:preBuild UP-TO-DATE
+> Task :core:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :mesh:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :mesh:preBuild UP-TO-DATE
+> Task :mesh:preDebugBuild UP-TO-DATE
+> Task :mesh:preDebugTestFixturesBuild UP-TO-DATE
+> Task :core:preDebugBuild UP-TO-DATE
+> Task :mesh:preDebugUnitTestBuild UP-TO-DATE
+> Task :mesh:processDebugTestFixturesJavaRes NO-SOURCE
+> Task :mesh:generateDebugUnitTestResValues FROM-CACHE
+> Task :mesh:javaPreCompileDebugTestFixtures FROM-CACHE
+> Task :core:generateDebugResValues FROM-CACHE
+> Task :mesh:generateDebugResValues FROM-CACHE
+> Task :mesh:javaPreCompileDebug FROM-CACHE
+> Task :core:javaPreCompileDebug FROM-CACHE
+> Task :mesh:generateDebugUnitTestResources FROM-CACHE
+> Task :mesh:generateDebugTestFixturesEmptyResourceFiles
+> Task :core:extractDeepLinksDebug FROM-CACHE
+> Task :core:generateDebugResources FROM-CACHE
+> Task :mesh:generateDebugResources FROM-CACHE
+> Task :mesh:extractDeepLinksDebug FROM-CACHE
+> Task :mesh:writeDebugTestFixturesAarMetadata
+> Task :mesh:writeDebugAarMetadata
+> Task :mesh:javaPreCompileDebugUnitTest FROM-CACHE
+> Task :core:writeDebugAarMetadata
+> Task :core:processDebugManifest FROM-CACHE
+> Task :mesh:processDebugTestFixturesManifest FROM-CACHE
+> Task :mesh:processDebugManifest FROM-CACHE
+> Task :mesh:packageDebugResources FROM-CACHE
+> Task :core:packageDebugResources FROM-CACHE
+> Task :core:compileDebugLibraryResources FROM-CACHE
+> Task :mesh:compileDebugLibraryResources FROM-CACHE
+> Task :core:parseDebugLocalResources FROM-CACHE
+> Task :mesh:parseDebugLocalResources FROM-CACHE
+> Task :core:generateDebugRFile FROM-CACHE
+> Task :mesh:generateDebugRFile FROM-CACHE
+> Task :mesh:mapDebugUnitTestSourceSetPaths
+> Task :mesh:checkDebugUnitTestAarMetadata
+> Task :core:compileDebugKotlin FROM-CACHE
+> Task :mesh:mergeDebugUnitTestResources FROM-CACHE
+> Task :core:compileDebugJavaWithJavac NO-SOURCE
+> Task :core:bundleLibRuntimeToJarDebug
+> Task :core:bundleLibCompileToJarDebug
+> Task :mesh:processDebugUnitTestManifest
+> Task :mesh:processDebugUnitTestResources FROM-CACHE
+> Task :mesh:kspDebugKotlin FROM-CACHE
+> Task :mesh:compileDebugKotlin FROM-CACHE
+> Task :mesh:compileDebugJavaWithJavac FROM-CACHE
+> Task :mesh:transformDebugClassesWithAsm FROM-CACHE
+> Task :mesh:bundleLibCompileToJarDebug
+> Task :mesh:compileDebugTestFixturesKotlin FROM-CACHE
+> Task :mesh:compileDebugTestFixturesJavaWithJavac NO-SOURCE
+> Task :mesh:bundleLibRuntimeToJarDebugTestFixtures
+> Task :mesh:createFullJarDebugTestFixtures
+> Task :mesh:kspDebugUnitTestKotlin FROM-CACHE
+> Task :mesh:compileDebugUnitTestKotlin FROM-CACHE
+> Task :mesh:compileDebugUnitTestJavaWithJavac NO-SOURCE
+
+BUILD SUCCESSFUL in 12s
+45 actionable tasks: 12 executed, 33 from cache
+Configuration cache entry stored.

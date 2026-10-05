@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.godstone.mesh.readiness.ReadinessT41Test" tests="22" skipped="0" failures="0" errors="0" timestamp="2026-10-04T22:16:25" hostname="Naraharikripas-Mac-mini.local" time="0.023">
+  <properties/>
+  <testcase name="test_w11_the_typed_dispatcher_routeth_in_the_statute_order" classname="io.godstone.mesh.readiness.ReadinessT41Test" time="0.002"/>
+  <testcase name="gsRuntime001_onlyARelationThatDeclaredItselfReadyIsScheduled" classname="io.godstone.mesh.readiness.ReadinessT41Test" time="0.001"/>
+  <testcase name="gsRuntime001_theNodesAckTurnReallyWritethToTheTransport" classname="io.godstone.mesh.readiness.ReadinessT41Test" time="0.001"/>
+  <testcase name="gsRuntime001_withNoOverrideTheTurnUsesTheRealTransportRoad" classname="io.godstone.mesh.readiness.ReadinessT41Test" time="0.0"/>
+  <testcase name="test_w08_a_forced_bloom_false_positive_does_not_suppress_a_fetch" classname="io.godstone.mesh.readiness.ReadinessT41Test" time="0.002"/>
+  <testcase name="test_w04_the_forward_copy_is_prepared_exactly_once" classname="io.godstone.mesh.readiness.ReadinessT41Test" time="0.001"/>
+  <testcase name="test_w03_a_refused_persist_forwards_nothing" classname="io.godstone.mesh.readiness.ReadinessT41Test" time="0.001"/>
+  <testcase name="test_w01_a_present_peer_gets_a_registered_scheduler" classname="io.godstone.mesh.readiness.ReadinessT41Test" time="0.001"/>
+  <testcase name="gsRuntime001_theNodesAckTurnCompletesAndCounts" classname="io.godstone.mesh.readiness.ReadinessT41Test" time="0.0"/>
+  <testcase name="gsRuntime001_withNoPumpAssignedTheNodeServesNothing" classname="io.godstone.mesh.readiness.ReadinessT41Test" time="0.001"/>
+  <testcase name="test_w12_the_forward_leg_is_strictly_priority_ordered" classname="io.godstone.mesh.readiness.ReadinessT41Test" time="0.0"/>
+  <testcase name="test_w09_an_evicted_frame_is_not_served_and_nothing_is_fabricated" classname="io.godstone.mesh.readiness.ReadinessT41Test" time="0.001"/>
+  <testcase name="test_w13_the_forward_queue_is_bounded" classname="io.godstone.mesh.readiness.ReadinessT41Test" time="0.002"/>
+  <testcase name="test_w14_a_stale_turn_emits_nothing_after_cancellation" classname="io.godstone.mesh.readiness.ReadinessT41Test" time="0.001"/>
+  <testcase name="test_w02_the_three_node_path_forwards_after_durable_acceptance" classname="io.godstone.mesh.readiness.ReadinessT41Test" time="0.001"/>
+  <testcase name="test_w07_disjoint_held_sets_converge" classname="io.godstone.mesh.readiness.ReadinessT41Test" time="0.001"/>
+  <testcase name="testAControlReplyBelongethToItsOwnPeerAlone" classname="io.godstone.mesh.readiness.ReadinessT41Test" time="0.002"/>
+  <testcase name="testASingleDestinationCannotMonopoliseTheControlOutbox" classname="io.godstone.mesh.readiness.ReadinessT41Test" time="0.001"/>
+  <testcase name="test_w06_relation_loss_cancels_the_schedule_and_the_estate_survives" classname="io.godstone.mesh.readiness.ReadinessT41Test" time="0.0"/>
+  <testcase name="test_w10_a_slow_peer_neither_starves_another_nor_blocks_the_turn" classname="io.godstone.mesh.readiness.ReadinessT41Test" time="0.002"/>
+  <testcase name="testARetiredRelationsControlReplyIsNotHandedToTheReplacement" classname="io.godstone.mesh.readiness.ReadinessT41Test" time="0.001"/>
+  <testcase name="test_w05_ttl_exhaustion_and_the_hop_ceiling_refuse_by_name" classname="io.godstone.mesh.readiness.ReadinessT41Test" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -1,0 +1,17 @@
+test_a_skipped_internal_inspection_is_refused (test_audit_supplychain_harness.ReleaseProofCourt.test_a_skipped_internal_inspection_is_refused) ... FAIL
+
+======================================================================
+FAIL: test_a_skipped_internal_inspection_is_refused (test_audit_supplychain_harness.ReleaseProofCourt.test_a_skipped_internal_inspection_is_refused)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/board1-rc15-preparatory-46903cd0-xke1sctz/rod-worktrees/wt_RS-PROOF-01-fabricated-internal-verdict-tolerated/tools/readiness/tests/test_audit_supplychain_harness.py", line 141, in test_a_skipped_internal_inspection_is_refused
+    self.assertTrue(any("SKIPPED its artifact inspection" in item
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        for item in RP.verify_release_proof(document)))
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: False is not true
+
+----------------------------------------------------------------------
+Ran 1 test in 0.001s
+
+FAILED (failures=1)

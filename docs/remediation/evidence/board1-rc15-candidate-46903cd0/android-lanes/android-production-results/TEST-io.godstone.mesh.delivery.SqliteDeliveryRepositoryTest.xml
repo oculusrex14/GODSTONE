@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.godstone.mesh.delivery.SqliteDeliveryRepositoryTest" tests="86" skipped="0" failures="0" errors="0" timestamp="2026-10-04T22:16:12" hostname="Naraharikripas-Mac-mini.local" time="0.337">
+  <properties/>
+  <testcase name="C7_5 held delete SQL failure yields StorageFailure and rolls back" classname="io.godstone.mesh.delivery.SqliteDeliveryRepositoryTest" time="0.012"/>
+  <testcase name="C7_5 missing-held active row rollback and Corrupt on EXPIRE" classname="io.godstone.mesh.delivery.SqliteDeliveryRepositoryTest" time="0.004"/>
+  <testcase name="C7_4_1 capacity released on authenticated ACK is reusable by new frame" classname="io.godstone.mesh.delivery.SqliteDeliveryRepositoryTest" time="0.006"/>
+  <testcase name="C7_4_1 held delete SQL failure yields StorageFailure and rolls back" classname="io.godstone.mesh.delivery.SqliteDeliveryRepositoryTest" time="0.005"/>
+  <testcase name="C7_5 AckMode NONE terminal retirement on EXPIRE and CANCEL" classname="io.godstone.mesh.delivery.SqliteDeliveryRepositoryTest" time="0.006"/>
+  <testcase name="reboot recovery - a fresh repository over the same DB file recovers state, ack mode and recipient" classname="io.godstone.mesh.delivery.SqliteDeliveryRepositoryTest" time="0.004"/>
+  <testcase name="mutation control - dropping the recipient guard lets an old ACK bind to a re-bound row (proves it is load-bearing)" classname="io.godstone.mesh.delivery.SqliteDeliveryRepositoryTest" time="0.006"/>
+  <testcase name="a cancel after an ACK is RejectedState - ACKNOWLEDGED is irreversible" classname="io.godstone.mesh.delivery.SqliteDeliveryRepositoryTest" time="0.004"/>
+  <testcase name="a clear failure is ClearResult StorageFailure" classname="io.godstone.mesh.delivery.SqliteDeliveryRepositoryTest" time="0.003"/>
+  <testcase name="an unknown persisted state code reads as Corrupt, not UNAVAILABLE" classname="io.godstone.mesh.delivery.SqliteDeliveryRepositoryTest" time="0.004"/>
+  <testcase name="a terminal state rejects further non-ACK transitions" classname="io.godstone.mesh.delivery.SqliteDeliveryRepositoryTest" time="0.004"/>
+  <testcase name="an ACK after a cancel is RejectedState - the CAS does not overwrite the terminal state" classname="io.godstone.mesh.delivery.SqliteDeliveryRepositoryTest" time="0.004"/>
+  <testcase name="C7_4_1 not ack eligible NONE mode held retained" classname="io.godstone.mesh.delivery.SqliteDeliveryRepositoryTest" time="0.004"/>
+  <testcase name="a non-16-byte msg_id is InvalidArgument at every delivery boundary" classname="io.godstone.mesh.delivery.SqliteDeliveryRepositoryTest" time="0.003"/>
+  <testcase name="concurrency - ACK vs cancel - cancel wins, ACK is RejectedState, final is CANCELLED" classname="io.godstone.mesh.delivery.SqliteDeliveryRepositoryTest" time="0.004"/>
+  <testcase name="transition and acknowledgeBound advance only the state column, preserving ack_mode and expected_recipient" classname="io.godstone.mesh.delivery.SqliteDeliveryRepositoryTest" time="0.005"/>
+  <testcase name="C7_5 idempotent second CANCEL returns AlreadyInTarget and held remains absent" classname="io.godstone.mesh.delivery.SqliteDeliveryRepositoryTest" time="0.004"/>
+  <testcase name="mutation control - dropping the mode guard lets an ACK land on a NONE-mode row (proves it is load-bearing)" classname="io.godstone.mesh.delivery.SqliteDeliveryRepositoryTest" time="0.006"/>
+  <testcase name="C7_5 ACK committed then CANCEL zero-row classification" classname="io.godstone.mesh.delivery.SqliteDeliveryRepositoryTest" time="0.005"/>
+  <testcase name="case 4 - ack isolation acknowledging msgIdA does not alter delivery state of msgIdB" classname="io.godstone.mesh.delivery.SqliteDeliveryRepositoryTest" time="0.005"/>
+  <testcase name="mutation control - skipping held retirement leaves split state (proves atomic held retirement is load-bearing)" classname="io.godstone.mesh.delivery.SqliteDeliveryRepositoryTest" time="0.005"/>
+  <testcase name="C7_5 production queued C6_6 to CANCEL success" classname="io.godstone.mesh.delivery.SqliteDeliveryRepositoryTest" time="0.005"/>
+  <testcase name="C7_5 anti-entropy excludes retired terminal frame after EXPIRE and CANCEL" classname="io.godstone.mesh.delivery.SqliteDeliveryRepositoryTest" time="0.005"/>
+  <testcase name="C7_4_1 fault after ACK CAS both restored" classname="io.godstone.mesh.delivery.SqliteDeliveryRepositoryTest" time="0.004"/>
+  <testcase name="C7_5 idempotent second EXPIRE returns AlreadyInTarget and held remains absent" classname="io.godstone.mesh.delivery.SqliteDeliveryRepositoryTest" time="0.004"/>
+  <testcase name="mutation control - dropping the state guard lets an ACK overwrite a CANCELLED row (proves it is load-bearing)" classname="io.godstone.mesh.delivery.SqliteDeliveryRepositoryTest" time="0.007"/>
+  <testcase name="C7_5 fault after terminal CAS both restored on CANCEL" classname="io.godstone.mesh.delivery.SqliteDeliveryRepositoryTest" time="0.004"/>
+  <testcase name="a read failure is StorageFailure at the get and lookup seams, distinct from NotFound" classname="io.godstone.mesh.delivery.SqliteDeliveryRepositoryTest" time="0.003"/>
+  <testcase name="C7_4_1 fault after held DELETE both restored" classname="io.godstone.mesh.delivery.SqliteDeliveryRepositoryTest" time="0.004"/>
+  <testcase name="the schema CHECK enforces the binding, state and 16-byte msg_id invariants at the DB level" classname="io.godstone.mesh.delivery.SqliteDeliveryRepositoryTest" time="0.004"/>
+  <testcase name="C7_5 fault after terminal CAS both restored on EXPIRE" classname="io.godstone.mesh.delivery.SqliteDeliveryRepositoryTest" time="0.005"/>
+  <testcase name="msg_id NULL and length boundaries are rejected by both tables at the raw SQL level" classname="io.godstone.mesh.delivery.SqliteDeliveryRepositoryTest" time="0.003"/>
+  <testcase name="C7_5 production queued C6_6 to EXPIRE success" classname="io.godstone.mesh.delivery.SqliteDeliveryRepositoryTest" time="0.005"/>
+  <testcase name="C7_5 CANCEL wins ACK loses" classname="io.godstone.mesh.delivery.SqliteDeliveryRepositoryTest" time="0.005"/>
+  <testcase name="C7_4_1 production-shaped handed C6_6 to C7_4 success" classname="io.godstone.mesh.delivery.SqliteDeliveryRepositoryTest" time="0.004"/>
+  <testcase name="a duplicate authenticated ACK is DuplicateAuthenticatedAck, not Applied" classname="io.godstone.mesh.delivery.SqliteDeliveryRepositoryTest" time="0.004"/>
+  <testcase name="C7_5 EXPIRE wins ACK loses" classname="io.godstone.mesh.delivery.SqliteDeliveryRepositoryTest" time="0.005"/>
+  <testcase name="DeliveryTracker over SqliteDeliveryRepository binds the ACK to the durable expected recipient" classname="io.godstone.mesh.delivery.SqliteDeliveryRepositoryTest" time="0.005"/>
+  <testcase name="case 3 - retry with same logical identity produces same msg_id and is idempotent" classname="io.godstone.mesh.delivery.SqliteDeliveryRepositoryTest" time="0.003"/>
+  <testcase name="a persisted state code 0 (UNAVAILABLE) reads as Corrupt and cannot be silently revived" classname="io.godstone.mesh.delivery.SqliteDeliveryRepositoryTest" time="0.003"/>
+  <testcase name="C7_5 cross-terminal rejection EXPIRED then cancel returns RejectedState" classname="io.godstone.mesh.delivery.SqliteDeliveryRepositoryTest" time="0.004"/>
+  <testcase name="a malformed current-version schema is rejected fail-closed" classname="io.godstone.mesh.delivery.SqliteDeliveryRepositoryTest" time="0.001"/>
+  <testcase name="C7_4_1 missing-held active row rollback and Corrupt" classname="io.godstone.mesh.delivery.SqliteDeliveryRepositoryTest" time="0.003"/>
+  <testcase name="C7_4_1 production enqueueDirectOutbound after ACK returns RejectedTerminalState" classname="io.godstone.mesh.delivery.SqliteDeliveryRepositoryTest" time="0.004"/>
+  <testcase name="C7_5 ACK wins concurrent in-flight CANCEL" classname="io.godstone.mesh.delivery.SqliteDeliveryRepositoryTest" time="0.005"/>
+  <testcase name="C7_5 ACK wins concurrent in-flight EXPIRE" classname="io.godstone.mesh.delivery.SqliteDeliveryRepositoryTest" time="0.004"/>
+  <testcase name="case 2 - two distinct logical sends to same recipient with same content coexist" classname="io.godstone.mesh.delivery.SqliteDeliveryRepositoryTest" time="0.003"/>
+  <testcase name="an enqueue read or insert failure is EnqueueResult StorageFailure" classname="io.godstone.mesh.delivery.SqliteDeliveryRepositoryTest" time="0.003"/>
+  <testcase name="a transition CAS failure is TransitionResult StorageFailure" classname="io.godstone.mesh.delivery.SqliteDeliveryRepositoryTest" time="0.003"/>
+  <testcase name="C7_4_1 production-shaped queued C6_6 to C7_4 success" classname="io.godstone.mesh.delivery.SqliteDeliveryRepositoryTest" time="0.004"/>
+  <testcase name="an unknown ack_mode code decodes to null (fail-closed)" classname="io.godstone.mesh.delivery.SqliteDeliveryRepositoryTest" time="0.0"/>
+  <testcase name="C7_5 ACK committed then EXPIRE zero-row classification" classname="io.godstone.mesh.delivery.SqliteDeliveryRepositoryTest" time="0.003"/>
+  <testcase name="C7_5 CANCEL vs EXPIRE" classname="io.godstone.mesh.delivery.SqliteDeliveryRepositoryTest" time="0.005"/>
+  <testcase name="an ACK CAS failure is AckResult StorageFailure" classname="io.godstone.mesh.delivery.SqliteDeliveryRepositoryTest" time="0.002"/>
+  <testcase name="a future user_version is rejected fail-closed and left untouched" classname="io.godstone.mesh.delivery.SqliteDeliveryRepositoryTest" time="0.001"/>
+  <testcase name="C7_5 fault after held DELETE both restored on CANCEL" classname="io.godstone.mesh.delivery.SqliteDeliveryRepositoryTest" time="0.005"/>
+  <testcase name="concurrency - ACK vs storage failure - auth succeeds, CAS faults, state NOT acknowledged" classname="io.godstone.mesh.delivery.SqliteDeliveryRepositoryTest" time="0.003"/>
+  <testcase name="C7_5 fault after held DELETE both restored on EXPIRE" classname="io.godstone.mesh.delivery.SqliteDeliveryRepositoryTest" time="0.004"/>
+  <testcase name="enqueue creates a QUEUED_DURABLY row with the ack mode and recipient" classname="io.godstone.mesh.delivery.SqliteDeliveryRepositoryTest" time="0.003"/>
+  <testcase name="case 1 - alice and bob concurrent sends with same content and time coexist as distinct rows" classname="io.godstone.mesh.delivery.SqliteDeliveryRepositoryTest" time="0.002"/>
+  <testcase name="C7_4_1 rejected authentication held retained" classname="io.godstone.mesh.delivery.SqliteDeliveryRepositoryTest" time="0.004"/>
+  <testcase name="C7_5 MARK_HANDED retains held frame" classname="io.godstone.mesh.delivery.SqliteDeliveryRepositoryTest" time="0.003"/>
+  <testcase name="concurrency - markHanded vs cancel - either order legal, no transition moves OUT of terminal" classname="io.godstone.mesh.delivery.SqliteDeliveryRepositoryTest" time="0.005"/>
+  <testcase name="C7_5 capacity released on CANCEL is reusable by new frame" classname="io.godstone.mesh.delivery.SqliteDeliveryRepositoryTest" time="0.004"/>
+  <testcase name="a NONE-mode enqueue binds no recipient" classname="io.godstone.mesh.delivery.SqliteDeliveryRepositoryTest" time="0.003"/>
+  <testcase name="an ACK with the wrong recipient is UnknownMessage - an old ACK never binds to a re-bound row" classname="io.godstone.mesh.delivery.SqliteDeliveryRepositoryTest" time="0.003"/>
+  <testcase name="concurrency - cancel vs expire - exactly one terminal CAS Applied, other RejectedState, final is one terminal" classname="io.godstone.mesh.delivery.SqliteDeliveryRepositoryTest" time="0.004"/>
+  <testcase name="C7_5 capacity released on EXPIRE is reusable by new frame" classname="io.godstone.mesh.delivery.SqliteDeliveryRepositoryTest" time="0.004"/>
+  <testcase name="C7_5 production handed C6_6 to CANCEL success" classname="io.godstone.mesh.delivery.SqliteDeliveryRepositoryTest" time="0.003"/>
+  <testcase name="a tracker over a corrupt record rejects every mutation and never reports UNAVAILABLE" classname="io.godstone.mesh.delivery.SqliteDeliveryRepositoryTest" time="0.003"/>
+  <testcase name="clear drops the row and returns a typed ClearResult" classname="io.godstone.mesh.delivery.SqliteDeliveryRepositoryTest" time="0.002"/>
+  <testcase name="C7_5 production enqueueDirectOutbound after EXPIRE returns RejectedTerminalState" classname="io.godstone.mesh.delivery.SqliteDeliveryRepositoryTest" time="0.003"/>
+  <testcase name="mutation control - dropping the transition state guard lets a cancel overwrite an ACKNOWLEDGED row" classname="io.godstone.mesh.delivery.SqliteDeliveryRepositoryTest" time="0.005"/>
+  <testcase name="production composition is fail-closed under the unresolved resolver" classname="io.godstone.mesh.delivery.SqliteDeliveryRepositoryTest" time="0.003"/>
+  <testcase name="C7_5 transition disposition policy" classname="io.godstone.mesh.delivery.SqliteDeliveryRepositoryTest" time="0.002"/>
+  <testcase name="concurrency - old Alice ACK vs recipient rebinding to Bob - ACK is UnknownMessage, Bob row unchanged" classname="io.godstone.mesh.delivery.SqliteDeliveryRepositoryTest" time="0.003"/>
+  <testcase name="C7_4_1 duplicate authenticated race one Applied one Duplicate" classname="io.godstone.mesh.delivery.SqliteDeliveryRepositoryTest" time="0.004"/>
+  <testcase name="C7_5 production enqueueDirectOutbound after CANCEL returns RejectedTerminalState" classname="io.godstone.mesh.delivery.SqliteDeliveryRepositoryTest" time="0.004"/>
+  <testcase name="C7_5 cross-terminal rejection CANCELLED then expire returns RejectedState" classname="io.godstone.mesh.delivery.SqliteDeliveryRepositoryTest" time="0.003"/>
+  <testcase name="concurrency - two authenticated ACKs - exactly one Applied, one DuplicateAuthenticatedAck, final ACKNOWLEDGED" classname="io.godstone.mesh.delivery.SqliteDeliveryRepositoryTest" time="0.003"/>
+  <testcase name="C7_5 production handed C6_6 to EXPIRE success" classname="io.godstone.mesh.delivery.SqliteDeliveryRepositoryTest" time="0.003"/>
+  <testcase name="a second enqueue for the same msg_id is idempotent on the same binding and does not mutate the recipient" classname="io.godstone.mesh.delivery.SqliteDeliveryRepositoryTest" time="0.003"/>
+  <testcase name="C7_4_1 sequential duplicate ACK short-circuits without re-auth" classname="io.godstone.mesh.delivery.SqliteDeliveryRepositoryTest" time="0.004"/>
+  <testcase name="concurrency - ACK vs expire - expire wins, ACK is RejectedState, final is EXPIRED" classname="io.godstone.mesh.delivery.SqliteDeliveryRepositoryTest" time="0.003"/>
+  <testcase name="C7_5 missing-held active row rollback and Corrupt on CANCEL" classname="io.godstone.mesh.delivery.SqliteDeliveryRepositoryTest" time="0.003"/>
+  <testcase name="a transition to the current state is AlreadyInTarget, not a fresh transition" classname="io.godstone.mesh.delivery.SqliteDeliveryRepositoryTest" time="0.003"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

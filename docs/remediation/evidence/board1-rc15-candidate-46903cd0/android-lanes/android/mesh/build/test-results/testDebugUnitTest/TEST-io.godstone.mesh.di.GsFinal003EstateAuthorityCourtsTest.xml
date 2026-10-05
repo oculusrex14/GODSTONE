@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.godstone.mesh.di.GsFinal003EstateAuthorityCourtsTest" tests="8" skipped="0" failures="0" errors="0" timestamp="2026-10-04T22:16:14" hostname="Naraharikripas-Mac-mini.local" time="0.06">
+  <properties/>
+  <testcase name="aReentrantDriveOnTheOneOwnerIsRefused" classname="io.godstone.mesh.di.GsFinal003EstateAuthorityCourtsTest" time="0.007"/>
+  <testcase name="theProductionJournalReportsItsCommitVerdict" classname="io.godstone.mesh.di.GsFinal003EstateAuthorityCourtsTest" time="0.005"/>
+  <testcase name="aFailedCheckpointStopsTheLadderBeforeAnyEffect" classname="io.godstone.mesh.di.GsFinal003EstateAuthorityCourtsTest" time="0.006"/>
+  <testcase name="theCorruptResolutionErasesAndNeverClaimsCleanStart" classname="io.godstone.mesh.di.GsFinal003EstateAuthorityCourtsTest" time="0.01"/>
+  <testcase name="aStoreThatCannotNameAGenerationFailsClosed" classname="io.godstone.mesh.di.GsFinal003EstateAuthorityCourtsTest" time="0.007"/>
+  <testcase name="theRawOwnerBoundaryConsumesTheAuthority" classname="io.godstone.mesh.di.GsFinal003EstateAuthorityCourtsTest" time="0.009"/>
+  <testcase name="aCompletedWipeIsADifferentEstate" classname="io.godstone.mesh.di.GsFinal003EstateAuthorityCourtsTest" time="0.009"/>
+  <testcase name="thePermitDoorAdmitsOnlyNonConstructibleEvidence" classname="io.godstone.mesh.di.GsFinal003EstateAuthorityCourtsTest" time="0.007"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

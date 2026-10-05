@@ -1,0 +1,18 @@
+
+== simulator selftest: mutation | expected | observed | verdict ==
+   0. the real log, unmutated -- MUST be accepted                                     green  green  KILLED
+   1. (A) the skipped aggregate short by one test (a swallowed arm)                   red    red    KILLED
+   2. (D) an ordinary internal skip (any reason)                                      red    red    KILLED
+   2b. (D) the historical EXTERNAL-BLOCKED + pinned-artifact reason -- STILL REFUSED  red    red    KILLED
+   3. a skipped arm with NO annotation (an internal skip wearing no reason)           red    red    KILLED
+   4. no raw status line                                                              red    red    KILLED
+   5. an empty log                                                                    red    red    KILLED
+   6. stale source digest                                                             red    red    KILLED
+   7. a skip naming the artifact but NOT the EXTERNAL-BLOCKED disposition             red    red    KILLED
+   8. one source-declared arm omitted from the log (count reconciles)                 red    red    KILLED
+   9. a verdict for an arm the sources do NOT declare (unexpected arm)                red    red    KILLED
+   10. a duplicated verdict (the old guard's narrow window)                           red    green  ESCAPED
+   11. roster names only simulator-runnable classes                                   clean  clean  KILLED
+   12. roster arm total equals the log's executed count                               1406   1406   KILLED
+
+simulator selftest: 13/14 mutations caught

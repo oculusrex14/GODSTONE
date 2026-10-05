@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.godstone.mesh.readiness.ReadinessT28Test" tests="10" skipped="0" failures="0" errors="0" timestamp="2026-10-04T22:16:25" hostname="Naraharikripas-Mac-mini.local" time="0.001">
+  <properties/>
+  <testcase name="testBackgroundCanNotStartAStoppedRuntimeMakesNoOsCalls" classname="io.godstone.mesh.readiness.ReadinessT28Test" time="0.0"/>
+  <testcase name="testAdapterRepeatedAuthorityStartStartsTheRealTransportOnce" classname="io.godstone.mesh.readiness.ReadinessT28Test" time="0.0"/>
+  <testcase name="testWipeDrainsBeforeKeyErasure" classname="io.godstone.mesh.readiness.ReadinessT28Test" time="0.001"/>
+  <testcase name="testProcessRecreationInheritsNoSessionAndNoLease" classname="io.godstone.mesh.readiness.ReadinessT28Test" time="0.0"/>
+  <testcase name="testAdapterPowerOffUniformlyStopsTheRealTransportAndIsTerminal" classname="io.godstone.mesh.readiness.ReadinessT28Test" time="0.0"/>
+  <testcase name="testPermissionRemovalIsTerminalNeverReady" classname="io.godstone.mesh.readiness.ReadinessT28Test" time="0.0"/>
+  <testcase name="testLifecycleCallbackDuringWipeIsDroppedByRetiredContext" classname="io.godstone.mesh.readiness.ReadinessT28Test" time="0.0"/>
+  <testcase name="testStartIsIdempotentAndBeginsExactlyOneContext" classname="io.godstone.mesh.readiness.ReadinessT28Test" time="0.0"/>
+  <testcase name="testPowerLossUniformlyInvalidatesAndIsTerminalNeverReady" classname="io.godstone.mesh.readiness.ReadinessT28Test" time="0.0"/>
+  <testcase name="testAdapterGovernsTheRealTransportAndBackgroundCannotStartAStoppedRuntime" classname="io.godstone.mesh.readiness.ReadinessT28Test" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

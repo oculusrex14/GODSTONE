@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.godstone.core.readiness.ReadinessArchive002Test" tests="11" skipped="0" failures="0" errors="0" timestamp="2026-10-04T22:12:27" hostname="Naraharikripas-Mac-mini.local" time="0.126">
+  <properties/>
+  <testcase name="test_archive002_no_read_road_swalloweth_a_failure" classname="io.godstone.core.readiness.ReadinessArchive002Test" time="0.066"/>
+  <testcase name="test_w02_a_read_failure_is_never_an_empty_result" classname="io.godstone.core.readiness.ReadinessArchive002Test" time="0.007"/>
+  <testcase name="test_archive001_a_matching_manifest_yields_ready_and_a_descriptor" classname="io.godstone.core.readiness.ReadinessArchive002Test" time="0.009"/>
+  <testcase name="test_archive001_no_descriptor_without_a_verified_manifest" classname="io.godstone.core.readiness.ReadinessArchive002Test" time="0.006"/>
+  <testcase name="testTheAnchorIsAValidPlaceAndNotAStaleIdentity" classname="io.godstone.core.readiness.ReadinessArchive002Test" time="0.001"/>
+  <testcase name="test_archive001_a_wrong_tier_manifest_is_unavailable" classname="io.godstone.core.readiness.ReadinessArchive002Test" time="0.008"/>
+  <testcase name="test_archive002_an_unarmed_road_is_not_an_uncited_row" classname="io.godstone.core.readiness.ReadinessArchive002Test" time="0.006"/>
+  <testcase name="test_archive001_bytes_alone_are_not_ready" classname="io.godstone.core.readiness.ReadinessArchive002Test" time="0.007"/>
+  <testcase name="test_w03_the_positive_control_still_opens_and_answers" classname="io.godstone.core.readiness.ReadinessArchive002Test" time="0.007"/>
+  <testcase name="test_archive001_a_manifest_of_other_bytes_is_unavailable" classname="io.godstone.core.readiness.ReadinessArchive002Test" time="0.007"/>
+  <testcase name="test_w01_a_malformed_schema_is_refused" classname="io.godstone.core.readiness.ReadinessArchive002Test" time="0.002"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

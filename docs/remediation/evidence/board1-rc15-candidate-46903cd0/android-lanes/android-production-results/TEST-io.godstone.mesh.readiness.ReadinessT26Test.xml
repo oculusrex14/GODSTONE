@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.godstone.mesh.readiness.ReadinessT26Test" tests="13" skipped="0" failures="0" errors="0" timestamp="2026-10-04T22:16:25" hostname="Naraharikripas-Mac-mini.local" time="0.088">
+  <properties/>
+  <testcase name="testW11TheProductionClockIsMonotonicNotAWallClock" classname="io.godstone.mesh.readiness.ReadinessT26Test" time="0.0"/>
+  <testcase name="testAnUnmappedClassFallsBackToTheBoundedDefaultNotUnbounded" classname="io.godstone.mesh.readiness.ReadinessT26Test" time="0.001"/>
+  <testcase name="testW08RawPreAuthTrafficIsChargedAndRefusedAtTheTransportIngress" classname="io.godstone.mesh.readiness.ReadinessT26Test" time="0.003"/>
+  <testcase name="testSustainedSOSIsChargedAndBoundedNotExempt" classname="io.godstone.mesh.readiness.ReadinessT26Test" time="0.0"/>
+  <testcase name="testW12RawAirTrafficIsChargedAtTheScanDoorToo" classname="io.godstone.mesh.readiness.ReadinessT26Test" time="0.077"/>
+  <testcase name="testWallClockRollbackGrantsNoRefundAndShrinksNoExclusion" classname="io.godstone.mesh.readiness.ReadinessT26Test" time="0.001"/>
+  <testcase name="testAdmittedDirectTrafficIsFairAndNotStarvedBySpam" classname="io.godstone.mesh.readiness.ReadinessT26Test" time="0.001"/>
+  <testcase name="testW09TheIngressBudgetChargethBeforeParsingAndNotOnlyForKnownPeers" classname="io.godstone.mesh.readiness.ReadinessT26Test" time="0.001"/>
+  <testcase name="testSybilFloodIsBoundedByTheGovernorAdmittingBeforeAllocating" classname="io.godstone.mesh.readiness.ReadinessT26Test" time="0.0"/>
+  <testcase name="testW13TheDownstreamCountersAreExactNotTheLossyRing" classname="io.godstone.mesh.readiness.ReadinessT26Test" time="0.001"/>
+  <testcase name="testAnOversizedBurstIsDroppedUnparsedAndCostsTrust" classname="io.godstone.mesh.readiness.ReadinessT26Test" time="0.001"/>
+  <testcase name="testConcurrentConsumptionAdmitsExactlyTheBudgetNeverMore" classname="io.godstone.mesh.readiness.ReadinessT26Test" time="0.002"/>
+  <testcase name="testW10TheGovernorsProductionBoundIsTheSpecifiedTwoHundredFiftySix" classname="io.godstone.mesh.readiness.ReadinessT26Test" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

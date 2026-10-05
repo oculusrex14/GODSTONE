@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.godstone.mesh.transport.ReadinessAndroid04Test" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-10-04T22:16:37" hostname="Naraharikripas-Mac-mini.local" time="0.0">
+  <properties/>
+  <testcase name="testW01ThePositiveControlTheArmedGlassFallsAtItsBound" classname="io.godstone.mesh.transport.ReadinessAndroid04Test" time="0.0"/>
+  <testcase name="testW05TheProductionDefaultDeadlineClockIsNotTheWallClock" classname="io.godstone.mesh.transport.ReadinessAndroid04Test" time="0.0"/>
+  <testcase name="testW03ASpentGlassMayNeverUnExpire" classname="io.godstone.mesh.transport.ReadinessAndroid04Test" time="0.0"/>
+  <testcase name="testW04ALapsedEchoBoundMayNotUnLapseOnARollback" classname="io.godstone.mesh.transport.ReadinessAndroid04Test" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

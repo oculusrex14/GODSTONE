@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.godstone.mesh.identity.ReadinessAndroid05Test" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-10-04T22:16:16" hostname="Naraharikripas-Mac-mini.local" time="0.001">
+  <properties/>
+  <testcase name="testW01ThePositiveControlADrainWithNothingInFlightIsClean" classname="io.godstone.mesh.identity.ReadinessAndroid05Test" time="0.001"/>
+  <testcase name="testW05TheRealAdapterAsksAnInFlightAwareTransportAndReportethItsMeasuredCount" classname="io.godstone.mesh.identity.ReadinessAndroid05Test" time="0.0"/>
+  <testcase name="testW07TheDrainReportethTheResourcesItACTUALLYReleased" classname="io.godstone.mesh.identity.ReadinessAndroid05Test" time="0.0"/>
+  <testcase name="testW08ADrainThatReleasedNothingMayNotClaimARelease" classname="io.godstone.mesh.identity.ReadinessAndroid05Test" time="0.0"/>
+  <testcase name="testW02InFlightWorkThatDidNotTerminateMayNotBeReportedAsSuccess" classname="io.godstone.mesh.identity.ReadinessAndroid05Test" time="0.0"/>
+  <testcase name="testW06ACoarseTransportIsNotPretendedToHaveBeenDrained" classname="io.godstone.mesh.identity.ReadinessAndroid05Test" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

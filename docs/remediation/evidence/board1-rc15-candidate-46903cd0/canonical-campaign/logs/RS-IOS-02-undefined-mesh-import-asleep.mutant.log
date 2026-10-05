@@ -1,0 +1,18 @@
+test_a_mesh_importing_image_is_refused_by_its_symbol_table (test_audit_supplychain_harness.IosContentInventoryCourt.test_a_mesh_importing_image_is_refused_by_its_symbol_table) ... FAIL
+
+======================================================================
+FAIL: test_a_mesh_importing_image_is_refused_by_its_symbol_table (test_audit_supplychain_harness.IosContentInventoryCourt.test_a_mesh_importing_image_is_refused_by_its_symbol_table)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/board1-rc15-preparatory-46903cd0-xke1sctz/rod-worktrees/wt_RS-IOS-02-undefined-mesh-import-asleep/tools/readiness/tests/test_audit_supplychain_harness.py", line 375, in test_a_mesh_importing_image_is_refused_by_its_symbol_table
+    self.assertEqual("FAIL", report["verdict"])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'FAIL' != 'PASS'
+- FAIL
++ PASS
+
+
+----------------------------------------------------------------------
+Ran 1 test in 0.016s
+
+FAILED (failures=1)

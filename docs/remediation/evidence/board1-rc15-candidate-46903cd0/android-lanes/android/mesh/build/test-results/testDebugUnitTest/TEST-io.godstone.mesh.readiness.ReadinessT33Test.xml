@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.godstone.mesh.readiness.ReadinessT33Test" tests="13" skipped="0" failures="0" errors="0" timestamp="2026-10-04T22:16:25" hostname="Naraharikripas-Mac-mini.local" time="0.005">
+  <properties/>
+  <testcase name="testInboxCapRefusesInboxRowsAndDeliveryCapRefusesDeliveryRows" classname="io.godstone.mesh.readiness.ReadinessT33Test" time="0.001"/>
+  <testcase name="testNestedAfterCommitDuringDispatchFiresNoObserverTwice" classname="io.godstone.mesh.readiness.ReadinessT33Test" time="0.0"/>
+  <testcase name="testCapUnderConcurrentInsertIsNeverExceeded" classname="io.godstone.mesh.readiness.ReadinessT33Test" time="0.0"/>
+  <testcase name="testMillionsOfDuplicateAndTerminalInputsAreRejectedIdempotent" classname="io.godstone.mesh.readiness.ReadinessT33Test" time="0.001"/>
+  <testcase name="testObserverReentryIsDeferredAndFiresOnlyAfterCommit" classname="io.godstone.mesh.readiness.ReadinessT33Test" time="0.0"/>
+  <testcase name="testEvictionUpdatesDeliveryStateInTheSameTransaction" classname="io.godstone.mesh.readiness.ReadinessT33Test" time="0.001"/>
+  <testcase name="testUnregisterDuringDispatchLeavesTheDisposedObserverInert" classname="io.godstone.mesh.readiness.ReadinessT33Test" time="0.0"/>
+  <testcase name="testWalGrowthCheckpointsOutsideActiveTransaction" classname="io.godstone.mesh.readiness.ReadinessT33Test" time="0.0"/>
+  <testcase name="testLeasePositiveActiveNextRoundAndAbortLaws" classname="io.godstone.mesh.readiness.ReadinessT33Test" time="0.0"/>
+  <testcase name="testReleaseAllDuringDispatchLeavesRemainingObserversInert" classname="io.godstone.mesh.readiness.ReadinessT33Test" time="0.0"/>
+  <testcase name="testSqlFailureInHeldBytesNeverFabricatesZeroAndRefusesAdmission" classname="io.godstone.mesh.readiness.ReadinessT33Test" time="0.0"/>
+  <testcase name="testAllSosStoreStillHoldsTheHardCapIncludingSos" classname="io.godstone.mesh.readiness.ReadinessT33Test" time="0.002"/>
+  <testcase name="testStableEvictionOrderIsDeterministic" classname="io.godstone.mesh.readiness.ReadinessT33Test" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

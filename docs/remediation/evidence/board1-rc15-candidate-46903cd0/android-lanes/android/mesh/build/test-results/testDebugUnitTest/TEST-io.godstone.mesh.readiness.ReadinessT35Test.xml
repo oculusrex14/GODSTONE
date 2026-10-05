@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.godstone.mesh.readiness.ReadinessT35Test" tests="11" skipped="0" failures="0" errors="0" timestamp="2026-10-04T22:16:25" hostname="Naraharikripas-Mac-mini.local" time="0.002">
+  <properties/>
+  <testcase name="testMsgIdBoundWithoutCircularInclusion" classname="io.godstone.mesh.readiness.ReadinessT35Test" time="0.0"/>
+  <testcase name="testLowOrderDhInputsAreRejected" classname="io.godstone.mesh.readiness.ReadinessT35Test" time="0.0"/>
+  <testcase name="testIosSignedVectorAuthenticatesOnJvmIsle" classname="io.godstone.mesh.readiness.ReadinessT35Test" time="0.0"/>
+  <testcase name="testTheActualSealedOpenerReturnethOneBoundedRejectAndNeverThroweth" classname="io.godstone.mesh.readiness.ReadinessT35Test" time="0.001"/>
+  <testcase name="testStructuralZeroSignatureSosFixtureRejectedAtRuntime" classname="io.godstone.mesh.readiness.ReadinessT35Test" time="0.0"/>
+  <testcase name="testModifiedPriorityTimeOrBodyBreaksTheSignature" classname="io.godstone.mesh.readiness.ReadinessT35Test" time="0.0"/>
+  <testcase name="testValidSignatureWrongRecipientRejectedBeforeInbox" classname="io.godstone.mesh.readiness.ReadinessT35Test" time="0.001"/>
+  <testcase name="testMalformedLengthAndUtf8RejectedFailClosed" classname="io.godstone.mesh.readiness.ReadinessT35Test" time="0.0"/>
+  <testcase name="testCrossPlatformBytesAndSignatureVectors" classname="io.godstone.mesh.readiness.ReadinessT35Test" time="0.0"/>
+  <testcase name="testKnownRecipientKeyImpersonationIsRejected" classname="io.godstone.mesh.readiness.ReadinessT35Test" time="0.0"/>
+  <testcase name="testUnknownTimeRuleAndTimeQualityBinding" classname="io.godstone.mesh.readiness.ReadinessT35Test" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

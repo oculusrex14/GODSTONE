@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.godstone.mesh.crypto.SessionManagerTest" tests="17" skipped="0" failures="0" errors="0" timestamp="2026-10-04T22:16:12" hostname="Naraharikripas-Mac-mini.local" time="0.035">
+  <properties/>
+  <testcase name="testSessionManager_InvalidateForWipe_PermanentlyRefusesNewAndExistingSessions" classname="io.godstone.mesh.crypto.SessionManagerTest" time="0.002"/>
+  <testcase name="testSessionManager_SealBeforeReady_ReturnsNull" classname="io.godstone.mesh.crypto.SessionManagerTest" time="0.001"/>
+  <testcase name="testSessionManager_QuarantinedHandshake_NeverReachesReady_SealFails" classname="io.godstone.mesh.crypto.SessionManagerTest" time="0.002"/>
+  <testcase name="testSessionManager_SealAndOpen_RoundTripSucceedsOnlyWhenReady" classname="io.godstone.mesh.crypto.SessionManagerTest" time="0.003"/>
+  <testcase name="testSessionManager_OpenBeforeReady_ReturnsNull" classname="io.godstone.mesh.crypto.SessionManagerTest" time="0.0"/>
+  <testcase name="crypto002TheRecordBudgetRetirethAtItsBoundaryThroughTheManager" classname="io.godstone.mesh.crypto.SessionManagerTest" time="0.003"/>
+  <testcase name="testSessionManager_RejectedHandshake_NeverReachesReady_SealFails" classname="io.godstone.mesh.crypto.SessionManagerTest" time="0.002"/>
+  <testcase name="crypto002AnAgeTimerIsArmedAtEstablishmentAndItsFiringCannotTouchASuccessor" classname="io.godstone.mesh.crypto.SessionManagerTest" time="0.003"/>
+  <testcase name="testSessionManager_DropPeer_CleansUpController_SealFails" classname="io.godstone.mesh.crypto.SessionManagerTest" time="0.003"/>
+  <testcase name="testSessionManager_InitiatorProcessHs2_Emits197ByteHs3_AndReachesReady" classname="io.godstone.mesh.crypto.SessionManagerTest" time="0.002"/>
+  <testcase name="crypto002InboundTrafficDoesNotConsumeTheOutboundBudget" classname="io.godstone.mesh.crypto.SessionManagerTest" time="0.002"/>
+  <testcase name="testSessionManager_ResponderProcessHs3_ReachesReady" classname="io.godstone.mesh.crypto.SessionManagerTest" time="0.003"/>
+  <testcase name="testSessionManager_ResponderProcessHs1_Returns229ByteHs2" classname="io.godstone.mesh.crypto.SessionManagerTest" time="0.001"/>
+  <testcase name="crypto002AnAgedReadMustRetireThroughTheManagerAndClearReadiness" classname="io.godstone.mesh.crypto.SessionManagerTest" time="0.003"/>
+  <testcase name="testSessionManager_InitiatorStart_Returns32ByteHs1" classname="io.godstone.mesh.crypto.SessionManagerTest" time="0.0"/>
+  <testcase name="testSessionManager_DestroyAll_DestroysAllControllers" classname="io.godstone.mesh.crypto.SessionManagerTest" time="0.002"/>
+  <testcase name="crypto002AnIdleAgedSessionMustNotStillPublishReady" classname="io.godstone.mesh.crypto.SessionManagerTest" time="0.003"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

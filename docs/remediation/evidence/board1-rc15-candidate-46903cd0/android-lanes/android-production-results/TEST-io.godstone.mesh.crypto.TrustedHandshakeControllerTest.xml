@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.godstone.mesh.crypto.TrustedHandshakeControllerTest" tests="30" skipped="0" failures="0" errors="0" timestamp="2026-10-04T22:16:12" hostname="Naraharikripas-Mac-mini.local" time="0.082">
+  <properties/>
+  <testcase name="testTrustedHandshake_H_A05_HS2InvalidSignature_FailsValidation_NoHS3_NotReady" classname="io.godstone.mesh.crypto.TrustedHandshakeControllerTest" time="0.003"/>
+  <testcase name="testTrustedHandshake_TamperedHandshakeCiphertext_NoiseAuthFails_NoValidation_NoRepoApply" classname="io.godstone.mesh.crypto.TrustedHandshakeControllerTest" time="0.002"/>
+  <testcase name="testTrustedHandshake_H_A03_HS2MalformedLength_FailsValidation_NoHS3_NotReady" classname="io.godstone.mesh.crypto.TrustedHandshakeControllerTest" time="0.001"/>
+  <testcase name="testTrustedHandshake_H_A04_HS2UnsupportedVersion_FailsValidation_NoHS3_NotReady" classname="io.godstone.mesh.crypto.TrustedHandshakeControllerTest" time="0.002"/>
+  <testcase name="testTrustedHandshake_H_A01_FullFirstSeenHandshake_SucceedsAndReachesReady" classname="io.godstone.mesh.crypto.TrustedHandshakeControllerTest" time="0.006"/>
+  <testcase name="testTrustedHandshake_H_A12_HS2RepositoryStorageFailure_NoHS3_NotReady" classname="io.godstone.mesh.crypto.TrustedHandshakeControllerTest" time="0.002"/>
+  <testcase name="testTrustedHandshake_H_A11_HS2RepositoryCorrupt_NoHS3_NotReady" classname="io.godstone.mesh.crypto.TrustedHandshakeControllerTest" time="0.002"/>
+  <testcase name="testInitiator_A_HS3_FAIL_03_WriterReturns197FakeBytes_NoNoiseWrite_FailsClosed" classname="io.godstone.mesh.crypto.TrustedHandshakeControllerTest" time="0.002"/>
+  <testcase name="testTrustedHandshake_H_A02_RepeatHandshake_AcceptedAndReachesReady" classname="io.godstone.mesh.crypto.TrustedHandshakeControllerTest" time="0.005"/>
+  <testcase name="testTrustedHandshake_H_A16_ApplicationTransportRoundTrip_AfterBothReady_Succeeds" classname="io.godstone.mesh.crypto.TrustedHandshakeControllerTest" time="0.002"/>
+  <testcase name="testTrustedHandshake_H_A19_RemoteStaticTiming" classname="io.godstone.mesh.crypto.TrustedHandshakeControllerTest" time="0.002"/>
+  <testcase name="testTrustedHandshake_H_A17_PostApprovalHandshakeWithNewStatic_AcceptedAndReachesReady" classname="io.godstone.mesh.crypto.TrustedHandshakeControllerTest" time="0.006"/>
+  <testcase name="testResponder_NoiseEstablishedObservedDuringTrustApply_AcceptedAdvancesToReady" classname="io.godstone.mesh.crypto.TrustedHandshakeControllerTest" time="0.002"/>
+  <testcase name="testTrustedHandshake_H_A08_HS2KeyChangedQuarantined_NoHS3_NotReady" classname="io.godstone.mesh.crypto.TrustedHandshakeControllerTest" time="0.003"/>
+  <testcase name="testTrustedHandshake_H_A18_HS1NonEmptyPayload_RejectedByResponder" classname="io.godstone.mesh.crypto.TrustedHandshakeControllerTest" time="0.001"/>
+  <testcase name="testTrustedHandshake_H_A09_HS2OldAcceptedReplayWhilePending_NoHS3_NotReady" classname="io.godstone.mesh.crypto.TrustedHandshakeControllerTest" time="0.004"/>
+  <testcase name="testHandshakeReadResult_DefensiveImmutability" classname="io.godstone.mesh.crypto.TrustedHandshakeControllerTest" time="0.0"/>
+  <testcase name="testInitiator_A_HS3_FAIL_05_IssuerThrows_FailsClosed" classname="io.godstone.mesh.crypto.TrustedHandshakeControllerTest" time="0.002"/>
+  <testcase name="testTrustedHandshake_H_A10_HS2RevokedResponder_Rejected_NoHS3_NotReady" classname="io.godstone.mesh.crypto.TrustedHandshakeControllerTest" time="0.004"/>
+  <testcase name="testTrustedHandshake_H_A07_HS2AdvertisementHintMismatch_FailsValidation_NoHS3_NotReady" classname="io.godstone.mesh.crypto.TrustedHandshakeControllerTest" time="0.001"/>
+  <testcase name="testInitiator_A_HS3_FAIL_06_IssuerReturnsNon133Bytes_FailsClosed" classname="io.godstone.mesh.crypto.TrustedHandshakeControllerTest" time="0.002"/>
+  <testcase name="testInitiator_A_HS3_FAIL_01_WriterThrows_FailsClosed" classname="io.godstone.mesh.crypto.TrustedHandshakeControllerTest" time="0.002"/>
+  <testcase name="testResponder_NoiseEstablishedObservedDuringTrustApply_QuarantineDeniesReadyAndSeal" classname="io.godstone.mesh.crypto.TrustedHandshakeControllerTest" time="0.002"/>
+  <testcase name="testTrustedHandshake_H_A14_ResponderHS3InvalidSignature_RepoApplyCountZero_NotReady_SealDenied" classname="io.godstone.mesh.crypto.TrustedHandshakeControllerTest" time="0.001"/>
+  <testcase name="testInitiator_A_HS3_FAIL_02_WriterReturnsWrongLength_NoNoiseWrite_FailsClosed" classname="io.godstone.mesh.crypto.TrustedHandshakeControllerTest" time="0.002"/>
+  <testcase name="testInitiator_A_HS3_FAIL_04_RealNoiseSplit_ThenMalformedReturnedLength_FailsClosed" classname="io.godstone.mesh.crypto.TrustedHandshakeControllerTest" time="0.002"/>
+  <testcase name="testTrustedHandshake_H_A06_HS2StaticMismatch_FailsValidation_NoHS3_NotReady" classname="io.godstone.mesh.crypto.TrustedHandshakeControllerTest" time="0.002"/>
+  <testcase name="testTrustedHandshake_H_A15_SealOpenBeforeReady_ReturnsNull" classname="io.godstone.mesh.crypto.TrustedHandshakeControllerTest" time="0.0"/>
+  <testcase name="testTrustedHandshake_H_A13_ResponderHS3Quarantine_NoiseEstablished_ControllerNotReady_SealDenied" classname="io.godstone.mesh.crypto.TrustedHandshakeControllerTest" time="0.004"/>
+  <testcase name="testTrustedHandshake_H_A20_NoLocalBindingIssuedOnInitiatorValidationOrTrustFailure" classname="io.godstone.mesh.crypto.TrustedHandshakeControllerTest" time="0.013"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.godstone.app.ui.trust.RenderedTrustCasTest" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-10-04T22:14:02" hostname="Naraharikripas-Mac-mini.local" time="0.116">
+  <properties/>
+  <testcase name="aLocalMismatchNeverReachesTheAuthority" classname="io.godstone.app.ui.trust.RenderedTrustCasTest" time="0.016"/>
+  <testcase name="theRenderedConfirmDispatchesTheDisplayedDigestAndGenerationAndTheAuthorityPromotesTheRow" classname="io.godstone.app.ui.trust.RenderedTrustCasTest" time="0.024"/>
+  <testcase name="theAuthorityItselfRefusesAStaleGenerationAndItsTrustIsUnchanged" classname="io.godstone.app.ui.trust.RenderedTrustCasTest" time="0.01"/>
+  <testcase name="anExplicitlyRefreshedCandidateConfirmsAndTheRecordedRequestFollowsTheRefresh" classname="io.godstone.app.ui.trust.RenderedTrustCasTest" time="0.024"/>
+  <testcase name="aStaleDisplayedGenerationIsRefusedLocallyAndNeverReachesTheAuthority" classname="io.godstone.app.ui.trust.RenderedTrustCasTest" time="0.016"/>
+  <testcase name="aRowThatMovedBeneathTheReaderIsRefusedAndTheAuthoritysTrustIsUnchanged" classname="io.godstone.app.ui.trust.RenderedTrustCasTest" time="0.026"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

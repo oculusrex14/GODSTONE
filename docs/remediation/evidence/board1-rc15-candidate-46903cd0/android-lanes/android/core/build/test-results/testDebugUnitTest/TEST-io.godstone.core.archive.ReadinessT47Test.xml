@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.godstone.core.archive.ReadinessT47Test" tests="11" skipped="0" failures="0" errors="0" timestamp="2026-10-04T22:12:26" hostname="Naraharikripas-Mac-mini.local" time="0.924">
+  <properties/>
+  <testcase name="testServeIsNeverAnExistenceCheckAlone" classname="io.godstone.core.archive.ReadinessT47Test" time="0.625"/>
+  <testcase name="testTheStaleCacheIsRenewedAndNeverServedBecauseItExisteth" classname="io.godstone.core.archive.ReadinessT47Test" time="0.034"/>
+  <testcase name="testTheFailedReplacementPreservethTheOldBytesAndAMendFolloweth" classname="io.godstone.core.archive.ReadinessT47Test" time="0.025"/>
+  <testcase name="testConcurrentInstallAndSearchLeaveNoTornWorldBehind" classname="io.godstone.core.archive.ReadinessT47Test" time="0.079"/>
+  <testcase name="testNoRawMouthFullTextEnteretheMatchGrammarUnquoted" classname="io.godstone.core.archive.ReadinessT47Test" time="0.019"/>
+  <testcase name="testTheManifestClauseRefusethFutureVersionsAndLies" classname="io.godstone.core.archive.ReadinessT47Test" time="0.003"/>
+  <testcase name="testTheBoundsOfPhraseTermAndPageAreEachEnforcedAndReported" classname="io.godstone.core.archive.ReadinessT47Test" time="0.086"/>
+  <testcase name="testTheBundledEngineItselfAnswerethUnderTheCourt" classname="io.godstone.core.archive.ReadinessT47Test" time="0.011"/>
+  <testcase name="testTheReadOnlyHandleDeniethEveryWriteAndTheBytesAbideth" classname="io.godstone.core.archive.ReadinessT47Test" time="0.013"/>
+  <testcase name="testCorruptedOrMissingBundlesAreRefusedWithTheirCausesNamed" classname="io.godstone.core.archive.ReadinessT47Test" time="0.012"/>
+  <testcase name="testTheTypedStatesReportThemelvesAtTheRepositoryFace" classname="io.godstone.core.archive.ReadinessT47Test" time="0.017"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

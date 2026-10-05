@@ -1,0 +1,649 @@
+{
+ "schema": 1,
+ "scope": "generator-semantic",
+ "unregistered": true,
+ "aggregate_canonical_score": false,
+ "note": "STANDALONE unregistered generator-semantic strikes re-proved on a corrected closure baseline B with a fresh external runner. NEVER booked as registry rows / an 181 canonical score; NEVER aggregated with the separate-4-restoration or canonical-181 namespaces.",
+ "generated_utc": "2026-10-04T23:38:02Z",
+ "anchor": {
+  "baseline_commit_input": "46903cd040ffae9f2cd20529aad54ac6166bd6ad",
+  "baseline_commit": "46903cd040ffae9f2cd20529aad54ac6166bd6ad",
+  "baseline_tree": "d74dc5e2679b69358663402e8c4711bea0d519db",
+  "repo": "/Users/oculus/Projects/GODSTONE",
+  "branch": "board1/external-audit-final-remediation"
+ },
+ "instrument": {
+  "runner": "python3 -m unittest -v",
+  "python": "/opt/homebrew/opt/python@3.14/bin/python3.14",
+  "python_version": "Python 3.14.4",
+  "cwd": "disposable git worktree --detach of the baseline commit (one per strike)",
+  "timeout_s": 1800.0,
+  "worktree_root": "/private/tmp/board1-rc15-preparatory-46903cd0-xke1sctz/closure-worktrees/board1-rc15-closure-strikes.7b5pwquw",
+  "method": "per strike: (1) baseline witness+positive-control GREEN at B; (2) mutant applied to B's gate source in the strike's OWN worktree, mutant MUST still parse; (3) named witness RED with its OWN assertion, positive control GREEN, rc exactly 1; (4) exact original bytes restored; (5) restored GREEN with identical identities and source sha == baseline."
+ },
+ "source": {
+  "gate_path": "scripts/build_structured_closure.py",
+  "gate_sha256": "42e13468135cccc61344908e28f4921fd1255abe41774b7058323c11e60c73da",
+  "witness_path": "tools/readiness/tests/test_closure_law_refuses.py",
+  "witness_sha256": "68fff7ec06b9f931f0efa8df19f25e73d9829b43a93dd60fdb0e1cacf28bc268",
+  "ledger_path": "docs/remediation/REMEDIATION_STATE.json",
+  "ledger_sha256": "1640ca3b840b6e582de0a5646aea22a899044f6098dd6c7079eae8d241b5e750",
+  "closure_path": "docs/production-readiness/BOARD1_CLOSURE.json",
+  "closure_sha256": "193bd6acb74327af9b69c8d50be0f3aeb0d9c93970a700e01df0a062ccf055d7"
+ },
+ "strikes": [
+  {
+   "id": "CLOS-PARTIAL-BLIND",
+   "operator": "builder const UNRESOLVED_OBLIGATION_STATES = (\"OPEN\", \"PARTIAL\") -> (\"OPEN\",)",
+   "path": "scripts/build_structured_closure.py",
+   "gate_path": "scripts/build_structured_closure.py",
+   "anchor_line": 918,
+   "original_text": "UNRESOLVED_OBLIGATION_STATES = (\"OPEN\", \"PARTIAL\")",
+   "mutant_text": "UNRESOLVED_OBLIGATION_STATES = (\"OPEN\",)",
+   "witness": "ObligationStateMachine.test_one_partial_obligation_prevents_zero",
+   "witness_fq": "tools.readiness.tests.test_closure_law_refuses.ObligationStateMachine.test_one_partial_obligation_prevents_zero",
+   "positive_control": "ObligationStateMachine.test_only_all_discharged_reaches_zero",
+   "positive_control_fq": "tools.readiness.tests.test_closure_law_refuses.ObligationStateMachine.test_only_all_discharged_reaches_zero",
+   "channel": "witness",
+   "worktree": "/private/tmp/board1-rc15-preparatory-46903cd0-xke1sctz/closure-worktrees/board1-rc15-closure-strikes.7b5pwquw/wt-clos-partial-blind",
+   "anchor_commit": "46903cd040ffae9f2cd20529aad54ac6166bd6ad",
+   "anchor_tree": "d74dc5e2679b69358663402e8c4711bea0d519db",
+   "source_sha256": {
+    "baseline": "42e13468135cccc61344908e28f4921fd1255abe41774b7058323c11e60c73da",
+    "gate_at_baseline_commit": "42e13468135cccc61344908e28f4921fd1255abe41774b7058323c11e60c73da",
+    "mutant": "b84d1d75f11906a1acae41effa5d6ebd5cbf3481c10f50beb634b1570e25bd7a",
+    "restored": "42e13468135cccc61344908e28f4921fd1255abe41774b7058323c11e60c73da"
+   },
+   "phases": {
+    "baseline": {
+     "phase": "baseline",
+     "argv": [
+      "/opt/homebrew/opt/python@3.14/bin/python3.14",
+      "-m",
+      "unittest",
+      "-v",
+      "tools.readiness.tests.test_closure_law_refuses.ObligationStateMachine.test_one_partial_obligation_prevents_zero",
+      "tools.readiness.tests.test_closure_law_refuses.ObligationStateMachine.test_only_all_discharged_reaches_zero"
+     ],
+     "exit": 0,
+     "source_sha256": "42e13468135cccc61344908e28f4921fd1255abe41774b7058323c11e60c73da",
+     "ran": 2,
+     "failures": 0,
+     "errors": 0,
+     "skips": 0,
+     "executed_tests": [
+      "ObligationStateMachine.test_one_partial_obligation_prevents_zero",
+      "ObligationStateMachine.test_only_all_discharged_reaches_zero"
+     ],
+     "failed_tests": [],
+     "error_tests": [],
+     "failed_assertions": [],
+     "status_line": "OK",
+     "log": "CLOS-PARTIAL-BLIND.baseline.log",
+     "log_sha256": "34100a1a749b7bfc3ad3ef77764904ff55bb529e567d2275c234eb08ccf1a638",
+     "timeout_s": 1800.0,
+     "log_path": "/private/tmp/board1-rc15-preparatory-46903cd0-xke1sctz/closure-strikes/CLOS-PARTIAL-BLIND.baseline.log"
+    },
+    "mutant": {
+     "phase": "mutant",
+     "argv": [
+      "/opt/homebrew/opt/python@3.14/bin/python3.14",
+      "-m",
+      "unittest",
+      "-v",
+      "tools.readiness.tests.test_closure_law_refuses.ObligationStateMachine.test_one_partial_obligation_prevents_zero",
+      "tools.readiness.tests.test_closure_law_refuses.ObligationStateMachine.test_only_all_discharged_reaches_zero"
+     ],
+     "exit": 1,
+     "source_sha256": "b84d1d75f11906a1acae41effa5d6ebd5cbf3481c10f50beb634b1570e25bd7a",
+     "ran": 2,
+     "failures": 1,
+     "errors": 0,
+     "skips": 0,
+     "executed_tests": [
+      "ObligationStateMachine.test_one_partial_obligation_prevents_zero",
+      "ObligationStateMachine.test_only_all_discharged_reaches_zero"
+     ],
+     "failed_tests": [
+      "ObligationStateMachine.test_one_partial_obligation_prevents_zero"
+     ],
+     "error_tests": [],
+     "failed_assertions": [
+      "AssertionError: 0 != 1 : *** ONE PARTIAL obligation MUST keep the unresolved count at ONE -- a filter that honours only the OPEN spelling of 'not finished' under-counts silently. ***"
+     ],
+     "status_line": "FAILED (failures=1)",
+     "log": "CLOS-PARTIAL-BLIND.mutant.log",
+     "log_sha256": "5588ef852debaf70ce80b9310109c0a171c6dc88a7070f285f38058e33dfb02e",
+     "timeout_s": 1800.0,
+     "log_path": "/private/tmp/board1-rc15-preparatory-46903cd0-xke1sctz/closure-strikes/CLOS-PARTIAL-BLIND.mutant.log"
+    },
+    "restored": {
+     "phase": "restored",
+     "argv": [
+      "/opt/homebrew/opt/python@3.14/bin/python3.14",
+      "-m",
+      "unittest",
+      "-v",
+      "tools.readiness.tests.test_closure_law_refuses.ObligationStateMachine.test_one_partial_obligation_prevents_zero",
+      "tools.readiness.tests.test_closure_law_refuses.ObligationStateMachine.test_only_all_discharged_reaches_zero"
+     ],
+     "exit": 0,
+     "source_sha256": "42e13468135cccc61344908e28f4921fd1255abe41774b7058323c11e60c73da",
+     "ran": 2,
+     "failures": 0,
+     "errors": 0,
+     "skips": 0,
+     "executed_tests": [
+      "ObligationStateMachine.test_one_partial_obligation_prevents_zero",
+      "ObligationStateMachine.test_only_all_discharged_reaches_zero"
+     ],
+     "failed_tests": [],
+     "error_tests": [],
+     "failed_assertions": [],
+     "status_line": "OK",
+     "log": "CLOS-PARTIAL-BLIND.restored.log",
+     "log_sha256": "925b2438c44e99dd2e0bded1bfe7e6e6d267941aa42b82c1f6280977f9bc161a",
+     "timeout_s": 1800.0,
+     "log_path": "/private/tmp/board1-rc15-preparatory-46903cd0-xke1sctz/closure-strikes/CLOS-PARTIAL-BLIND.restored.log"
+    }
+   },
+   "verdict": "KILLED",
+   "worktree_head": "46903cd040ffae9f2cd20529aad54ac6166bd6ad",
+   "anchor_count": 1,
+   "mutant_applied_count": 1
+  },
+  {
+   "id": "CLOS-DRIFT-BLIND",
+   "operator": "builder const if drift: -> if False:",
+   "path": "scripts/build_structured_closure.py",
+   "gate_path": "scripts/build_structured_closure.py",
+   "anchor_line": 2673,
+   "original_text": "        if drift:",
+   "mutant_text": "        if False:",
+   "witness": "PersistedStateAgreesWithDerivation.test_a_stale_count_is_refused",
+   "witness_fq": "tools.readiness.tests.test_closure_law_refuses.PersistedStateAgreesWithDerivation.test_a_stale_count_is_refused",
+   "positive_control": "PersistedStateAgreesWithDerivation.test_the_real_tree_agrees",
+   "positive_control_fq": "tools.readiness.tests.test_closure_law_refuses.PersistedStateAgreesWithDerivation.test_the_real_tree_agrees",
+   "channel": "witness",
+   "worktree": "/private/tmp/board1-rc15-preparatory-46903cd0-xke1sctz/closure-worktrees/board1-rc15-closure-strikes.7b5pwquw/wt-clos-drift-blind",
+   "anchor_commit": "46903cd040ffae9f2cd20529aad54ac6166bd6ad",
+   "anchor_tree": "d74dc5e2679b69358663402e8c4711bea0d519db",
+   "source_sha256": {
+    "baseline": "42e13468135cccc61344908e28f4921fd1255abe41774b7058323c11e60c73da",
+    "gate_at_baseline_commit": "42e13468135cccc61344908e28f4921fd1255abe41774b7058323c11e60c73da",
+    "mutant": "2ee7f7d8a1e671ec72304f152317a66071ab7c30d3117a6f5859de0469797737",
+    "restored": "42e13468135cccc61344908e28f4921fd1255abe41774b7058323c11e60c73da"
+   },
+   "phases": {
+    "baseline": {
+     "phase": "baseline",
+     "argv": [
+      "/opt/homebrew/opt/python@3.14/bin/python3.14",
+      "-m",
+      "unittest",
+      "-v",
+      "tools.readiness.tests.test_closure_law_refuses.PersistedStateAgreesWithDerivation.test_a_stale_count_is_refused",
+      "tools.readiness.tests.test_closure_law_refuses.PersistedStateAgreesWithDerivation.test_the_real_tree_agrees"
+     ],
+     "exit": 0,
+     "source_sha256": "42e13468135cccc61344908e28f4921fd1255abe41774b7058323c11e60c73da",
+     "ran": 2,
+     "failures": 0,
+     "errors": 0,
+     "skips": 0,
+     "executed_tests": [
+      "PersistedStateAgreesWithDerivation.test_a_stale_count_is_refused",
+      "PersistedStateAgreesWithDerivation.test_the_real_tree_agrees"
+     ],
+     "failed_tests": [],
+     "error_tests": [],
+     "failed_assertions": [],
+     "status_line": "OK",
+     "log": "CLOS-DRIFT-BLIND.baseline.log",
+     "log_sha256": "efd2e9678e878a3d7a72c1f45821ea80795ae4c50759a117818d1dd6984e2f9a",
+     "timeout_s": 1800.0,
+     "log_path": "/private/tmp/board1-rc15-preparatory-46903cd0-xke1sctz/closure-strikes/CLOS-DRIFT-BLIND.baseline.log"
+    },
+    "mutant": {
+     "phase": "mutant",
+     "argv": [
+      "/opt/homebrew/opt/python@3.14/bin/python3.14",
+      "-m",
+      "unittest",
+      "-v",
+      "tools.readiness.tests.test_closure_law_refuses.PersistedStateAgreesWithDerivation.test_a_stale_count_is_refused",
+      "tools.readiness.tests.test_closure_law_refuses.PersistedStateAgreesWithDerivation.test_the_real_tree_agrees"
+     ],
+     "exit": 1,
+     "source_sha256": "2ee7f7d8a1e671ec72304f152317a66071ab7c30d3117a6f5859de0469797737",
+     "ran": 2,
+     "failures": 1,
+     "errors": 0,
+     "skips": 0,
+     "executed_tests": [
+      "PersistedStateAgreesWithDerivation.test_a_stale_count_is_refused",
+      "PersistedStateAgreesWithDerivation.test_the_real_tree_agrees"
+     ],
+     "failed_tests": [
+      "PersistedStateAgreesWithDerivation.test_a_stale_count_is_refused"
+     ],
+     "error_tests": [],
+     "failed_assertions": [
+      "AssertionError: the mutated persisted state must be REFUSED, not the fixture reddened elsewhere:"
+     ],
+     "status_line": "FAILED (failures=1)",
+     "log": "CLOS-DRIFT-BLIND.mutant.log",
+     "log_sha256": "d32766887b73a8d76c50f6476b7a131836d8ab2561555b56b1ccd4df6be72c43",
+     "timeout_s": 1800.0,
+     "log_path": "/private/tmp/board1-rc15-preparatory-46903cd0-xke1sctz/closure-strikes/CLOS-DRIFT-BLIND.mutant.log"
+    },
+    "restored": {
+     "phase": "restored",
+     "argv": [
+      "/opt/homebrew/opt/python@3.14/bin/python3.14",
+      "-m",
+      "unittest",
+      "-v",
+      "tools.readiness.tests.test_closure_law_refuses.PersistedStateAgreesWithDerivation.test_a_stale_count_is_refused",
+      "tools.readiness.tests.test_closure_law_refuses.PersistedStateAgreesWithDerivation.test_the_real_tree_agrees"
+     ],
+     "exit": 0,
+     "source_sha256": "42e13468135cccc61344908e28f4921fd1255abe41774b7058323c11e60c73da",
+     "ran": 2,
+     "failures": 0,
+     "errors": 0,
+     "skips": 0,
+     "executed_tests": [
+      "PersistedStateAgreesWithDerivation.test_a_stale_count_is_refused",
+      "PersistedStateAgreesWithDerivation.test_the_real_tree_agrees"
+     ],
+     "failed_tests": [],
+     "error_tests": [],
+     "failed_assertions": [],
+     "status_line": "OK",
+     "log": "CLOS-DRIFT-BLIND.restored.log",
+     "log_sha256": "f4353c320fc3e6738963478ee6803bbade48027bc25f0102680c6211c411408a",
+     "timeout_s": 1800.0,
+     "log_path": "/private/tmp/board1-rc15-preparatory-46903cd0-xke1sctz/closure-strikes/CLOS-DRIFT-BLIND.restored.log"
+    }
+   },
+   "verdict": "KILLED",
+   "worktree_head": "46903cd040ffae9f2cd20529aad54ac6166bd6ad",
+   "anchor_count": 1,
+   "mutant_applied_count": 1
+  },
+  {
+   "id": "CLOS-SCHEMA-BYPASS",
+   "operator": "builder problems.extend(_discharge_block_problems(oid, sd)) -> pass",
+   "path": "scripts/build_structured_closure.py",
+   "gate_path": "scripts/build_structured_closure.py",
+   "anchor_line": 2356,
+   "original_text": "            problems.extend(_discharge_block_problems(oid, sd))",
+   "mutant_text": "            pass",
+   "witness": "StructuredDischargeContradiction.test_a_missing_required_field_is_refused",
+   "witness_fq": "tools.readiness.tests.test_closure_law_refuses.StructuredDischargeContradiction.test_a_missing_required_field_is_refused",
+   "positive_control": "StructuredDischargeContradiction.test_the_valid_baseline_carries_no_contradiction",
+   "positive_control_fq": "tools.readiness.tests.test_closure_law_refuses.StructuredDischargeContradiction.test_the_valid_baseline_carries_no_contradiction",
+   "channel": "witness",
+   "worktree": "/private/tmp/board1-rc15-preparatory-46903cd0-xke1sctz/closure-worktrees/board1-rc15-closure-strikes.7b5pwquw/wt-clos-schema-bypass",
+   "anchor_commit": "46903cd040ffae9f2cd20529aad54ac6166bd6ad",
+   "anchor_tree": "d74dc5e2679b69358663402e8c4711bea0d519db",
+   "source_sha256": {
+    "baseline": "42e13468135cccc61344908e28f4921fd1255abe41774b7058323c11e60c73da",
+    "gate_at_baseline_commit": "42e13468135cccc61344908e28f4921fd1255abe41774b7058323c11e60c73da",
+    "mutant": "2d8004990d3652e99abee6f3ccd2184281b471e26d5785b5e16bafb1f644fbe6",
+    "restored": "42e13468135cccc61344908e28f4921fd1255abe41774b7058323c11e60c73da"
+   },
+   "phases": {
+    "baseline": {
+     "phase": "baseline",
+     "argv": [
+      "/opt/homebrew/opt/python@3.14/bin/python3.14",
+      "-m",
+      "unittest",
+      "-v",
+      "tools.readiness.tests.test_closure_law_refuses.StructuredDischargeContradiction.test_a_missing_required_field_is_refused",
+      "tools.readiness.tests.test_closure_law_refuses.StructuredDischargeContradiction.test_the_valid_baseline_carries_no_contradiction"
+     ],
+     "exit": 0,
+     "source_sha256": "42e13468135cccc61344908e28f4921fd1255abe41774b7058323c11e60c73da",
+     "ran": 2,
+     "failures": 0,
+     "errors": 0,
+     "skips": 0,
+     "executed_tests": [
+      "StructuredDischargeContradiction.test_a_missing_required_field_is_refused",
+      "StructuredDischargeContradiction.test_the_valid_baseline_carries_no_contradiction"
+     ],
+     "failed_tests": [],
+     "error_tests": [],
+     "failed_assertions": [],
+     "status_line": "OK",
+     "log": "CLOS-SCHEMA-BYPASS.baseline.log",
+     "log_sha256": "7c48030c0c2abd18f152ff8f239b6b7c09185f96661c666e90c800fa92f44b83",
+     "timeout_s": 1800.0,
+     "log_path": "/private/tmp/board1-rc15-preparatory-46903cd0-xke1sctz/closure-strikes/CLOS-SCHEMA-BYPASS.baseline.log"
+    },
+    "mutant": {
+     "phase": "mutant",
+     "argv": [
+      "/opt/homebrew/opt/python@3.14/bin/python3.14",
+      "-m",
+      "unittest",
+      "-v",
+      "tools.readiness.tests.test_closure_law_refuses.StructuredDischargeContradiction.test_a_missing_required_field_is_refused",
+      "tools.readiness.tests.test_closure_law_refuses.StructuredDischargeContradiction.test_the_valid_baseline_carries_no_contradiction"
+     ],
+     "exit": 1,
+     "source_sha256": "2d8004990d3652e99abee6f3ccd2184281b471e26d5785b5e16bafb1f644fbe6",
+     "ran": 2,
+     "failures": 1,
+     "errors": 0,
+     "skips": 0,
+     "executed_tests": [
+      "StructuredDischargeContradiction.test_a_missing_required_field_is_refused",
+      "StructuredDischargeContradiction.test_the_valid_baseline_carries_no_contradiction"
+     ],
+     "failed_tests": [
+      "StructuredDischargeContradiction.test_a_missing_required_field_is_refused"
+     ],
+     "error_tests": [],
+     "failed_assertions": [
+      "AssertionError: False is not true : an empty required field must be refused"
+     ],
+     "status_line": "FAILED (failures=1)",
+     "log": "CLOS-SCHEMA-BYPASS.mutant.log",
+     "log_sha256": "7fb550a4c39450fb5c3fa4e300f708b83e8c1ab5a7d08dbc8baa40d73bc96180",
+     "timeout_s": 1800.0,
+     "log_path": "/private/tmp/board1-rc15-preparatory-46903cd0-xke1sctz/closure-strikes/CLOS-SCHEMA-BYPASS.mutant.log"
+    },
+    "restored": {
+     "phase": "restored",
+     "argv": [
+      "/opt/homebrew/opt/python@3.14/bin/python3.14",
+      "-m",
+      "unittest",
+      "-v",
+      "tools.readiness.tests.test_closure_law_refuses.StructuredDischargeContradiction.test_a_missing_required_field_is_refused",
+      "tools.readiness.tests.test_closure_law_refuses.StructuredDischargeContradiction.test_the_valid_baseline_carries_no_contradiction"
+     ],
+     "exit": 0,
+     "source_sha256": "42e13468135cccc61344908e28f4921fd1255abe41774b7058323c11e60c73da",
+     "ran": 2,
+     "failures": 0,
+     "errors": 0,
+     "skips": 0,
+     "executed_tests": [
+      "StructuredDischargeContradiction.test_a_missing_required_field_is_refused",
+      "StructuredDischargeContradiction.test_the_valid_baseline_carries_no_contradiction"
+     ],
+     "failed_tests": [],
+     "error_tests": [],
+     "failed_assertions": [],
+     "status_line": "OK",
+     "log": "CLOS-SCHEMA-BYPASS.restored.log",
+     "log_sha256": "6d0ecdef43b57da412a2882c0b6d9f3e362f5df068df280786f12d0d98b8a25d",
+     "timeout_s": 1800.0,
+     "log_path": "/private/tmp/board1-rc15-preparatory-46903cd0-xke1sctz/closure-strikes/CLOS-SCHEMA-BYPASS.restored.log"
+    }
+   },
+   "verdict": "KILLED",
+   "worktree_head": "46903cd040ffae9f2cd20529aad54ac6166bd6ad",
+   "anchor_count": 1,
+   "mutant_applied_count": 1
+  },
+  {
+   "id": "CLOS-FINDING-CONSISTENCY-BLIND",
+   "operator": "source predicate if f.get(\"internal_status\") == \"OPEN\" and obligations_are_terminal(f): -> if False:",
+   "path": "scripts/build_structured_closure.py",
+   "gate_path": "scripts/build_structured_closure.py",
+   "anchor_line": 974,
+   "original_text": "        if f.get(\"internal_status\") == \"OPEN\" and obligations_are_terminal(f):",
+   "mutant_text": "        if False:",
+   "witness": "FindingStatusFollowsItsObligations.test_an_open_finding_with_all_obligations_discharged_is_refused",
+   "witness_fq": "tools.readiness.tests.test_closure_law_refuses.FindingStatusFollowsItsObligations.test_an_open_finding_with_all_obligations_discharged_is_refused",
+   "positive_control": "FindingStatusFollowsItsObligations.test_a_complete_finding_with_all_obligations_discharged_is_PERMITTED",
+   "positive_control_fq": "tools.readiness.tests.test_closure_law_refuses.FindingStatusFollowsItsObligations.test_a_complete_finding_with_all_obligations_discharged_is_PERMITTED",
+   "channel": "witness",
+   "worktree": "/private/tmp/board1-rc15-preparatory-46903cd0-xke1sctz/closure-worktrees/board1-rc15-closure-strikes.7b5pwquw/wt-clos-finding-consistency-blind",
+   "anchor_commit": "46903cd040ffae9f2cd20529aad54ac6166bd6ad",
+   "anchor_tree": "d74dc5e2679b69358663402e8c4711bea0d519db",
+   "source_sha256": {
+    "baseline": "42e13468135cccc61344908e28f4921fd1255abe41774b7058323c11e60c73da",
+    "gate_at_baseline_commit": "42e13468135cccc61344908e28f4921fd1255abe41774b7058323c11e60c73da",
+    "mutant": "5f9ee0fac64540dafde58e92a10f7012005552df030c14a1932d52dd007a31a0",
+    "restored": "42e13468135cccc61344908e28f4921fd1255abe41774b7058323c11e60c73da"
+   },
+   "phases": {
+    "baseline": {
+     "phase": "baseline",
+     "argv": [
+      "/opt/homebrew/opt/python@3.14/bin/python3.14",
+      "-m",
+      "unittest",
+      "-v",
+      "tools.readiness.tests.test_closure_law_refuses.FindingStatusFollowsItsObligations.test_an_open_finding_with_all_obligations_discharged_is_refused",
+      "tools.readiness.tests.test_closure_law_refuses.FindingStatusFollowsItsObligations.test_a_complete_finding_with_all_obligations_discharged_is_PERMITTED"
+     ],
+     "exit": 0,
+     "source_sha256": "42e13468135cccc61344908e28f4921fd1255abe41774b7058323c11e60c73da",
+     "ran": 2,
+     "failures": 0,
+     "errors": 0,
+     "skips": 0,
+     "executed_tests": [
+      "FindingStatusFollowsItsObligations.test_an_open_finding_with_all_obligations_discharged_is_refused",
+      "FindingStatusFollowsItsObligations.test_a_complete_finding_with_all_obligations_discharged_is_PERMITTED"
+     ],
+     "failed_tests": [],
+     "error_tests": [],
+     "failed_assertions": [],
+     "status_line": "OK",
+     "log": "CLOS-FINDING-CONSISTENCY-BLIND.baseline.log",
+     "log_sha256": "a9dceb4d1e948c66b6bbc1ee1a45c6d7733fe7904d272da20a8d4647d0fb507a",
+     "timeout_s": 1800.0,
+     "log_path": "/private/tmp/board1-rc15-preparatory-46903cd0-xke1sctz/closure-strikes/CLOS-FINDING-CONSISTENCY-BLIND.baseline.log"
+    },
+    "mutant": {
+     "phase": "mutant",
+     "argv": [
+      "/opt/homebrew/opt/python@3.14/bin/python3.14",
+      "-m",
+      "unittest",
+      "-v",
+      "tools.readiness.tests.test_closure_law_refuses.FindingStatusFollowsItsObligations.test_an_open_finding_with_all_obligations_discharged_is_refused",
+      "tools.readiness.tests.test_closure_law_refuses.FindingStatusFollowsItsObligations.test_a_complete_finding_with_all_obligations_discharged_is_PERMITTED"
+     ],
+     "exit": 1,
+     "source_sha256": "5f9ee0fac64540dafde58e92a10f7012005552df030c14a1932d52dd007a31a0",
+     "ran": 2,
+     "failures": 1,
+     "errors": 0,
+     "skips": 0,
+     "executed_tests": [
+      "FindingStatusFollowsItsObligations.test_an_open_finding_with_all_obligations_discharged_is_refused",
+      "FindingStatusFollowsItsObligations.test_a_complete_finding_with_all_obligations_discharged_is_PERMITTED"
+     ],
+     "failed_tests": [
+      "FindingStatusFollowsItsObligations.test_an_open_finding_with_all_obligations_discharged_is_refused"
+     ],
+     "error_tests": [],
+     "failed_assertions": [
+      "AssertionError: [] is not true : GS-ARCHIVE-005: OPEN beside an all-terminal obligation set must be REFUSED"
+     ],
+     "status_line": "FAILED (failures=1)",
+     "log": "CLOS-FINDING-CONSISTENCY-BLIND.mutant.log",
+     "log_sha256": "4c9669e105f059cba0a6df98e3991cf9378b290289f052952d421a4210d5509a",
+     "timeout_s": 1800.0,
+     "log_path": "/private/tmp/board1-rc15-preparatory-46903cd0-xke1sctz/closure-strikes/CLOS-FINDING-CONSISTENCY-BLIND.mutant.log"
+    },
+    "restored": {
+     "phase": "restored",
+     "argv": [
+      "/opt/homebrew/opt/python@3.14/bin/python3.14",
+      "-m",
+      "unittest",
+      "-v",
+      "tools.readiness.tests.test_closure_law_refuses.FindingStatusFollowsItsObligations.test_an_open_finding_with_all_obligations_discharged_is_refused",
+      "tools.readiness.tests.test_closure_law_refuses.FindingStatusFollowsItsObligations.test_a_complete_finding_with_all_obligations_discharged_is_PERMITTED"
+     ],
+     "exit": 0,
+     "source_sha256": "42e13468135cccc61344908e28f4921fd1255abe41774b7058323c11e60c73da",
+     "ran": 2,
+     "failures": 0,
+     "errors": 0,
+     "skips": 0,
+     "executed_tests": [
+      "FindingStatusFollowsItsObligations.test_an_open_finding_with_all_obligations_discharged_is_refused",
+      "FindingStatusFollowsItsObligations.test_a_complete_finding_with_all_obligations_discharged_is_PERMITTED"
+     ],
+     "failed_tests": [],
+     "error_tests": [],
+     "failed_assertions": [],
+     "status_line": "OK",
+     "log": "CLOS-FINDING-CONSISTENCY-BLIND.restored.log",
+     "log_sha256": "d2bb4582e468ac48d5f079bc2c0c01d466cd59b2ba13a93939eb12810dc5171f",
+     "timeout_s": 1800.0,
+     "log_path": "/private/tmp/board1-rc15-preparatory-46903cd0-xke1sctz/closure-strikes/CLOS-FINDING-CONSISTENCY-BLIND.restored.log"
+    }
+   },
+   "verdict": "KILLED",
+   "worktree_head": "46903cd040ffae9f2cd20529aad54ac6166bd6ad",
+   "anchor_count": 1,
+   "mutant_applied_count": 1
+  },
+  {
+   "id": "CLOS-STATUS-POPULATION-BLIND",
+   "operator": "counts findings_status_open = sum(1 for f in closure.values() if f.get(\"internal_status\") == \"OPEN\") -> findings_status_open = 0",
+   "path": "scripts/build_structured_closure.py",
+   "gate_path": "scripts/build_structured_closure.py",
+   "anchor_line": 2454,
+   "original_text": "    findings_status_open = sum(1 for f in closure.values() if f.get(\"internal_status\") == \"OPEN\")",
+   "mutant_text": "    findings_status_open = 0",
+   "witness": "ReadinessRequiresBothPopulations.test_a_finding_status_open_alone_blocks_readiness",
+   "witness_fq": "tools.readiness.tests.test_closure_law_refuses.ReadinessRequiresBothPopulations.test_a_finding_status_open_alone_blocks_readiness",
+   "positive_control": "ReadinessRequiresBothPopulations.test_the_status_population_is_reported_separately",
+   "positive_control_fq": "tools.readiness.tests.test_closure_law_refuses.ReadinessRequiresBothPopulations.test_the_status_population_is_reported_separately",
+   "channel": "witness",
+   "worktree": "/private/tmp/board1-rc15-preparatory-46903cd0-xke1sctz/closure-worktrees/board1-rc15-closure-strikes.7b5pwquw/wt-clos-status-population-blind",
+   "anchor_commit": "46903cd040ffae9f2cd20529aad54ac6166bd6ad",
+   "anchor_tree": "d74dc5e2679b69358663402e8c4711bea0d519db",
+   "source_sha256": {
+    "baseline": "42e13468135cccc61344908e28f4921fd1255abe41774b7058323c11e60c73da",
+    "gate_at_baseline_commit": "42e13468135cccc61344908e28f4921fd1255abe41774b7058323c11e60c73da",
+    "mutant": "8399123a2a563af2521bffd625f7ba9f46d99f30e9dd10f81b66f4532aaa474c",
+    "restored": "42e13468135cccc61344908e28f4921fd1255abe41774b7058323c11e60c73da"
+   },
+   "phases": {
+    "baseline": {
+     "phase": "baseline",
+     "argv": [
+      "/opt/homebrew/opt/python@3.14/bin/python3.14",
+      "-m",
+      "unittest",
+      "-v",
+      "tools.readiness.tests.test_closure_law_refuses.ReadinessRequiresBothPopulations.test_a_finding_status_open_alone_blocks_readiness",
+      "tools.readiness.tests.test_closure_law_refuses.ReadinessRequiresBothPopulations.test_the_status_population_is_reported_separately"
+     ],
+     "exit": 0,
+     "source_sha256": "42e13468135cccc61344908e28f4921fd1255abe41774b7058323c11e60c73da",
+     "ran": 2,
+     "failures": 0,
+     "errors": 0,
+     "skips": 0,
+     "executed_tests": [
+      "ReadinessRequiresBothPopulations.test_a_finding_status_open_alone_blocks_readiness",
+      "ReadinessRequiresBothPopulations.test_the_status_population_is_reported_separately"
+     ],
+     "failed_tests": [],
+     "error_tests": [],
+     "failed_assertions": [],
+     "status_line": "OK",
+     "log": "CLOS-STATUS-POPULATION-BLIND.baseline.log",
+     "log_sha256": "fbb217fd3b6efbeb6c5b98a6bfb64b33775e5e3b4ecb90751a053d2bdc48f108",
+     "timeout_s": 1800.0,
+     "log_path": "/private/tmp/board1-rc15-preparatory-46903cd0-xke1sctz/closure-strikes/CLOS-STATUS-POPULATION-BLIND.baseline.log"
+    },
+    "mutant": {
+     "phase": "mutant",
+     "argv": [
+      "/opt/homebrew/opt/python@3.14/bin/python3.14",
+      "-m",
+      "unittest",
+      "-v",
+      "tools.readiness.tests.test_closure_law_refuses.ReadinessRequiresBothPopulations.test_a_finding_status_open_alone_blocks_readiness",
+      "tools.readiness.tests.test_closure_law_refuses.ReadinessRequiresBothPopulations.test_the_status_population_is_reported_separately"
+     ],
+     "exit": 1,
+     "source_sha256": "8399123a2a563af2521bffd625f7ba9f46d99f30e9dd10f81b66f4532aaa474c",
+     "ran": 2,
+     "failures": 1,
+     "errors": 0,
+     "skips": 0,
+     "executed_tests": [
+      "ReadinessRequiresBothPopulations.test_a_finding_status_open_alone_blocks_readiness",
+      "ReadinessRequiresBothPopulations.test_the_status_population_is_reported_separately"
+     ],
+     "failed_tests": [
+      "ReadinessRequiresBothPopulations.test_a_finding_status_open_alone_blocks_readiness"
+     ],
+     "error_tests": [],
+     "failed_assertions": [
+      "AssertionError: 0 not greater than 0 : ... while the STATUS population is not -- which is exactly the gap the law must see"
+     ],
+     "status_line": "FAILED (failures=1)",
+     "log": "CLOS-STATUS-POPULATION-BLIND.mutant.log",
+     "log_sha256": "b6c919dfb973b9587cce8f799773d93a3b418a97a67ffcb6249b67ff18d01670",
+     "timeout_s": 1800.0,
+     "log_path": "/private/tmp/board1-rc15-preparatory-46903cd0-xke1sctz/closure-strikes/CLOS-STATUS-POPULATION-BLIND.mutant.log"
+    },
+    "restored": {
+     "phase": "restored",
+     "argv": [
+      "/opt/homebrew/opt/python@3.14/bin/python3.14",
+      "-m",
+      "unittest",
+      "-v",
+      "tools.readiness.tests.test_closure_law_refuses.ReadinessRequiresBothPopulations.test_a_finding_status_open_alone_blocks_readiness",
+      "tools.readiness.tests.test_closure_law_refuses.ReadinessRequiresBothPopulations.test_the_status_population_is_reported_separately"
+     ],
+     "exit": 0,
+     "source_sha256": "42e13468135cccc61344908e28f4921fd1255abe41774b7058323c11e60c73da",
+     "ran": 2,
+     "failures": 0,
+     "errors": 0,
+     "skips": 0,
+     "executed_tests": [
+      "ReadinessRequiresBothPopulations.test_a_finding_status_open_alone_blocks_readiness",
+      "ReadinessRequiresBothPopulations.test_the_status_population_is_reported_separately"
+     ],
+     "failed_tests": [],
+     "error_tests": [],
+     "failed_assertions": [],
+     "status_line": "OK",
+     "log": "CLOS-STATUS-POPULATION-BLIND.restored.log",
+     "log_sha256": "58c10dbdde099f17ef4cd97f001a622329004422993a1d76e4f9903c4aaa4889",
+     "timeout_s": 1800.0,
+     "log_path": "/private/tmp/board1-rc15-preparatory-46903cd0-xke1sctz/closure-strikes/CLOS-STATUS-POPULATION-BLIND.restored.log"
+    }
+   },
+   "verdict": "KILLED",
+   "worktree_head": "46903cd040ffae9f2cd20529aad54ac6166bd6ad",
+   "anchor_count": 1,
+   "mutant_applied_count": 1
+  }
+ ],
+ "counts": {
+  "operators": 5,
+  "baseline_pass": 5,
+  "mutant_named_fail": 5,
+  "mutant_escape": 0,
+  "mutant_invalid": 0,
+  "restored_pass": 5,
+  "restored_sha_equals_baseline": 5,
+  "escapes": 0,
+  "aborted": 0
+ },
+ "verdict": "KILLED",
+ "failures": []
+}

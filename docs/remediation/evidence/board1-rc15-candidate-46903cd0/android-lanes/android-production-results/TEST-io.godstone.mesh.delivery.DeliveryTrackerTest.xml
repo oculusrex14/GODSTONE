@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.godstone.mesh.delivery.DeliveryTrackerTest" tests="23" skipped="0" failures="0" errors="0" timestamp="2026-10-04T22:16:12" hostname="Naraharikripas-Mac-mini.local" time="0.003">
+  <properties/>
+  <testcase name="a non-ACK frame is rejected as an acknowledgment" classname="io.godstone.mesh.delivery.DeliveryTrackerTest" time="0.0"/>
+  <testcase name="truth table -- expire and cancel only from QUEUED or HANDED and terminal states reject all" classname="io.godstone.mesh.delivery.DeliveryTrackerTest" time="0.001"/>
+  <testcase name="happy path reaches ACKNOWLEDGED only with an authenticated ACK" classname="io.godstone.mesh.delivery.DeliveryTrackerTest" time="0.0"/>
+  <testcase name="forget clears the delivery record and returns a typed ClearResult" classname="io.godstone.mesh.delivery.DeliveryTrackerTest" time="0.0"/>
+  <testcase name="a non-16-byte msg_id is InvalidArgument at every delivery boundary" classname="io.godstone.mesh.delivery.DeliveryTrackerTest" time="0.0"/>
+  <testcase name="mutating the caller's recipient array after enqueue does not mutate the bound recipient" classname="io.godstone.mesh.delivery.DeliveryTrackerTest" time="0.0"/>
+  <testcase name="two valid identities - ACK verifies only for the expected recipient bound at enqueue" classname="io.godstone.mesh.delivery.DeliveryTrackerTest" time="0.001"/>
+  <testcase name="Ed25519 sign and verify round-trip" classname="io.godstone.mesh.delivery.DeliveryTrackerTest" time="0.0"/>
+  <testcase name="truth table -- re-enqueue with a different binding is ConflictRecipient and preserves the original binding" classname="io.godstone.mesh.delivery.DeliveryTrackerTest" time="0.0"/>
+  <testcase name="an ACK signed by the wrong recipient is rejected" classname="io.godstone.mesh.delivery.DeliveryTrackerTest" time="0.0"/>
+  <testcase name="an ACK that fails authentication returns RejectedAuthentication and does not advance state" classname="io.godstone.mesh.delivery.DeliveryTrackerTest" time="0.0"/>
+  <testcase name="NONE-mode enqueue is idempotent on the same (null) binding" classname="io.godstone.mesh.delivery.DeliveryTrackerTest" time="0.0"/>
+  <testcase name="a tampered signature is rejected" classname="io.godstone.mesh.delivery.DeliveryTrackerTest" time="0.0"/>
+  <testcase name="acknowledge is idempotent -- a second ACK is AlreadyAcknowledged, not Applied" classname="io.godstone.mesh.delivery.DeliveryTrackerTest" time="0.001"/>
+  <testcase name="an ACK whose claimed recipient differs from the expected recipient is rejected" classname="io.godstone.mesh.delivery.DeliveryTrackerTest" time="0.0"/>
+  <testcase name="truth table -- enqueue from UNAVAILABLE creates, same binding is idempotent, terminal rejects" classname="io.godstone.mesh.delivery.DeliveryTrackerTest" time="0.0"/>
+  <testcase name="an unresolved production resolver fail-closes - no ACK is ever accepted" classname="io.godstone.mesh.delivery.DeliveryTrackerTest" time="0.0"/>
+  <testcase name="an ACK for the wrong message id is rejected" classname="io.godstone.mesh.delivery.DeliveryTrackerTest" time="0.0"/>
+  <testcase name="NONE-mode message rejects every ACK as NotAckEligible without invoking the authenticator" classname="io.godstone.mesh.delivery.DeliveryTrackerTest" time="0.0"/>
+  <testcase name="mutating the caller's msg_id array after enqueue does not mutate the record msg_id" classname="io.godstone.mesh.delivery.DeliveryTrackerTest" time="0.0"/>
+  <testcase name="truth table -- markHandedToRelay only from QUEUED or HANDED" classname="io.godstone.mesh.delivery.DeliveryTrackerTest" time="0.0"/>
+  <testcase name="an unknown message ACK is UnknownMessage and a corrupt record is Corrupt" classname="io.godstone.mesh.delivery.DeliveryTrackerTest" time="0.0"/>
+  <testcase name="an inconsistent binding is rejected as Corrupt before the journal is touched" classname="io.godstone.mesh.delivery.DeliveryTrackerTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

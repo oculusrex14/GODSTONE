@@ -1,0 +1,501 @@
+[05:33:33] === GS-INTEGRATION-001 cross-platform coordinator: mode=all run=20261005T000331Z-d35ce8 ===
+[05:33:33]     repo=/private/tmp/board1-rc15-preparatory-46903cd0-xke1sctz/judge evidence=/private/tmp/board1-rc15-preparatory-46903cd0-xke1sctz/integration-ci
+[05:33:33]     input digest (pre) = 8814ed2c27161d0ad4200ae3dbb1e9768caf6cf04b0295b9206d2d7abe22f508
+[05:33:33]     toolchain swift: Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1) Target: arm64-apple-macosx26.0 swift-driver version: 1.168.6
+[05:33:33]     toolchain xcodebuild: Xcode 27.0 Build version 27A266a
+[05:33:33]     toolchain java: openjdk version "17.0.20" 2026-07-21 OpenJDK Runtime Environment Homebrew (build 17.0.20+0) OpenJDK 64-Bit Server VM Homebrew (build 17.0.20+0, mixed mode, sharing) [JAVA_HOME=/opt/homebrew/opt/openjdk@17]
+[05:33:33]     toolchain python: 3.14.4 (macOS-26.6.2-arm64-arm-64bit-Mach-O)
+[05:33:33]     toolchain host: macOS-26.6.2-arm64-arm-64bit-Mach-O
+[05:33:33]     toolchain gradle: ------------------------------------------------------------ Gradle 8.9 ------------------------------------------------------------  Build time:    2024-07-11 14:37:41 UTC Revision:      d536ef36a191
+[05:33:33]     toolchain android_sdk: /Users/oculus/Library/Android/sdk
+[05:33:33] *** building the host fixtures ONCE (SwiftPM macOS test bundle) ***
+[05:47:22]   swift build --build-tests: rc=0
+[05:47:22] *** compiling the Android worker's own test classpath ONCE ***
+[05:47:35]   gradle compileDebugUnitTest: rc=0, android_ready=True
+[05:47:35]   built macOS test bundle digest = 55ff00ce2bc84e90a07e02a1c52729b3aa236ffbd453c44124bd00f3d16bb0a4
+[05:47:36]   build attestation = build-attestation.json (library_present=None)
+[05:47:36] *** crash mode: the macOS child-process SIGKILL campaign ***
+[05:47:40]   macOS crash campaign rc=0 log=/private/tmp/board1-rc15-preparatory-46903cd0-xke1sctz/integration-ci/swift-crash-campaign.log
+[05:47:40] *** crash mode: the Android durable-boundary recovery worker ***
+[05:47:40]   [android-prepare-outboundEnqueue] launched pid=77574 pgid=77574 attempt=1 log=android-prepare-outboundEnqueue.001.worker.log
+[05:48:51]   [android-prepare-outboundEnqueue] <- at_boundary  payload=0B
+[05:48:51]   outboundEnqueue: {'boundary': 'outboundEnqueue', 'detail': 'the atomic held+delivery enqueue returned success; halting before any radio work', 'enqueue': 'Created', 'kind': 'at_boundary', 'msg_id': '242e07b1bcabd1f1d36c4e5fe3e78739', 'platform': 'android', 'role': 'crash-prepare', 'v': 1, 'variant': 'outboundEnqueue'}
+[05:48:52]   outboundEnqueue: prepare exited on its own with wrapper rc=1; the ACTUAL Gradle Test Executor pid=78435 (distinct of wrapper=77574) died abruptly with status 137 (pre-halt declaration bound to this stage and code)
+[05:48:52]   [android-recover-outboundEnqueue] launched pid=78500 pgid=78500 attempt=1 log=android-recover-outboundEnqueue.001.worker.log
+[05:49:46]   [android-recover-outboundEnqueue] <- complete  payload=0B
+[05:49:46]   [android-recover-outboundEnqueue] -> bye  payload=0B
+[05:49:47]   [android-prepare-inboundCommit] launched pid=79020 pgid=79020 attempt=1 log=android-prepare-inboundCommit.001.worker.log
+[05:50:54]   [android-prepare-inboundCommit] <- at_boundary  payload=0B
+[05:50:54]   inboundCommit: {'boundary': 'inboundCommit', 'commit': 'Committed', 'detail': 'the atomic held+obligation pair returned success; halting before signing', 'kind': 'at_boundary', 'msg_id': '5686c27b60ee56b1610c83b77573c3d6', 'platform': 'android', 'role': 'crash-prepare', 'v': 1, 'variant': 'inboundCommit'}
+[05:50:55]   inboundCommit: prepare exited on its own with wrapper rc=1; the ACTUAL Gradle Test Executor pid=79596 (distinct of wrapper=79020) died abruptly with status 137 (pre-halt declaration bound to this stage and code)
+[05:50:55]   [android-recover-inboundCommit] launched pid=79648 pgid=79648 attempt=1 log=android-recover-inboundCommit.001.worker.log
+[05:52:05]   [android-recover-inboundCommit] <- complete  payload=0B
+[05:52:05]   [android-recover-inboundCommit] -> bye  payload=0B
+[05:52:06] --- direction ios->android control=honest ---
+[05:52:06]   [swift-honest] launched pid=80415 pgid=80415 attempt=1 log=swift-honest.001.worker.log
+[05:52:06]   [android-honest] launched pid=80416 pgid=80416 attempt=1 log=android-honest.001.worker.log
+[05:52:06]   [swift-honest] <- hello  payload=0B
+[05:53:13]   [android-honest] <- hello  payload=0B
+[05:53:13]   seat: sender real_hint=0bb99473 receiver real_hint=60bfa5fc -> the sender is the production election's INITIATOR (re-mints=0)
+[05:53:13]   [swift-honest] -> peer  payload=0B
+[05:53:13]   [android-honest] -> peer  payload=0B
+[05:53:13]   [swift-honest] -> setup  payload=0B
+[05:53:13]   [android-honest] -> setup  payload=0B
+[05:53:13]   [android-honest] <- ready  payload=0B
+[05:53:13]   [swift-honest] <- frame  payload=13B
+[05:53:13]   [swift-honest] <- frame  payload=40B
+[05:53:13]   [swift-honest] <- ready  payload=0B
+[05:53:13]   swift-honest seated: {'advertised_hint': '0bb99473', 'handle': '404A5B44-E2A4-4B5C-88BD-D170E9951C77', 'kind': 'ready', 'platform': 'ios', 'remote_hint': '60bfa5fc', 'role': 'sender', 'seat': 'initiator', 'v': 1, 'variant': 'honest'}
+[05:53:13]   android-honest seated: {'advertised_hint': '60bfa5fc', 'handle': '0B:B9:94:73:55:56', 'kind': 'ready', 'platform': 'android', 'remote_hint': '0bb99473', 'role': 'recipient', 'seat': 'responder', 'v': 1, 'variant': 'honest'}
+[05:53:13]   [swift-honest] -> go  payload=0B
+[05:53:13]   [android-honest] -> inject  payload=13B
+[05:53:13]   [android-honest] -> inject  payload=40B
+[05:53:13]   [android-honest] <- frame  payload=237B
+[05:53:13]   [swift-honest] -> inject  payload=237B
+[05:53:13]   [swift-honest] <- frame  payload=205B
+[05:53:13]   [swift-honest] <- frame  payload=82B
+[05:53:13]   [android-honest] -> inject  payload=205B
+[05:53:13]   [android-honest] -> inject  payload=82B
+[05:53:13]   [android-honest] <- frame  payload=82B
+[05:53:13]   [swift-honest] -> inject  payload=82B
+[05:53:13]   [swift-honest] <- authored  payload=0B
+[05:53:13]   [swift-honest] <- frame  payload=306B
+[05:53:13]   [android-honest] -> inject  payload=306B
+[05:53:15]   [android-honest] <- observe  payload=0B
+[05:53:15]   [android-honest] <- frame  payload=144B
+[05:53:15]   [android-honest] <- ack  payload=0B
+[05:53:15]   [swift-honest] -> inject  payload=144B
+[05:53:15]   [swift-honest] <- observe  payload=0B
+[05:53:15]   [swift-honest] <- observe  payload=0B
+[05:53:15]   authored msg_id=cd711fef33d5b94ac77119c329691c45
+[05:53:15]   [swift-honest] -> cancel  payload=0B
+[05:53:15]   [swift-honest] <- observe  payload=0B
+[05:53:15]   swift-honest cancellation: verdict=applied msg_id=e4ff1ebdc6f7549642dea365abf04c09 state=cancelledLocally
+[05:53:15]   [swift-honest] -> reopen  payload=0B
+[05:53:15]   [android-honest] -> reopen  payload=0B
+[05:53:15]   [swift-honest] <- observe  payload=0B
+[05:53:15]   swift-honest reopened estate: row=absent msg_id=cd711fef33d5b94ac77119c329691c45 delivery=DELIVERED cancellation=cancelledLocally
+[05:53:15]   [android-honest] <- observe  payload=0B
+[05:53:15]   android-honest reopened estate: row=present msg_id=cd711fef33d5b94ac77119c329691c45 delivery=none cancellation=
+[05:53:15]   [swift-honest] -> bye  payload=0B
+[05:53:15]   [android-honest] -> bye  payload=0B
+[05:53:15]   [android-honest] <- observe  payload=0B
+[05:53:16] --- direction ios->android control=altered ---
+[05:53:16]   [swift-altered] launched pid=81188 pgid=81188 attempt=1 log=swift-altered.001.worker.log
+[05:53:16]   [android-altered] launched pid=81189 pgid=81189 attempt=1 log=android-altered.001.worker.log
+[05:53:16]   [swift-altered] <- hello  payload=0B
+[05:54:13]   [android-altered] <- hello  payload=0B
+[05:54:13]   seat: sender real_hint=0bb99473 receiver real_hint=e8eeae7f -> the sender is the production election's INITIATOR (re-mints=0)
+[05:54:13]   [swift-altered] -> peer  payload=0B
+[05:54:13]   [android-altered] -> peer  payload=0B
+[05:54:13]   [swift-altered] -> setup  payload=0B
+[05:54:13]   [android-altered] -> setup  payload=0B
+[05:54:13]   [swift-altered] <- frame  payload=13B
+[05:54:13]   [swift-altered] <- frame  payload=40B
+[05:54:13]   [swift-altered] <- ready  payload=0B
+[05:54:13]   [android-altered] <- ready  payload=0B
+[05:54:13]   swift-altered seated: {'advertised_hint': '0bb99473', 'handle': '440F570E-AF75-4FC0-81EA-13468C55ACE4', 'kind': 'ready', 'platform': 'ios', 'remote_hint': 'e8eeae7f', 'role': 'sender', 'seat': 'initiator', 'v': 1, 'variant': 'honest'}
+[05:54:13]   android-altered seated: {'advertised_hint': 'e8eeae7f', 'handle': '0B:B9:94:73:55:56', 'kind': 'ready', 'platform': 'android', 'remote_hint': '0bb99473', 'role': 'recipient', 'seat': 'responder', 'v': 1, 'variant': 'honest'}
+[05:54:13]   [android-altered] -> inject  payload=13B
+[05:54:13]   [android-altered] -> inject  payload=40B
+[05:54:13]   [android-altered] <- frame  payload=237B
+[05:54:13]   [swift-altered] -> inject  payload=237B
+[05:54:13]   [swift-altered] <- frame  payload=205B
+[05:54:13]   [swift-altered] <- frame  payload=82B
+[05:54:13]   [android-altered] -> inject  payload=205B
+[05:54:13]   [android-altered] -> inject  payload=82B
+[05:54:13]   [android-altered] <- frame  payload=82B
+[05:54:13]   [swift-altered] -> inject  payload=82B
+[05:54:13]   [swift-altered] <- authored  payload=0B
+[05:54:13]   the producer announced `authored`; releasing the DATA record WITH the tamper enabled
+[05:54:13]   [swift-altered] -> go  payload=0B
+[05:54:13]   [swift-altered] <- frame  payload=306B
+[05:54:13]   [android-altered] -> inject  payload=306B
+[05:54:13]   [android-altered] <- observe  payload=0B
+[05:54:13]   [swift-altered] -> bye  payload=0B
+[05:54:13]   [android-altered] -> bye  payload=0B
+[05:54:13]   [swift-altered] <- observe  payload=0B
+[05:54:13]   [android-altered] <- observe  payload=0B
+[05:54:14] --- direction ios->android control=mismatched ---
+[05:54:14]   [swift-mismatched] launched pid=81852 pgid=81852 attempt=1 log=swift-mismatched.001.worker.log
+[05:54:14]   [android-mismatched] launched pid=81853 pgid=81853 attempt=1 log=android-mismatched.001.worker.log
+[05:54:14]   [swift-mismatched] <- hello  payload=0B
+[05:55:07]   [android-mismatched] <- hello  payload=0B
+[05:55:07]   seat: sender real_hint=0bb99473 receiver real_hint=da36ead5 -> the sender is the production election's INITIATOR (re-mints=0)
+[05:55:07]   [swift-mismatched] -> peer  payload=0B
+[05:55:07]   [android-mismatched] -> peer  payload=0B
+[05:55:07]   [swift-mismatched] -> setup  payload=0B
+[05:55:07]   [android-mismatched] -> setup  payload=0B
+[05:55:07]   [swift-mismatched] <- frame  payload=13B
+[05:55:07]   [swift-mismatched] <- frame  payload=40B
+[05:55:07]   [swift-mismatched] <- ready  payload=0B
+[05:55:07]   [android-mismatched] <- ready  payload=0B
+[05:55:07]   swift-mismatched seated: {'advertised_hint': '0affffff', 'handle': 'D9A3EC90-DC6A-444F-95CF-B0EA507F33E8', 'kind': 'ready', 'platform': 'ios', 'remote_hint': 'da36ead5', 'role': 'sender', 'seat': 'initiator', 'v': 1, 'variant': 'mismatched'}
+[05:55:07]   android-mismatched seated: {'advertised_hint': 'da36ead5', 'handle': '0B:B9:94:73:55:56', 'kind': 'ready', 'platform': 'android', 'remote_hint': '0affffff', 'role': 'recipient', 'seat': 'responder', 'v': 1, 'variant': 'honest'}
+[05:55:07]   [swift-mismatched] -> go  payload=0B
+[05:55:07]   [android-mismatched] -> inject  payload=13B
+[05:55:07]   [android-mismatched] -> inject  payload=40B
+[05:55:07]   [android-mismatched] <- frame  payload=237B
+[05:55:07]   [swift-mismatched] -> inject  payload=237B
+[05:55:07]   [swift-mismatched] <- observe  payload=0B
+[05:55:07]   [swift-mismatched] -> bye  payload=0B
+[05:55:07]   [android-mismatched] -> bye  payload=0B
+[05:55:07]   [swift-mismatched] <- observe  payload=0B
+[05:55:08] --- direction ios->android control=replay: phase A (capture) ---
+[05:55:08] --- direction ios->android control=honest ---
+[05:55:08]   [swift-honest] launched pid=82503 pgid=82503 attempt=2 log=swift-honest.002.worker.log
+[05:55:08]   [android-honest] launched pid=82504 pgid=82504 attempt=2 log=android-honest.002.worker.log
+[05:55:09]   [swift-honest] <- hello  payload=0B
+[05:55:53]   [android-honest] <- hello  payload=0B
+[05:55:53]   seat: sender real_hint=0bb99473 receiver real_hint=881851e4 -> the sender is the production election's INITIATOR (re-mints=0)
+[05:55:53]   [swift-honest] -> peer  payload=0B
+[05:55:53]   [android-honest] -> peer  payload=0B
+[05:55:53]   [swift-honest] -> setup  payload=0B
+[05:55:53]   [android-honest] -> setup  payload=0B
+[05:55:53]   [swift-honest] <- frame  payload=13B
+[05:55:53]   [swift-honest] <- frame  payload=40B
+[05:55:53]   [swift-honest] <- ready  payload=0B
+[05:55:53]   [android-honest] <- ready  payload=0B
+[05:55:53]   swift-honest seated: {'advertised_hint': '0bb99473', 'handle': '8F07B895-4D9A-494C-B6C6-3D71A1F3AD90', 'kind': 'ready', 'platform': 'ios', 'remote_hint': '881851e4', 'role': 'sender', 'seat': 'initiator', 'v': 1, 'variant': 'honest'}
+[05:55:53]   android-honest seated: {'advertised_hint': '881851e4', 'handle': '0B:B9:94:73:55:56', 'kind': 'ready', 'platform': 'android', 'remote_hint': '0bb99473', 'role': 'recipient', 'seat': 'responder', 'v': 1, 'variant': 'honest'}
+[05:55:53]   [swift-honest] -> go  payload=0B
+[05:55:53]   [android-honest] -> inject  payload=13B
+[05:55:53]   [android-honest] -> inject  payload=40B
+[05:55:53]   [android-honest] <- frame  payload=237B
+[05:55:53]   [swift-honest] -> inject  payload=237B
+[05:55:53]   [swift-honest] <- frame  payload=205B
+[05:55:53]   [swift-honest] <- frame  payload=82B
+[05:55:53]   [android-honest] -> inject  payload=205B
+[05:55:53]   [android-honest] -> inject  payload=82B
+[05:55:53]   [android-honest] <- frame  payload=82B
+[05:55:53]   [swift-honest] -> inject  payload=82B
+[05:55:53]   [swift-honest] <- authored  payload=0B
+[05:55:53]   [swift-honest] <- frame  payload=306B
+[05:55:53]   [android-honest] -> inject  payload=306B
+[05:55:55]   [android-honest] <- observe  payload=0B
+[05:55:55]   [android-honest] <- frame  payload=144B
+[05:55:55]   [android-honest] <- ack  payload=0B
+[05:55:55]   [swift-honest] -> inject  payload=144B
+[05:55:55]   [swift-honest] <- observe  payload=0B
+[05:55:55]   [swift-honest] <- observe  payload=0B
+[05:55:55]   authored msg_id=ad71993586f505d0d593ed460b577bfb
+[05:55:55]   [swift-honest] -> cancel  payload=0B
+[05:55:55]   [swift-honest] <- observe  payload=0B
+[05:55:55]   swift-honest cancellation: verdict=applied msg_id=347ea30d34e9761f5463f1ba2b4c2750 state=cancelledLocally
+[05:55:55]   [swift-honest] -> reopen  payload=0B
+[05:55:55]   [android-honest] -> reopen  payload=0B
+[05:55:55]   [swift-honest] <- observe  payload=0B
+[05:55:55]   [android-honest] <- observe  payload=0B
+[05:55:55]   swift-honest reopened estate: row=absent msg_id=ad71993586f505d0d593ed460b577bfb delivery=DELIVERED cancellation=cancelledLocally
+[05:55:55]   android-honest reopened estate: row=present msg_id=ad71993586f505d0d593ed460b577bfb delivery=none cancellation=
+[05:55:55]   [swift-honest] -> bye  payload=0B
+[05:55:55]   [android-honest] -> bye  payload=0B
+[05:55:55]   [android-honest] <- observe  payload=0B
+[05:55:56]   captured 4 inbox record(s) from the honest session
+[05:55:56] --- direction ios->android control=replay: phase B (fresh session, fresh estate) ---
+[05:55:56]   [swift-replay-fresh] launched pid=82865 pgid=82865 attempt=1 log=swift-replay-fresh.001.worker.log
+[05:55:56]   [android-replay-fresh] launched pid=82866 pgid=82866 attempt=1 log=android-replay-fresh.001.worker.log
+[05:55:56]   [swift-replay-fresh] <- hello  payload=0B
+[05:56:38]   [android-replay-fresh] <- hello  payload=0B
+[05:56:38]   seat: sender real_hint=0bb99473 receiver real_hint=edd11319 -> the sender is the production election's INITIATOR (re-mints=0)
+[05:56:38]   [swift-replay-fresh] -> peer  payload=0B
+[05:56:38]   [android-replay-fresh] -> peer  payload=0B
+[05:56:38]   [swift-replay-fresh] -> setup  payload=0B
+[05:56:38]   [android-replay-fresh] -> setup  payload=0B
+[05:56:38]   [swift-replay-fresh] <- frame  payload=13B
+[05:56:38]   [swift-replay-fresh] <- frame  payload=40B
+[05:56:38]   [swift-replay-fresh] <- ready  payload=0B
+[05:56:38]   [android-replay-fresh] <- ready  payload=0B
+[05:56:38]   swift-replay-fresh seated: {'advertised_hint': '0bb99473', 'handle': '0605773D-170B-44DA-838E-DDDB49715638', 'kind': 'ready', 'platform': 'ios', 'remote_hint': 'edd11319', 'role': 'sender', 'seat': 'initiator', 'v': 1, 'variant': 'honest'}
+[05:56:38]   android-replay-fresh seated: {'advertised_hint': 'edd11319', 'handle': '0B:B9:94:73:55:56', 'kind': 'ready', 'platform': 'android', 'remote_hint': '0bb99473', 'role': 'recipient', 'seat': 'responder', 'v': 1, 'variant': 'honest'}
+[05:56:38]   negotiating the fresh session across the pipe
+[05:56:38]   [android-replay-fresh] -> inject  payload=13B
+[05:56:38]   [android-replay-fresh] -> inject  payload=40B
+[05:56:38]   [android-replay-fresh] <- frame  payload=237B
+[05:56:38]   [swift-replay-fresh] -> inject  payload=237B
+[05:56:38]   [swift-replay-fresh] <- frame  payload=205B
+[05:56:38]   [swift-replay-fresh] <- frame  payload=82B
+[05:56:38]   [android-replay-fresh] -> inject  payload=205B
+[05:56:38]   [android-replay-fresh] -> inject  payload=82B
+[05:56:38]   [android-replay-fresh] <- frame  payload=82B
+[05:56:38]   [swift-replay-fresh] -> inject  payload=82B
+[05:56:38]   [swift-replay-fresh] <- authored  payload=0B
+[05:56:38]   replaying the captured old-session records into the live fresh session
+[05:56:38]   [android-replay-fresh] -> inject  payload=40B
+[05:56:38]   [android-replay-fresh] -> inject  payload=205B
+[05:56:38]   [android-replay-fresh] -> inject  payload=82B
+[05:56:38]   [android-replay-fresh] -> inject  payload=306B
+[05:56:38]   replayed 4 record(s)
+[05:56:38]   [android-replay-fresh] <- observe  payload=0B
+[05:56:38]   [android-replay-fresh] <- observe  payload=0B
+[05:56:38]   [android-replay-fresh] <- observe  payload=0B
+[05:56:38]   [android-replay-fresh] <- observe  payload=0B
+[05:56:38]   [swift-replay-fresh] -> bye  payload=0B
+[05:56:38]   [android-replay-fresh] -> bye  payload=0B
+[05:56:38]   [android-replay-fresh] <- observe  payload=0B
+[05:56:38] --- direction android->ios control=honest ---
+[05:56:38]   [swift-honest] launched pid=83038 pgid=83038 attempt=3 log=swift-honest.003.worker.log
+[05:56:38]   [android-honest] launched pid=83039 pgid=83039 attempt=3 log=android-honest.003.worker.log
+[05:56:38]   [swift-honest] <- hello  payload=0B
+[05:57:16]   [android-honest] <- hello  payload=0B
+[05:57:16]   re-mint: sender hint be5fcdba does not open against 0bb99473; asking BOTH for seeds 0xd2/0xc2
+[05:57:16]   [android-honest] -> mint  payload=0B
+[05:57:16]   [swift-honest] -> mint  payload=0B
+[05:57:16]   [swift-honest] <- hello  payload=0B
+[05:57:16]   [android-honest] <- hello  payload=0B
+[05:57:16]   seat: sender real_hint=09d23566 receiver real_hint=2e915597 -> the sender is the production election's INITIATOR (re-mints=1)
+[05:57:16]   [android-honest] -> peer  payload=0B
+[05:57:16]   [swift-honest] -> peer  payload=0B
+[05:57:16]   [android-honest] -> setup  payload=0B
+[05:57:16]   [swift-honest] -> setup  payload=0B
+[05:57:16]   [swift-honest] <- ready  payload=0B
+[05:57:16]   [android-honest] <- ready  payload=0B
+[05:57:16]   [android-honest] <- frame  payload=40B
+[05:57:16]   android-honest seated: {'advertised_hint': '09d23566', 'handle': '2E:91:55:97:55:56', 'kind': 'ready', 'platform': 'android', 'remote_hint': '2e915597', 'role': 'sender', 'seat': 'initiator', 'v': 1, 'variant': 'honest'}
+[05:57:16]   swift-honest seated: {'advertised_hint': '2e915597', 'handle': '62E4E75E-F0AB-4366-BE85-A3CFEF52011A', 'kind': 'ready', 'platform': 'ios', 'remote_hint': '09d23566', 'role': 'recipient', 'seat': 'responder', 'v': 1, 'variant': 'honest'}
+[05:57:16]   [android-honest] -> go  payload=0B
+[05:57:16]   [swift-honest] -> inject  payload=40B
+[05:57:16]   [swift-honest] <- frame  payload=237B
+[05:57:16]   [android-honest] -> inject  payload=237B
+[05:57:16]   [android-honest] <- frame  payload=205B
+[05:57:16]   [android-honest] <- frame  payload=82B
+[05:57:17]   [swift-honest] -> inject  payload=205B
+[05:57:17]   [swift-honest] -> inject  payload=82B
+[05:57:17]   [swift-honest] <- frame  payload=82B
+[05:57:17]   [android-honest] -> inject  payload=82B
+[05:57:19]   [android-honest] <- authored  payload=0B
+[05:57:19]   [android-honest] <- frame  payload=157B
+[05:57:19]   [android-honest] <- frame  payload=157B
+[05:57:19]   [swift-honest] -> inject  payload=157B
+[05:57:19]   [swift-honest] -> inject  payload=157B
+[05:57:19]   [swift-honest] <- frame  payload=144B
+[05:57:19]   [swift-honest] <- ack  payload=0B
+[05:57:19]   [swift-honest] <- observe  payload=0B
+[05:57:19]   [android-honest] -> inject  payload=144B
+[05:57:19]   [android-honest] <- observe  payload=0B
+[05:57:21]   [android-honest] <- observe  payload=0B
+[05:57:21]   authored msg_id=4e7a4247eca9d4369956bf35313ea714
+[05:57:21]   [android-honest] -> cancel  payload=0B
+[05:57:21]   [android-honest] <- observe  payload=0B
+[05:57:21]   android-honest cancellation: verdict=Applied msg_id=07119ab060a606f3f37e3fba324b4b3d state=CANCELLED_LOCALLY
+[05:57:21]   [android-honest] -> reopen  payload=0B
+[05:57:21]   [swift-honest] -> reopen  payload=0B
+[05:57:21]   [android-honest] <- observe  payload=0B
+[05:57:21]   [swift-honest] <- observe  payload=0B
+[05:57:21]   android-honest reopened estate: row=absent msg_id=4e7a4247eca9d4369956bf35313ea714 delivery=DELIVERED cancellation=CANCELLED_LOCALLY
+[05:57:21]   swift-honest reopened estate: row=present msg_id=4e7a4247eca9d4369956bf35313ea714 delivery=none cancellation=
+[05:57:21]   [android-honest] -> bye  payload=0B
+[05:57:21]   [swift-honest] -> bye  payload=0B
+[05:57:21]   [android-honest] <- observe  payload=0B
+[05:57:21] --- direction android->ios control=altered ---
+[05:57:21]   [swift-altered] launched pid=83229 pgid=83229 attempt=2 log=swift-altered.002.worker.log
+[05:57:21]   [android-altered] launched pid=83230 pgid=83230 attempt=2 log=android-altered.002.worker.log
+[05:57:22]   [swift-altered] <- hello  payload=0B
+[05:57:49]   [android-altered] <- hello  payload=0B
+[05:57:49]   re-mint: sender hint e16f639a does not open against 0bb99473; asking BOTH for seeds 0xd2/0xc2
+[05:57:49]   [android-altered] -> mint  payload=0B
+[05:57:49]   [swift-altered] -> mint  payload=0B
+[05:57:49]   [swift-altered] <- hello  payload=0B
+[05:57:49]   re-mint: sender hint 4345ce14 does not open against 2e915597; asking BOTH for seeds 0xd3/0xc3
+[05:57:49]   [android-altered] <- hello  payload=0B
+[05:57:49]   [android-altered] -> mint  payload=0B
+[05:57:49]   [swift-altered] -> mint  payload=0B
+[05:57:49]   [swift-altered] <- hello  payload=0B
+[05:57:49]   [android-altered] <- hello  payload=0B
+[05:57:49]   re-mint: sender hint 5c9fc379 does not open against 36b89be3; asking BOTH for seeds 0xd4/0xc4
+[05:57:49]   [android-altered] -> mint  payload=0B
+[05:57:49]   [swift-altered] -> mint  payload=0B
+[05:57:49]   [swift-altered] <- hello  payload=0B
+[05:57:49]   [android-altered] <- hello  payload=0B
+[05:57:49]   re-mint: sender hint b0b58634 does not open against 4209d2ec; asking BOTH for seeds 0xd5/0xc5
+[05:57:49]   [android-altered] -> mint  payload=0B
+[05:57:49]   [swift-altered] -> mint  payload=0B
+[05:57:49]   [swift-altered] <- hello  payload=0B
+[05:57:49]   [android-altered] <- hello  payload=0B
+[05:57:49]   re-mint: sender hint 65abcff2 does not open against 0f4049f0; asking BOTH for seeds 0xd6/0xc6
+[05:57:49]   [android-altered] -> mint  payload=0B
+[05:57:49]   [swift-altered] -> mint  payload=0B
+[05:57:49]   [swift-altered] <- hello  payload=0B
+[05:57:49]   [android-altered] <- hello  payload=0B
+[05:57:49]   seat: sender real_hint=548ad9b3 receiver real_hint=62ce8505 -> the sender is the production election's INITIATOR (re-mints=5)
+[05:57:49]   [android-altered] -> peer  payload=0B
+[05:57:49]   [swift-altered] -> peer  payload=0B
+[05:57:49]   [android-altered] -> setup  payload=0B
+[05:57:49]   [swift-altered] -> setup  payload=0B
+[05:57:49]   [swift-altered] <- ready  payload=0B
+[05:57:49]   [android-altered] <- ready  payload=0B
+[05:57:49]   [android-altered] <- frame  payload=40B
+[05:57:49]   android-altered seated: {'advertised_hint': '548ad9b3', 'handle': '62:CE:85:05:55:56', 'kind': 'ready', 'platform': 'android', 'remote_hint': '62ce8505', 'role': 'sender', 'seat': 'initiator', 'v': 1, 'variant': 'honest'}
+[05:57:49]   swift-altered seated: {'advertised_hint': '62ce8505', 'handle': 'C7FE46E5-7611-4B34-8CD4-EC4450014A8C', 'kind': 'ready', 'platform': 'ios', 'remote_hint': '548ad9b3', 'role': 'recipient', 'seat': 'responder', 'v': 1, 'variant': 'honest'}
+[05:57:49]   [swift-altered] -> inject  payload=40B
+[05:57:49]   [swift-altered] <- frame  payload=237B
+[05:57:49]   [android-altered] -> inject  payload=237B
+[05:57:49]   [android-altered] <- frame  payload=205B
+[05:57:49]   [android-altered] <- frame  payload=82B
+[05:57:49]   [swift-altered] -> inject  payload=205B
+[05:57:49]   [swift-altered] -> inject  payload=82B
+[05:57:49]   [swift-altered] <- frame  payload=82B
+[05:57:49]   [android-altered] -> inject  payload=82B
+[05:57:51]   [android-altered] <- authored  payload=0B
+[05:57:51]   the producer announced `authored`; releasing the DATA record WITH the tamper enabled
+[05:57:51]   [android-altered] -> go  payload=0B
+[05:57:51]   [android-altered] <- frame  payload=157B
+[05:57:51]   [android-altered] <- frame  payload=157B
+[05:57:51]   [swift-altered] -> inject  payload=157B
+[05:57:51]   [swift-altered] -> inject  payload=157B
+[05:57:51]   [swift-altered] <- observe  payload=0B
+[05:57:51]   [android-altered] -> bye  payload=0B
+[05:57:51]   [swift-altered] -> bye  payload=0B
+[05:57:51]   [swift-altered] <- observe  payload=0B
+[05:57:51]   [android-altered] <- observe  payload=0B
+[05:57:52] --- direction android->ios control=mismatched ---
+[05:57:52]   [swift-mismatched] launched pid=83371 pgid=83371 attempt=2 log=swift-mismatched.002.worker.log
+[05:57:52]   [android-mismatched] launched pid=83372 pgid=83372 attempt=2 log=android-mismatched.002.worker.log
+[05:57:52]   [swift-mismatched] <- hello  payload=0B
+[05:58:18]   [android-mismatched] <- hello  payload=0B
+[05:58:18]   re-mint: sender hint 0bc140c2 does not open against 0bb99473; asking BOTH for seeds 0xd2/0xc2
+[05:58:18]   [android-mismatched] -> mint  payload=0B
+[05:58:18]   [swift-mismatched] -> mint  payload=0B
+[05:58:18]   [swift-mismatched] <- hello  payload=0B
+[05:58:18]   [android-mismatched] <- hello  payload=0B
+[05:58:18]   seat: sender real_hint=1a40aea0 receiver real_hint=2e915597 -> the sender is the production election's INITIATOR (re-mints=1)
+[05:58:18]   [android-mismatched] -> peer  payload=0B
+[05:58:18]   [swift-mismatched] -> peer  payload=0B
+[05:58:18]   [android-mismatched] -> setup  payload=0B
+[05:58:18]   [swift-mismatched] -> setup  payload=0B
+[05:58:18]   [swift-mismatched] <- ready  payload=0B
+[05:58:18]   [android-mismatched] <- ready  payload=0B
+[05:58:18]   android-mismatched seated: {'advertised_hint': '19ffffff', 'handle': '2E:91:55:97:55:56', 'kind': 'ready', 'platform': 'android', 'remote_hint': '2e915597', 'role': 'sender', 'seat': 'initiator', 'v': 1, 'variant': 'mismatched'}
+[05:58:18]   swift-mismatched seated: {'advertised_hint': '2e915597', 'handle': '0200E18C-423B-4AE2-A7C8-0130B34BDC58', 'kind': 'ready', 'platform': 'ios', 'remote_hint': '19ffffff', 'role': 'recipient', 'seat': 'responder', 'v': 1, 'variant': 'honest'}
+[05:58:18]   [android-mismatched] -> go  payload=0B
+[05:58:18]   [android-mismatched] <- frame  payload=40B
+[05:58:18]   [swift-mismatched] -> inject  payload=40B
+[05:58:18]   [swift-mismatched] <- frame  payload=237B
+[05:58:18]   [android-mismatched] -> inject  payload=237B
+[05:58:18]   [android-mismatched] <- observe  payload=0B
+[05:58:18]   [android-mismatched] -> bye  payload=0B
+[05:58:18]   [swift-mismatched] -> bye  payload=0B
+[05:58:18]   [android-mismatched] <- observe  payload=0B
+[05:58:19] --- direction android->ios control=replay: phase A (capture) ---
+[05:58:19] --- direction android->ios control=honest ---
+[05:58:19]   [swift-honest] launched pid=83516 pgid=83516 attempt=4 log=swift-honest.004.worker.log
+[05:58:19]   [android-honest] launched pid=83517 pgid=83517 attempt=4 log=android-honest.004.worker.log
+[05:58:19]   [swift-honest] <- hello  payload=0B
+[05:58:43]   [android-honest] <- hello  payload=0B
+[05:58:43]   seat: sender real_hint=03e7d511 receiver real_hint=0bb99473 -> the sender is the production election's INITIATOR (re-mints=0)
+[05:58:43]   [android-honest] -> peer  payload=0B
+[05:58:43]   [swift-honest] -> peer  payload=0B
+[05:58:43]   [android-honest] -> setup  payload=0B
+[05:58:43]   [swift-honest] -> setup  payload=0B
+[05:58:43]   [swift-honest] <- ready  payload=0B
+[05:58:43]   [android-honest] <- ready  payload=0B
+[05:58:43]   [android-honest] <- frame  payload=40B
+[05:58:43]   android-honest seated: {'advertised_hint': '03e7d511', 'handle': '0B:B9:94:73:55:56', 'kind': 'ready', 'platform': 'android', 'remote_hint': '0bb99473', 'role': 'sender', 'seat': 'initiator', 'v': 1, 'variant': 'honest'}
+[05:58:43]   swift-honest seated: {'advertised_hint': '0bb99473', 'handle': '17DC6F0A-F250-44D7-95D8-019559D95BA9', 'kind': 'ready', 'platform': 'ios', 'remote_hint': '03e7d511', 'role': 'recipient', 'seat': 'responder', 'v': 1, 'variant': 'honest'}
+[05:58:43]   [android-honest] -> go  payload=0B
+[05:58:43]   [swift-honest] -> inject  payload=40B
+[05:58:43]   [swift-honest] <- frame  payload=237B
+[05:58:43]   [android-honest] -> inject  payload=237B
+[05:58:43]   [android-honest] <- frame  payload=205B
+[05:58:43]   [android-honest] <- frame  payload=82B
+[05:58:43]   [swift-honest] -> inject  payload=205B
+[05:58:43]   [swift-honest] -> inject  payload=82B
+[05:58:43]   [swift-honest] <- frame  payload=82B
+[05:58:44]   [android-honest] -> inject  payload=82B
+[05:58:46]   [android-honest] <- authored  payload=0B
+[05:58:46]   [android-honest] <- frame  payload=157B
+[05:58:46]   [android-honest] <- frame  payload=157B
+[05:58:46]   [swift-honest] -> inject  payload=157B
+[05:58:46]   [swift-honest] -> inject  payload=157B
+[05:58:46]   [swift-honest] <- frame  payload=144B
+[05:58:46]   [swift-honest] <- ack  payload=0B
+[05:58:46]   [swift-honest] <- observe  payload=0B
+[05:58:46]   [android-honest] -> inject  payload=144B
+[05:58:46]   [android-honest] <- observe  payload=0B
+[05:58:48]   [android-honest] <- observe  payload=0B
+[05:58:48]   authored msg_id=1d6948160433164dfd44fbe535cc0f95
+[05:58:48]   [android-honest] -> cancel  payload=0B
+[05:58:48]   [android-honest] <- observe  payload=0B
+[05:58:48]   android-honest cancellation: verdict=Applied msg_id=7ed14572f834abeadf5f83155c136343 state=CANCELLED_LOCALLY
+[05:58:48]   [android-honest] -> reopen  payload=0B
+[05:58:48]   [swift-honest] -> reopen  payload=0B
+[05:58:48]   [swift-honest] <- observe  payload=0B
+[05:58:48]   [android-honest] <- observe  payload=0B
+[05:58:48]   android-honest reopened estate: row=absent msg_id=1d6948160433164dfd44fbe535cc0f95 delivery=DELIVERED cancellation=CANCELLED_LOCALLY
+[05:58:48]   swift-honest reopened estate: row=present msg_id=1d6948160433164dfd44fbe535cc0f95 delivery=none cancellation=
+[05:58:48]   [android-honest] -> bye  payload=0B
+[05:58:48]   [swift-honest] -> bye  payload=0B
+[05:58:48]   [android-honest] <- observe  payload=0B
+[05:58:49]   captured 5 inbox record(s) from the honest session
+[05:58:49] --- direction android->ios control=replay: phase B (fresh session, fresh estate) ---
+[05:58:49]   [swift-replay-fresh] launched pid=83646 pgid=83646 attempt=2 log=swift-replay-fresh.002.worker.log
+[05:58:49]   [android-replay-fresh] launched pid=83647 pgid=83647 attempt=2 log=android-replay-fresh.002.worker.log
+[05:58:49]   [swift-replay-fresh] <- hello  payload=0B
+[05:59:16]   [android-replay-fresh] <- hello  payload=0B
+[05:59:16]   re-mint: sender hint 46d9fd3d does not open against 0bb99473; asking BOTH for seeds 0x12/0x02
+[05:59:16]   [android-replay-fresh] -> mint  payload=0B
+[05:59:16]   [swift-replay-fresh] -> mint  payload=0B
+[05:59:16]   [swift-replay-fresh] <- hello  payload=0B
+[05:59:17]   [android-replay-fresh] <- hello  payload=0B
+[05:59:17]   re-mint: sender hint aa059d8d does not open against 63aaf801; asking BOTH for seeds 0x13/0x03
+[05:59:17]   [android-replay-fresh] -> mint  payload=0B
+[05:59:17]   [swift-replay-fresh] -> mint  payload=0B
+[05:59:17]   [swift-replay-fresh] <- hello  payload=0B
+[05:59:17]   [android-replay-fresh] <- hello  payload=0B
+[05:59:17]   re-mint: sender hint 64687b96 does not open against 478ce3c8; asking BOTH for seeds 0x14/0x04
+[05:59:17]   [android-replay-fresh] -> mint  payload=0B
+[05:59:17]   [swift-replay-fresh] -> mint  payload=0B
+[05:59:17]   [swift-replay-fresh] <- hello  payload=0B
+[05:59:17]   [android-replay-fresh] <- hello  payload=0B
+[05:59:17]   re-mint: sender hint c198f841 does not open against 98207fa2; asking BOTH for seeds 0x15/0x05
+[05:59:17]   [android-replay-fresh] -> mint  payload=0B
+[05:59:17]   [swift-replay-fresh] -> mint  payload=0B
+[05:59:17]   [swift-replay-fresh] <- hello  payload=0B
+[05:59:17]   [android-replay-fresh] <- hello  payload=0B
+[05:59:17]   seat: sender real_hint=41985ef5 receiver real_hint=856b724d -> the sender is the production election's INITIATOR (re-mints=4)
+[05:59:17]   [android-replay-fresh] -> peer  payload=0B
+[05:59:17]   [swift-replay-fresh] -> peer  payload=0B
+[05:59:17]   [android-replay-fresh] -> setup  payload=0B
+[05:59:17]   [swift-replay-fresh] -> setup  payload=0B
+[05:59:17]   [swift-replay-fresh] <- ready  payload=0B
+[05:59:17]   [android-replay-fresh] <- ready  payload=0B
+[05:59:17]   android-replay-fresh seated: {'advertised_hint': '41985ef5', 'handle': '85:6B:72:4D:55:56', 'kind': 'ready', 'platform': 'android', 'remote_hint': '856b724d', 'role': 'sender', 'seat': 'initiator', 'v': 1, 'variant': 'honest'}
+[05:59:17]   swift-replay-fresh seated: {'advertised_hint': '856b724d', 'handle': 'F6E64124-BE2B-48C4-BDB8-90FDE25F52E7', 'kind': 'ready', 'platform': 'ios', 'remote_hint': '41985ef5', 'role': 'recipient', 'seat': 'responder', 'v': 1, 'variant': 'honest'}
+[05:59:17]   negotiating the fresh session across the pipe
+[05:59:17]   [android-replay-fresh] <- frame  payload=40B
+[05:59:17]   [swift-replay-fresh] -> inject  payload=40B
+[05:59:17]   [swift-replay-fresh] <- frame  payload=237B
+[05:59:17]   [android-replay-fresh] -> inject  payload=237B
+[05:59:17]   [android-replay-fresh] <- frame  payload=205B
+[05:59:17]   [swift-replay-fresh] -> inject  payload=205B
+[05:59:17]   [android-replay-fresh] <- frame  payload=82B
+[05:59:17]   [swift-replay-fresh] -> inject  payload=82B
+[05:59:17]   [swift-replay-fresh] <- frame  payload=82B
+[05:59:17]   [android-replay-fresh] -> inject  payload=82B
+[05:59:19]   [android-replay-fresh] <- authored  payload=0B
+[05:59:19]   replaying the captured old-session records into the live fresh session
+[05:59:19]   [swift-replay-fresh] -> inject  payload=40B
+[05:59:19]   [swift-replay-fresh] -> inject  payload=205B
+[05:59:19]   [swift-replay-fresh] -> inject  payload=82B
+[05:59:19]   [swift-replay-fresh] -> inject  payload=157B
+[05:59:19]   [swift-replay-fresh] -> inject  payload=157B
+[05:59:19]   replayed 5 record(s)
+[05:59:19]   [swift-replay-fresh] <- observe  payload=0B
+[05:59:19]   [android-replay-fresh] -> bye  payload=0B
+[05:59:19]   [swift-replay-fresh] -> bye  payload=0B
+[05:59:19]   [swift-replay-fresh] <- observe  payload=0B
+[05:59:21] *** results ***
+[05:59:21]   android-crash  outboundEnqueue RECOVERED row=present delivery=QUEUED_DURABLY refusal=-
+[05:59:21]   android-crash  inboundCommit RECOVERED row=present delivery=none refusal=-
+[05:59:21]   ios->android   honest      ACCEPTED row=present delivery=DELIVERED refusal=-
+[05:59:21]   ios->android   altered     REFUSED  row=absent delivery=None refusal=receive|unauthenticated payload
+[05:59:21]   ios->android   mismatched  REFUSED  row=absent delivery=None refusal=hs.read.initiator|hs2 rejected
+[05:59:21]   ios->android   replay      REFUSED  row=absent delivery=None refusal=ingest.write|unexpected stage
+[05:59:21]   android->ios   honest      ACCEPTED row=present delivery=DELIVERED refusal=-
+[05:59:21]   android->ios   altered     REFUSED  row=absent delivery=None refusal=open.write|unauthenticated payload
+[05:59:21]   android->ios   mismatched  REFUSED  row=absent delivery=None refusal=hs.read.initiator|hs2 rejected
+[05:59:21]   android->ios   replay      REFUSED  row=absent delivery=None refusal=ingest.write|record type hs1 at stage ready, expected one of [GodstoneMesh.BleConnectionSt
+[05:59:21]   transcript framing (first 128 octets): 00 00 00 65 7b 22 62 6f 75 6e 64 61 72 79 22 3a 22 6f 75 74 62 6f 75 6e 64 45 6e 71 75 65 75 65 22 2c 22 6b 69 6e 64 22 3a 22 74 65 72 6d 69 6e 61 74 69 6f 6e 22 2c 22 70 6c 61 74 66 6f 72 6d 22 3a 22 61 6e 64 72 6f 69 64 22 2c 22 72 6f 6c 65 22 3a 22 63 72 61 73 68 2d 70 72 65 70 61 72 65 22 2c 22 76 22 3a 31 7d 00 00 00 00 00 00 01 2f 7b 22 62 6f 75 6e 64 61 72 79 22 3a 22 6f 75
+[05:59:21]   producer identities + evidence binding written to producers.json (HISTORICAL archive namespace untouched)
+[05:59:21]     input digest (post) = 8814ed2c27161d0ad4200ae3dbb1e9768caf6cf04b0295b9206d2d7abe22f508 (agrees)
+[05:59:21] *** PASS ***

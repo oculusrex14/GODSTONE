@@ -1,0 +1,17 @@
+test_w02_the_light_release_carrieth_no_lab_and_no_mesh_edge (test_t54.T54LightIsolationTest.test_w02_the_light_release_carrieth_no_lab_and_no_mesh_edge) ... FAIL
+
+======================================================================
+FAIL: test_w02_the_light_release_carrieth_no_lab_and_no_mesh_edge (test_t54.T54LightIsolationTest.test_w02_the_light_release_carrieth_no_lab_and_no_mesh_edge)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/board1-rc15-preparatory-46903cd0-xke1sctz/rod-worktrees/wt_T54-RC1-lab-isolation-gate-sleepeth-on-a-mesh-edge/tools/readiness/tests/test_t54.py", line 139, in test_w02_the_light_release_carrieth_no_lab_and_no_mesh_edge
+    self.assertTrue(any("reacheth :mesh" in e for e in armed_findings.errors),
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                    armed_findings.errors)
+                    ^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: False is not true : []
+
+----------------------------------------------------------------------
+Ran 1 test in 0.009s
+
+FAILED (failures=1)

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.godstone.mesh.wire.v2.MessageIdTest" tests="11" skipped="0" failures="0" errors="0" timestamp="2026-10-04T22:16:37" hostname="Naraharikripas-Mac-mini.local" time="0.001">
+  <properties/>
+  <testcase name="logical message identity toString redacts message nonce" classname="io.godstone.mesh.wire.v2.MessageIdTest" time="0.0"/>
+  <testcase name="msg_id help epoch 1 nonce all ones reproduces locked vector" classname="io.godstone.mesh.wire.v2.MessageIdTest" time="0.0"/>
+  <testcase name="big-endian created_at produces a different locked digest" classname="io.godstone.mesh.wire.v2.MessageIdTest" time="0.0"/>
+  <testcase name="retry stability preserves exact same msg_id across 100 evaluations" classname="io.godstone.mesh.wire.v2.MessageIdTest" time="0.001"/>
+  <testcase name="logical message identity validates uint32 range and defensive copies nonce" classname="io.godstone.mesh.wire.v2.MessageIdTest" time="0.0"/>
+  <testcase name="alice vs bob concurrent sends at same second receive distinct msg_ids" classname="io.godstone.mesh.wire.v2.MessageIdTest" time="0.0"/>
+  <testcase name="distinct nonces for identical sender content time produce distinct msg_ids" classname="io.godstone.mesh.wire.v2.MessageIdTest" time="0.0"/>
+  <testcase name="msg_id sos payload real epoch kat nonce reproduces locked vector" classname="io.godstone.mesh.wire.v2.MessageIdTest" time="0.0"/>
+  <testcase name="missing domain separator produces a different digest" classname="io.godstone.mesh.wire.v2.MessageIdTest" time="0.0"/>
+  <testcase name="msg_id is 16 bytes" classname="io.godstone.mesh.wire.v2.MessageIdTest" time="0.0"/>
+  <testcase name="msg_id empty payload zero time zero nonce reproduces locked vector" classname="io.godstone.mesh.wire.v2.MessageIdTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

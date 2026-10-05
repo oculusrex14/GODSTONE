@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.godstone.mesh.readiness.ReadinessT40Test" tests="12" skipped="0" failures="0" errors="0" timestamp="2026-10-04T22:16:25" hostname="Naraharikripas-Mac-mini.local" time="0.047">
+  <properties/>
+  <testcase name="testSnapshotAuthorityKeepsTheLaw" classname="io.godstone.mesh.readiness.ReadinessT40Test" time="0.019"/>
+  <testcase name="testInventoryWalksWrapAroundTheEnd" classname="io.godstone.mesh.readiness.ReadinessT40Test" time="0.007"/>
+  <testcase name="testBuilderValidationNamesTheRejects" classname="io.godstone.mesh.readiness.ReadinessT40Test" time="0.001"/>
+  <testcase name="testStaleDigestIsIgnoredTheTrackedOneStands" classname="io.godstone.mesh.readiness.ReadinessT40Test" time="0.002"/>
+  <testcase name="testEvictionIsForgottenByTheFreshCapture" classname="io.godstone.mesh.readiness.ReadinessT40Test" time="0.003"/>
+  <testcase name="testDecodeRejectsEveryMalformedPayloadByItsName" classname="io.godstone.mesh.readiness.ReadinessT40Test" time="0.001"/>
+  <testcase name="testFullBloomTravelsTheAtTwentyByteLink" classname="io.godstone.mesh.readiness.ReadinessT40Test" time="0.001"/>
+  <testcase name="testControlCampaignNeverTouchesTheDurableStore" classname="io.godstone.mesh.readiness.ReadinessT40Test" time="0.004"/>
+  <testcase name="testEncodeDecodeCrossPlatformExactBytes" classname="io.godstone.mesh.readiness.ReadinessT40Test" time="0.001"/>
+  <testcase name="testSequenceDisciplineOnReceivedPages" classname="io.godstone.mesh.readiness.ReadinessT40Test" time="0.003"/>
+  <testcase name="testTheReceiverRefusethTheFirstPageBeyondItsRunBudget" classname="io.godstone.mesh.readiness.ReadinessT40Test" time="0.002"/>
+  <testcase name="testForcedBloomCollisionConvergesByExactReconciliation" classname="io.godstone.mesh.readiness.ReadinessT40Test" time="0.003"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.godstone.mesh.crypto.ReadinessT05Test" tests="10" skipped="0" failures="0" errors="0" timestamp="2026-10-04T22:15:55" hostname="Naraharikripas-Mac-mini.local" time="0.012">
+  <properties/>
+  <testcase name="testForgedHighNonceThenValidFrame_SecondFrameStillAuthenticates" classname="io.godstone.mesh.crypto.ReadinessT05Test" time="0.004"/>
+  <testcase name="testUnsignedNonceParser_ReserveAndPolicy" classname="io.godstone.mesh.crypto.ReadinessT05Test" time="0.0"/>
+  <testcase name="testTypedRejectionDoesNotTerminateCollector" classname="io.godstone.mesh.crypto.ReadinessT05Test" time="0.002"/>
+  <testcase name="testReorderWithinWindow_Accepted" classname="io.godstone.mesh.crypto.ReadinessT05Test" time="0.0"/>
+  <testcase name="testLargeForwardJumpClearsBoundedBitmap" classname="io.godstone.mesh.crypto.ReadinessT05Test" time="0.0"/>
+  <testcase name="testLegacyDecryptWrapper_StillFailsHard" classname="io.godstone.mesh.crypto.ReadinessT05Test" time="0.002"/>
+  <testcase name="testFailedAuthenticationConsumesNothing_RetransmissionRecovers" classname="io.godstone.mesh.crypto.ReadinessT05Test" time="0.002"/>
+  <testcase name="testNarrowingRegression_LargeJumpIsClassifiedByComparison" classname="io.godstone.mesh.crypto.ReadinessT05Test" time="0.0"/>
+  <testcase name="testWindowPreviewIsPure_UntilCommit" classname="io.godstone.mesh.crypto.ReadinessT05Test" time="0.0"/>
+  <testcase name="testForgedInPolicyNonce_AuthenticationFailureCommitsNothing" classname="io.godstone.mesh.crypto.ReadinessT05Test" time="0.002"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

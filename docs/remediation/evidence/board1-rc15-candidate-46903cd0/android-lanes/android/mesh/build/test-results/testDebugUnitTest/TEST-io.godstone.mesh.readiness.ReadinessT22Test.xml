@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.godstone.mesh.readiness.ReadinessT22Test" tests="15" skipped="0" failures="0" errors="0" timestamp="2026-10-04T22:16:24" hostname="Naraharikripas-Mac-mini.local" time="0.275">
+  <properties/>
+  <testcase name="testTheResponderIsNotTrustedByTheFirstNorTheSecondAloneAndNoDATARidesTheStream" classname="io.godstone.mesh.readiness.ReadinessT22Test" time="0.016"/>
+  <testcase name="testTheResponderAnswerethTheExpectedFirstWithTheQueuedSecond" classname="io.godstone.mesh.readiness.ReadinessT22Test" time="0.017"/>
+  <testcase name="testThePublicShapeAdmittethTheAlienSealDenieth" classname="io.godstone.mesh.readiness.ReadinessT22Test" time="0.047"/>
+  <testcase name="testTheSecondSpokenAtTheRespondersGateIsAConflictingSequence" classname="io.godstone.mesh.readiness.ReadinessT22Test" time="0.018"/>
+  <testcase name="testTheRejectedAndRevokedBindingsPerishTheRelationAtTheThirdCounsel" classname="io.godstone.mesh.readiness.ReadinessT22Test" time="0.033"/>
+  <testcase name="testTheThirdRecordBeforeTheFirstIsRefusedAndTheRelationFalleth" classname="io.godstone.mesh.readiness.ReadinessT22Test" time="0.001"/>
+  <testcase name="testTheDuplicateFirstMessageInHandPerishethTheRelation" classname="io.godstone.mesh.readiness.ReadinessT22Test" time="0.007"/>
+  <testcase name="testTheResponderHearkentheVerdictOfTheQueuedSecond" classname="io.godstone.mesh.readiness.ReadinessT22Test" time="0.017"/>
+  <testcase name="testTheTamperedThirdPerishethTheRelationExactly" classname="io.godstone.mesh.readiness.ReadinessT22Test" time="0.014"/>
+  <testcase name="testTheThirdSpokenAgainAfterTheTrustIsAConflictingSequence" classname="io.godstone.mesh.readiness.ReadinessT22Test" time="0.018"/>
+  <testcase name="testTheResponderPublishethNoughtTillTheThirdIsTrusted" classname="io.godstone.mesh.readiness.ReadinessT22Test" time="0.017"/>
+  <testcase name="testATerminalSessionRetirementUnpublishethTheRelation" classname="io.godstone.mesh.readiness.ReadinessT22Test" time="0.015"/>
+  <testcase name="testTheLateFirstMessageAfterTheTrustClosethTheRelationExactly" classname="io.godstone.mesh.readiness.ReadinessT22Test" time="0.019"/>
+  <testcase name="testTheWrongSizedRecordsAreRefusedAndTheTruthPreserved" classname="io.godstone.mesh.readiness.ReadinessT22Test" time="0.018"/>
+  <testcase name="testATerminalSessionRetirementSchedulesOneBoundedFreshHandshake" classname="io.godstone.mesh.readiness.ReadinessT22Test" time="0.018"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

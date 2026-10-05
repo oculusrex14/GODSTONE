@@ -136,6 +136,12 @@ ios-simulator-lane.log
 # BEFORE the schemes run and writeth it to `<log>.pre.sha256`; the checker requireth it to EQUAL the post-run sidecar,
 # so an edit DURING a run cannot leave a log that describeth a tree the tests never compiled.*
 *.pre.sha256
+# *** AND THE LANE'S SQLCIPHER PROVISIONING TRANSCRIPT. ***
+# `run_ios_lane.sh`/`run_ios_ui_lane.sh` tee native-image build, register verification and mirror sync to
+# `<lane-log>.sqlcipher` beside the lane result. It records how the run obtained its toolchain inputs; it is not
+# the lane verdict or a source-list binding. The authoritative provenance sidecars above remain the checker's inputs,
+# while this raw transcript is uploaded as an artifact and never committed.
+*.log.sqlcipher
 
 # *** AND THE REPORT-BEARING ANDROID LANES' OWN OUTPUT (ui / simulator / production). ***
 #

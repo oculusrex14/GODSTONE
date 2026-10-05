@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.godstone.mesh.di.GsFinal003PrePrivateRecoveryGraphTest" tests="14" skipped="0" failures="0" errors="0" timestamp="2026-10-04T22:16:16" hostname="Naraharikripas-Mac-mini.local" time="0.066">
+  <properties/>
+  <testcase name="theBarrierAndTheAdmissionGateReadOneDecisionOnEveryRung" classname="io.godstone.mesh.di.GsFinal003PrePrivateRecoveryGraphTest" time="0.01"/>
+  <testcase name="anUnreadableDurableRecordIsCorruptAndRefusedOnBothRoads" classname="io.godstone.mesh.di.GsFinal003PrePrivateRecoveryGraphTest" time="0.004"/>
+  <testcase name="aPublishedNameReachesTheTerminalRung" classname="io.godstone.mesh.di.GsFinal003PrePrivateRecoveryGraphTest" time="0.004"/>
+  <testcase name="everyPersistedRungConvergesWithZeroPrivateConstruction" classname="io.godstone.mesh.di.GsFinal003PrePrivateRecoveryGraphTest" time="0.007"/>
+  <testcase name="onlyASettledEstateMintsAndItIsCheckedAgainstTheEvidence" classname="io.godstone.mesh.di.GsFinal003PrePrivateRecoveryGraphTest" time="0.004"/>
+  <testcase name="thePermitDoorTakesOnlyNonConstructibleEvidence" classname="io.godstone.mesh.di.GsFinal003PrePrivateRecoveryGraphTest" time="0.004"/>
+  <testcase name="aCorruptRecordIsOperatorResolvedAndTheAppThenStartsHonestly" classname="io.godstone.mesh.di.GsFinal003PrePrivateRecoveryGraphTest" time="0.004"/>
+  <testcase name="aPermitIsWithheldWhenTheDurableEstateMoved" classname="io.godstone.mesh.di.GsFinal003PrePrivateRecoveryGraphTest" time="0.004"/>
+  <testcase name="theProductionIdentitySeamReportsFailureAsTheTypedNegativeChannel" classname="io.godstone.mesh.di.GsFinal003PrePrivateRecoveryGraphTest" time="0.004"/>
+  <testcase name="theConstructionCounterMovesOnThePermittedRoadAndNotOnARefusingOne" classname="io.godstone.mesh.di.GsFinal003PrePrivateRecoveryGraphTest" time="0.004"/>
+  <testcase name="theRawOwnerConstructorConsumesTheAuthorityAtItsOwnBoundary" classname="io.godstone.mesh.di.GsFinal003PrePrivateRecoveryGraphTest" time="0.005"/>
+  <testcase name="anAbsentRecordIsACleanStartAndPermitsOnBothRoads" classname="io.godstone.mesh.di.GsFinal003PrePrivateRecoveryGraphTest" time="0.004"/>
+  <testcase name="aWipeThatRanToItsEndReadsAsWipeCompleted" classname="io.godstone.mesh.di.GsFinal003PrePrivateRecoveryGraphTest" time="0.004"/>
+  <testcase name="aFailedPublicationKeepsTheWipePending" classname="io.godstone.mesh.di.GsFinal003PrePrivateRecoveryGraphTest" time="0.003"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

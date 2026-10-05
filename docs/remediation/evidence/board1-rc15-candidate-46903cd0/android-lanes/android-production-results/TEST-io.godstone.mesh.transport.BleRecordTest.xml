@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.godstone.mesh.transport.BleRecordTest" tests="28" skipped="0" failures="0" errors="0" timestamp="2026-10-04T22:16:37" hostname="Naraharikripas-Mac-mini.local" time="0.006">
+  <properties/>
+  <testcase name="testVector_Negative_CorruptHeaderXorCheck" classname="io.godstone.mesh.transport.BleRecordTest" time="0.0"/>
+  <testcase name="testReassembly_DuplicateCompletedRecord_Suppressed" classname="io.godstone.mesh.transport.BleRecordTest" time="0.0"/>
+  <testcase name="testVector_Positive_Hs2_MultiFragment" classname="io.godstone.mesh.transport.BleRecordTest" time="0.0"/>
+  <testcase name="testReassembly_ShuffledOrder" classname="io.godstone.mesh.transport.BleRecordTest" time="0.0"/>
+  <testcase name="testPureHandshake_ThroughBleRecords_CompletesAndReachesReady" classname="io.godstone.mesh.transport.BleRecordTest" time="0.003"/>
+  <testcase name="testVector_Negative_UnknownRecordType" classname="io.godstone.mesh.transport.BleRecordTest" time="0.0"/>
+  <testcase name="testReassembly_ConflictingDuplicateFragment_InvalidatesAssembly" classname="io.godstone.mesh.transport.BleRecordTest" time="0.0"/>
+  <testcase name="testReassembly_MetadataConflict_InvalidatesAssembly" classname="io.godstone.mesh.transport.BleRecordTest" time="0.0"/>
+  <testcase name="testReassembly_ReverseOrder" classname="io.godstone.mesh.transport.BleRecordTest" time="0.0"/>
+  <testcase name="testEncryptThenFragment_SemanticDataFlow" classname="io.godstone.mesh.transport.BleRecordTest" time="0.002"/>
+  <testcase name="testVector_Positive_Close_ZeroLength" classname="io.godstone.mesh.transport.BleRecordTest" time="0.0"/>
+  <testcase name="testVector_Positive_Data_MultiFragment" classname="io.godstone.mesh.transport.BleRecordTest" time="0.0"/>
+  <testcase name="testReassembly_SequenceWrap_Accepted" classname="io.godstone.mesh.transport.BleRecordTest" time="0.0"/>
+  <testcase name="testVector_Positive_Hs3_MultiFragment" classname="io.godstone.mesh.transport.BleRecordTest" time="0.0"/>
+  <testcase name="testVector_Negative_TotalLen16385ExceedsMax" classname="io.godstone.mesh.transport.BleRecordTest" time="0.0"/>
+  <testcase name="testVector_Negative_FragIndexEqualsFragCount" classname="io.godstone.mesh.transport.BleRecordTest" time="0.0"/>
+  <testcase name="testReassembly_MaxConcurrentLimit" classname="io.godstone.mesh.transport.BleRecordTest" time="0.0"/>
+  <testcase name="testVector_Negative_TruncatedPayload" classname="io.godstone.mesh.transport.BleRecordTest" time="0.0"/>
+  <testcase name="testVector_Positive_MaxRecord_16384" classname="io.godstone.mesh.transport.BleRecordTest" time="0.0"/>
+  <testcase name="testVector_Negative_FragCountZero" classname="io.godstone.mesh.transport.BleRecordTest" time="0.0"/>
+  <testcase name="testVector_Negative_FragCount65ExceedsMax" classname="io.godstone.mesh.transport.BleRecordTest" time="0.0"/>
+  <testcase name="testVector_Negative_BadMagic" classname="io.godstone.mesh.transport.BleRecordTest" time="0.0"/>
+  <testcase name="testVector_Negative_ExcessPayload" classname="io.godstone.mesh.transport.BleRecordTest" time="0.0"/>
+  <testcase name="testReassembly_ResetClearsAllState" classname="io.godstone.mesh.transport.BleRecordTest" time="0.0"/>
+  <testcase name="testVector_Positive_Hs1_SingleFragment" classname="io.godstone.mesh.transport.BleRecordTest" time="0.0"/>
+  <testcase name="testVector_Negative_TruncatedHeader" classname="io.godstone.mesh.transport.BleRecordTest" time="0.0"/>
+  <testcase name="testReassembly_TimeoutFailClosed" classname="io.godstone.mesh.transport.BleRecordTest" time="0.001"/>
+  <testcase name="testReassembly_IdempotentDuplicateFragment" classname="io.godstone.mesh.transport.BleRecordTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

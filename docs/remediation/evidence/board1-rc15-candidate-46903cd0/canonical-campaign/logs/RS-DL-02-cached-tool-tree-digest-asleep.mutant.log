@@ -1,0 +1,17 @@
+test_a_cached_tree_that_is_not_the_pinned_contents_is_refused (test_audit_supplychain_harness.ToolchainDownloadCourt.test_a_cached_tree_that_is_not_the_pinned_contents_is_refused) ... FAIL
+
+======================================================================
+FAIL: test_a_cached_tree_that_is_not_the_pinned_contents_is_refused (test_audit_supplychain_harness.ToolchainDownloadCourt.test_a_cached_tree_that_is_not_the_pinned_contents_is_refused)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/board1-rc15-preparatory-46903cd0-xke1sctz/rod-worktrees/wt_RS-DL-02-cached-tool-tree-digest-asleep/tools/readiness/tests/test_audit_supplychain_harness.py", line 106, in test_a_cached_tree_that_is_not_the_pinned_contents_is_refused
+    self.assertTrue(any("NOT the pinned archive" in item for item in problems),
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                    problems)
+                    ^^^^^^^^^
+AssertionError: False is not true : []
+
+----------------------------------------------------------------------
+Ran 1 test in 0.002s
+
+FAILED (failures=1)

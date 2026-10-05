@@ -1,0 +1,12 @@
+Test Suite 'Selected tests' started at 2026-10-05 05:55:56.229.
+Test Suite 'GodstoneMeshTests.xctest' started at 2026-10-05 05:55:56.235.
+Test Suite 'GsIntegration001CrossPlatformWorkerTests' started at 2026-10-05 05:55:56.235.
+Test Case '-[GodstoneMeshTests.GsIntegration001CrossPlatformWorkerTests testGSINT001CrossPlatformWorker]' started.
+Test Case '-[GodstoneMeshTests.GsIntegration001CrossPlatformWorkerTests testGSINT001CrossPlatformWorker]' passed (42.030 seconds).
+Test Suite 'GsIntegration001CrossPlatformWorkerTests' passed at 2026-10-05 05:56:38.267.
+	 Executed 1 test, with 0 failures (0 unexpected) in 42.030 (42.031) seconds
+Test Suite 'GodstoneMeshTests.xctest' passed at 2026-10-05 05:56:38.267.
+	 Executed 1 test, with 0 failures (0 unexpected) in 42.030 (42.032) seconds
+Test Suite 'Selected tests' passed at 2026-10-05 05:56:38.267.
+	 Executed 1 test, with 0 failures (0 unexpected) in 42.030 (42.038) seconds
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6

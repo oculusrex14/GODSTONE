@@ -1,0 +1,20 @@
+
+== ui selftest: mutation | expected | observed | verdict ==
+   1. whole required suite absent                 red    red    KILLED
+   2. one required arm absent                     red    red    KILLED
+   3. Executed 0 tests                            red    red    KILLED
+   4. one skipped arm                             red    red    KILLED
+   5. a new unexpected failed arm                 red    red    KILLED
+   6. the formerly-known-red arm failing is REFUSED (allowance retired) red    red    KILLED
+   6c. the known-red allowance is EMPTY           empty  empty  KILLED
+   7. a different passing arm changed to failed   red    red    KILLED
+   8. missing digest sidecar                      red    red    KILLED
+   9. stale digest sidecar                        red    red    KILLED
+   10. duplicate verdict for one arm              red    red    KILLED
+   11. source-declared arm omitted from the log   red    red    KILLED
+   11b. a verdict for an arm the sources do NOT declare (unexpected arm) red    red    KILLED
+   12b. a recorded arm failing for a FOREIGN reason is REFUSED red    red    KILLED
+   12. empty log (no arm verdicts at all)         red    red    KILLED
+   13. a source changed while the lane ran (pre != post) red    red    KILLED
+
+ui selftest: 16/16 mutations killed

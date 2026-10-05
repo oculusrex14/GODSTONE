@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.godstone.mesh.readiness.ReadinessT72Test" tests="24" skipped="0" failures="0" errors="0" timestamp="2026-10-04T22:16:26" hostname="Naraharikripas-Mac-mini.local" time="0.054">
+  <properties/>
+  <testcase name="testGSSTRESS001theFifthOwnerObserversIsCensused" classname="io.godstone.mesh.readiness.ReadinessT72Test" time="0.001"/>
+  <testcase name="test_w00_the_result_carrieth_the_resource_model_category" classname="io.godstone.mesh.readiness.ReadinessT72Test" time="0.0"/>
+  <testcase name="test_w04_no_duplicate_delivery_under_the_retry_cap" classname="io.godstone.mesh.readiness.ReadinessT72Test" time="0.002"/>
+  <testcase name="testGSSTRESS001theThirdOwnerAdmittedLeasesIsCensused" classname="io.godstone.mesh.readiness.ReadinessT72Test" time="0.0"/>
+  <testcase name="test_w10_a_failed_seed_is_recorded_and_reproducible" classname="io.godstone.mesh.readiness.ReadinessT72Test" time="0.004"/>
+  <testcase name="test_w09_each_defect_is_caught_by_name" classname="io.godstone.mesh.readiness.ReadinessT72Test" time="0.007"/>
+  <testcase name="test_w14_the_session_invariant_is_asked_of_a_real_owner" classname="io.godstone.mesh.readiness.ReadinessT72Test" time="0.003"/>
+  <testcase name="testGSSTRESS001aMeasuredCleanOwnerIsNeitherAccusedNorUnmeasured" classname="io.godstone.mesh.readiness.ReadinessT72Test" time="0.001"/>
+  <testcase name="test_w06_the_census_plateau_is_structural" classname="io.godstone.mesh.readiness.ReadinessT72Test" time="0.005"/>
+  <testcase name="test_w01_ten_thousand_cycles_over_multiple_peers" classname="io.godstone.mesh.readiness.ReadinessT72Test" time="0.004"/>
+  <testcase name="test_w03_no_duplicate_inbox_row" classname="io.godstone.mesh.readiness.ReadinessT72Test" time="0.001"/>
+  <testcase name="test_w08_the_five_faults_are_applied_at_their_steps" classname="io.godstone.mesh.readiness.ReadinessT72Test" time="0.003"/>
+  <testcase name="testGSSTRESS001theSixthOwnerPendingAcksIsCensused" classname="io.godstone.mesh.readiness.ReadinessT72Test" time="0.0"/>
+  <testcase name="test_w07_the_fault_schedule_is_bounded_and_deterministic" classname="io.godstone.mesh.readiness.ReadinessT72Test" time="0.0"/>
+  <testcase name="testGSSTRESS001theFourthOwnerTimersIsCensused" classname="io.godstone.mesh.readiness.ReadinessT72Test" time="0.001"/>
+  <testcase name="testGSSTRESS001anUnmeasurableOwnerIsNamedRatherThanAssumedClean" classname="io.godstone.mesh.readiness.ReadinessT72Test" time="0.0"/>
+  <testcase name="testGSSTRESS001theThirdOwnerIsDistinctFromTheSecond" classname="io.godstone.mesh.readiness.ReadinessT72Test" time="0.0"/>
+  <testcase name="testGSSTRESS001theStoreObserversAreADistinctOwnerFromTheAuthoritys" classname="io.godstone.mesh.readiness.ReadinessT72Test" time="0.0"/>
+  <testcase name="test_w09b_the_lifecycle_defects_are_independent" classname="io.godstone.mesh.readiness.ReadinessT72Test" time="0.002"/>
+  <testcase name="test_w02_zero_leaks_after_shutdown" classname="io.godstone.mesh.readiness.ReadinessT72Test" time="0.011"/>
+  <testcase name="test_w09c_the_result_carrieth_its_category_and_its_unmeasured_set" classname="io.godstone.mesh.readiness.ReadinessT72Test" time="0.0"/>
+  <testcase name="test_w11_the_campaign_is_bounded_in_time" classname="io.godstone.mesh.readiness.ReadinessT72Test" time="0.008"/>
+  <testcase name="test_w05_no_uncaught_malformed_input" classname="io.godstone.mesh.readiness.ReadinessT72Test" time="0.001"/>
+  <testcase name="testGSSTRESS001theSecondOwnerIsCensusedAndAccused" classname="io.godstone.mesh.readiness.ReadinessT72Test" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

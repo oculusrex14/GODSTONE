@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.godstone.mesh.router.BloomDigestTest" tests="9" skipped="0" failures="0" errors="0" timestamp="2026-10-04T22:16:37" hostname="Naraharikripas-Mac-mini.local" time="0.001">
+  <properties/>
+  <testcase name="three id short digest reproduces locked vector" classname="io.godstone.mesh.router.BloomDigestTest" time="0.001"/>
+  <testcase name="single id filter reproduces locked indices" classname="io.godstone.mesh.router.BloomDigestTest" time="0.0"/>
+  <testcase name="three id round indices reproduce locked vector" classname="io.godstone.mesh.router.BloomDigestTest" time="0.0"/>
+  <testcase name="single id short digest reproduces locked vector" classname="io.godstone.mesh.router.BloomDigestTest" time="0.0"/>
+  <testcase name="fromBytes round trips a built filter" classname="io.godstone.mesh.router.BloomDigestTest" time="0.0"/>
+  <testcase name="single id round indices reproduce locked vector" classname="io.godstone.mesh.router.BloomDigestTest" time="0.0"/>
+  <testcase name="three id might contain is true for all members" classname="io.godstone.mesh.router.BloomDigestTest" time="0.0"/>
+  <testcase name="three id filter reproduces locked indices" classname="io.godstone.mesh.router.BloomDigestTest" time="0.0"/>
+  <testcase name="single id might contain is true for member and false for non member" classname="io.godstone.mesh.router.BloomDigestTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

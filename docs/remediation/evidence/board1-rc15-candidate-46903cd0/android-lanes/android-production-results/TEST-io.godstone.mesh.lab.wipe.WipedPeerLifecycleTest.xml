@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.godstone.mesh.lab.wipe.WipedPeerLifecycleTest" tests="10" skipped="0" failures="0" errors="0" timestamp="2026-10-04T22:16:23" hostname="Naraharikripas-Mac-mini.local" time="0.016">
+  <properties/>
+  <testcase name="aPartialLegacyRecordFailsClosedRatherThanMigrating" classname="io.godstone.mesh.lab.wipe.WipedPeerLifecycleTest" time="0.0"/>
+  <testcase name="anIdentityWhosePersistenceRefusedIsNeverClaimed" classname="io.godstone.mesh.lab.wipe.WipedPeerLifecycleTest" time="0.001"/>
+  <testcase name="theWipeLifecycleInvalidatesClosesThenDrivesTheLadder" classname="io.godstone.mesh.lab.wipe.WipedPeerLifecycleTest" time="0.005"/>
+  <testcase name="aFreshNoiseHandshakeReAuthenticatesTheWipedNodeUnderANewNodeId" classname="io.godstone.mesh.lab.wipe.WipedPeerLifecycleTest" time="0.003"/>
+  <testcase name="aWipedCandidateIsNeverHandedOnThroughTheResolver" classname="io.godstone.mesh.lab.wipe.WipedPeerLifecycleTest" time="0.001"/>
+  <testcase name="thePostWipeIdentityPersistsAndIsADifferentNodeAtGenerationZero" classname="io.godstone.mesh.lab.wipe.WipedPeerLifecycleTest" time="0.0"/>
+  <testcase name="thePersistedStateIsTheCanonicalSixtyNineByteLayout" classname="io.godstone.mesh.lab.wipe.WipedPeerLifecycleTest" time="0.001"/>
+  <testcase name="aBusyPeerFamilyKeepsThePeerResolvableAndTheWipePending" classname="io.godstone.mesh.lab.wipe.WipedPeerLifecycleTest" time="0.002"/>
+  <testcase name="aWipedPeerIsNotFoundInTheFreshStoreAndItsRowIsGone" classname="io.godstone.mesh.lab.wipe.WipedPeerLifecycleTest" time="0.002"/>
+  <testcase name="aStaleRelationIsRefusedAtTheHandOffOnceTheRuntimeIsInvalidated" classname="io.godstone.mesh.lab.wipe.WipedPeerLifecycleTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

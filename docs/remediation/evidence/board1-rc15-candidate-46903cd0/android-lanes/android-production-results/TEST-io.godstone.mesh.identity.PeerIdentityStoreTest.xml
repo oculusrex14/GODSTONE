@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.godstone.mesh.identity.PeerIdentityStoreTest" tests="19" skipped="0" failures="0" errors="0" timestamp="2026-10-04T22:16:16" hostname="Naraharikripas-Mac-mini.local" time="0.01">
+  <properties/>
+  <testcase name="testK5_MalformedBase64_FailsClosed" classname="io.godstone.mesh.identity.PeerIdentityStoreTest" time="0.0"/>
+  <testcase name="testK2_KeyPresentAndDbAbsent_DecodesAndDoesNotGenerate" classname="io.godstone.mesh.identity.PeerIdentityStoreTest" time="0.001"/>
+  <testcase name="testFreshDatabaseInitialization" classname="io.godstone.mesh.identity.PeerIdentityStoreTest" time="0.001"/>
+  <testcase name="testPanicWipe_SidecarDeletionFailureThrowsAndFileRemains" classname="io.godstone.mesh.identity.PeerIdentityStoreTest" time="0.001"/>
+  <testcase name="testReopenExistingValidDatabase" classname="io.godstone.mesh.identity.PeerIdentityStoreTest" time="0.001"/>
+  <testcase name="testPanicWipe_PreferenceBackupDeletionFailureThrowsAndFileRemains" classname="io.godstone.mesh.identity.PeerIdentityStoreTest" time="0.001"/>
+  <testcase name="testMalformedCurrentSchemaFailsClosed" classname="io.godstone.mesh.identity.PeerIdentityStoreTest" time="0.0"/>
+  <testcase name="testK4_KeyAbsentAndDbPresent_FailsClosed" classname="io.godstone.mesh.identity.PeerIdentityStoreTest" time="0.001"/>
+  <testcase name="testK8_PersistenceFailure_FailsClosed" classname="io.godstone.mesh.identity.PeerIdentityStoreTest" time="0.0"/>
+  <testcase name="testK1_KeyAbsentAndDbAbsent_GeneratesAndPersists" classname="io.godstone.mesh.identity.PeerIdentityStoreTest" time="0.0"/>
+  <testcase name="testPanicWipe_PreferenceDeletionFailureThrowsAndFileRemains" classname="io.godstone.mesh.identity.PeerIdentityStoreTest" time="0.0"/>
+  <testcase name="testK9_KeyPreferenceNamespaceIsolation" classname="io.godstone.mesh.identity.PeerIdentityStoreTest" time="0.001"/>
+  <testcase name="testUnversionedExistingTableFailsClosed" classname="io.godstone.mesh.identity.PeerIdentityStoreTest" time="0.0"/>
+  <testcase name="testK7_KeyTooLong_FailsClosed" classname="io.godstone.mesh.identity.PeerIdentityStoreTest" time="0.001"/>
+  <testcase name="testK3_KeyPresentAndDbPresent_DecodesAndDoesNotGenerate" classname="io.godstone.mesh.identity.PeerIdentityStoreTest" time="0.0"/>
+  <testcase name="testK6_KeyTooShort_FailsClosed" classname="io.godstone.mesh.identity.PeerIdentityStoreTest" time="0.0"/>
+  <testcase name="testRowImmutabilityAndDefensiveCopying" classname="io.godstone.mesh.identity.PeerIdentityStoreTest" time="0.0"/>
+  <testcase name="testPanicWipe_PhysicalDeletionAndIdempotency" classname="io.godstone.mesh.identity.PeerIdentityStoreTest" time="0.001"/>
+  <testcase name="testFutureVersionFailsClosed" classname="io.godstone.mesh.identity.PeerIdentityStoreTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

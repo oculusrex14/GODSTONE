@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.godstone.mesh.lab.replay.ScenarioReplayRotationTest" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-10-04T22:16:22" hostname="Naraharikripas-Mac-mini.local" time="0.065">
+  <properties/>
+  <testcase name="theInitialHandshakesReplayedFirstCounselIsHeardNotAndTheRelationStands" classname="io.godstone.mesh.lab.replay.ScenarioReplayRotationTest" time="0.007"/>
+  <testcase name="aRotationQuarantinesUntilTheExactCandidateIsApproved" classname="io.godstone.mesh.lab.replay.ScenarioReplayRotationTest" time="0.008"/>
+  <testcase name="aRevokedPeerIsRefusedByNameAndNothingIsEnqueued" classname="io.godstone.mesh.lab.replay.ScenarioReplayRotationTest" time="0.018"/>
+  <testcase name="aReplayAfterAReconnectAddsNoSecondRowAndTheTerminalClaimSurvives" classname="io.godstone.mesh.lab.replay.ScenarioReplayRotationTest" time="0.012"/>
+  <testcase name="thePostRotationSendPinsTheNewGenerationAndTheRetryReusesThePinnedBytes" classname="io.godstone.mesh.lab.replay.ScenarioReplayRotationTest" time="0.008"/>
+  <testcase name="theForwardQueueOverflowSupersedesTheEldestAndStaysBounded" classname="io.godstone.mesh.lab.replay.ScenarioReplayRotationTest" time="0.012"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

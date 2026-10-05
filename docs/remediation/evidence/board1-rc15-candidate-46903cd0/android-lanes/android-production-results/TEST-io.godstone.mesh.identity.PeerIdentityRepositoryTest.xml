@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.godstone.mesh.identity.PeerIdentityRepositoryTest" tests="56" skipped="0" failures="0" errors="0" timestamp="2026-10-04T22:16:16" hostname="Naraharikripas-Mac-mini.local" time="0.128">
+  <properties/>
+  <testcase name="testConcurrencySupplementalAdvancePendingHighWater" classname="io.godstone.mesh.identity.PeerIdentityRepositoryTest" time="0.006"/>
+  <testcase name="testStorageFaultF3_AdvancePendingFailure_RollsBack" classname="io.godstone.mesh.identity.PeerIdentityRepositoryTest" time="0.003"/>
+  <testcase name="testCardinalityMatrix_AdvancePending_TwoAffected_RollsBack" classname="io.godstone.mesh.identity.PeerIdentityRepositoryTest" time="0.003"/>
+  <testcase name="testExactReconnectAccepted" classname="io.godstone.mesh.identity.PeerIdentityRepositoryTest" time="0.002"/>
+  <testcase name="testInitialPendingReadbackCorruptionRollsBack" classname="io.godstone.mesh.identity.PeerIdentityRepositoryTest" time="0.002"/>
+  <testcase name="testApprovePending_PeerNotFound_ReturnsPeerNotFound" classname="io.godstone.mesh.identity.PeerIdentityRepositoryTest" time="0.001"/>
+  <testcase name="testRevokePeer_CardinalityZero_RollsBack" classname="io.godstone.mesh.identity.PeerIdentityRepositoryTest" time="0.002"/>
+  <testcase name="testApprovePending_InvalidArgument_NodeIdOrKeyOrGenerationInvalid" classname="io.godstone.mesh.identity.PeerIdentityRepositoryTest" time="0.0"/>
+  <testcase name="testRevokePeer_AlreadyRevoked_ReturnsAlreadyRevokedWithoutMutation" classname="io.godstone.mesh.identity.PeerIdentityRepositoryTest" time="0.002"/>
+  <testcase name="testPendingDuplicateKeepsQuarantined" classname="io.godstone.mesh.identity.PeerIdentityRepositoryTest" time="0.002"/>
+  <testcase name="testApprovePending_PostWriteCorruptReadback_RollsBack" classname="io.godstone.mesh.identity.PeerIdentityRepositoryTest" time="0.002"/>
+  <testcase name="testCardinalityMatrix_InitialPending_TwoAffected_RollsBack" classname="io.godstone.mesh.identity.PeerIdentityRepositoryTest" time="0.002"/>
+  <testcase name="testSimulatedCommitFailureAfterSuccessfulBodyRollsBack" classname="io.godstone.mesh.identity.PeerIdentityRepositoryTest" time="0.002"/>
+  <testcase name="testRevokePeer_ThenApprovePending_ReturnsRejectedRevoked" classname="io.godstone.mesh.identity.PeerIdentityRepositoryTest" time="0.002"/>
+  <testcase name="testCorruptRowDetectionFailsClosed" classname="io.godstone.mesh.identity.PeerIdentityRepositoryTest" time="0.001"/>
+  <testcase name="testApprovePending_CardinalityTwo_RollsBack" classname="io.godstone.mesh.identity.PeerIdentityRepositoryTest" time="0.002"/>
+  <testcase name="testRevokePeer_Vs_InboundApply_CrossConnectionRace" classname="io.godstone.mesh.identity.PeerIdentityRepositoryTest" time="0.007"/>
+  <testcase name="testApprovePending_SimulatedCommitFailure_RollsBack" classname="io.godstone.mesh.identity.PeerIdentityRepositoryTest" time="0.003"/>
+  <testcase name="testRevokePeer_CorruptDurableRow_RollsBack" classname="io.godstone.mesh.identity.PeerIdentityRepositoryTest" time="0.001"/>
+  <testcase name="testApprovePending_ExactCandidateSuccess_PromotesToAcceptedAndClearsPending" classname="io.godstone.mesh.identity.PeerIdentityRepositoryTest" time="0.002"/>
+  <testcase name="testRevokePeer_PeerNotFound_ReturnsPeerNotFound" classname="io.godstone.mesh.identity.PeerIdentityRepositoryTest" time="0.001"/>
+  <testcase name="testApprovePending_PreservesTofuPinnedTrustLevel" classname="io.godstone.mesh.identity.PeerIdentityRepositoryTest" time="0.004"/>
+  <testcase name="testApprovePending_PreservesUserVerifiedTrustLevel" classname="io.godstone.mesh.identity.PeerIdentityRepositoryTest" time="0.002"/>
+  <testcase name="testApprovePending_StaleGeneration_ReturnsStaleCandidateAndDoesNotMutate" classname="io.godstone.mesh.identity.PeerIdentityRepositoryTest" time="0.003"/>
+  <testcase name="testCardinalityMatrix_InitialPending_ZeroAffected_RollsBack" classname="io.godstone.mesh.identity.PeerIdentityRepositoryTest" time="0.002"/>
+  <testcase name="testRevokePeer_InvalidArgument_InvalidNodeId" classname="io.godstone.mesh.identity.PeerIdentityRepositoryTest" time="0.001"/>
+  <testcase name="testRevokePeer_StorageFaultAfterUpdate_RollsBack" classname="io.godstone.mesh.identity.PeerIdentityRepositoryTest" time="0.003"/>
+  <testcase name="testRevokePeer_PostWriteCorruptReadback_RollsBack" classname="io.godstone.mesh.identity.PeerIdentityRepositoryTest" time="0.001"/>
+  <testcase name="testRevokePeer_CardinalityTwo_RollsBack" classname="io.godstone.mesh.identity.PeerIdentityRepositoryTest" time="0.002"/>
+  <testcase name="testRevokePeer_SimulatedCommitFailure_RollsBack" classname="io.godstone.mesh.identity.PeerIdentityRepositoryTest" time="0.002"/>
+  <testcase name="testApprovePending_Vs_NewerPending_CrossConnectionRace" classname="io.godstone.mesh.identity.PeerIdentityRepositoryTest" time="0.005"/>
+  <testcase name="testStorageFaultF2_InitialPendingFailure_RollsBack" classname="io.godstone.mesh.identity.PeerIdentityRepositoryTest" time="0.002"/>
+  <testcase name="testConcurrencyC4OldAcceptedReplayKeepsQuarantined" classname="io.godstone.mesh.identity.PeerIdentityRepositoryTest" time="0.003"/>
+  <testcase name="testFirstSeenReadbackCorruptionRollsBack" classname="io.godstone.mesh.identity.PeerIdentityRepositoryTest" time="0.003"/>
+  <testcase name="testRollbackRejectedWithoutMutation" classname="io.godstone.mesh.identity.PeerIdentityRepositoryTest" time="0.002"/>
+  <testcase name="testFirstSeenGenerationZero" classname="io.godstone.mesh.identity.PeerIdentityRepositoryTest" time="0.001"/>
+  <testcase name="testConcurrencyC2Gen5Gen6HighWater" classname="io.godstone.mesh.identity.PeerIdentityRepositoryTest" time="0.005"/>
+  <testcase name="testConcurrencyC1IdenticalFirstSeen" classname="io.godstone.mesh.identity.PeerIdentityRepositoryTest" time="0.003"/>
+  <testcase name="testRevokePeer_ActiveNoPending_RevokesAndPreservesAcceptedAudit" classname="io.godstone.mesh.identity.PeerIdentityRepositoryTest" time="0.001"/>
+  <testcase name="testConcurrencySupplementalIndependentNodes" classname="io.godstone.mesh.identity.PeerIdentityRepositoryTest" time="0.004"/>
+  <testcase name="testLookupClassifications" classname="io.godstone.mesh.identity.PeerIdentityRepositoryTest" time="0.002"/>
+  <testcase name="testFirstSeenGenerationSeven" classname="io.godstone.mesh.identity.PeerIdentityRepositoryTest" time="0.002"/>
+  <testcase name="testApprovePending_StorageFaultAfterUpdate_RollsBack" classname="io.godstone.mesh.identity.PeerIdentityRepositoryTest" time="0.001"/>
+  <testcase name="testAdvancePendingReadbackCorruptionRollsBack" classname="io.godstone.mesh.identity.PeerIdentityRepositoryTest" time="0.003"/>
+  <testcase name="testApprovePending_NoPendingCandidate_ReturnsNoPendingCandidateAndDoesNotMutate" classname="io.godstone.mesh.identity.PeerIdentityRepositoryTest" time="0.002"/>
+  <testcase name="testFirstSeenGenerationUint32Max" classname="io.godstone.mesh.identity.PeerIdentityRepositoryTest" time="0.001"/>
+  <testcase name="testAdvancePendingCandidateHighWater" classname="io.godstone.mesh.identity.PeerIdentityRepositoryTest" time="0.002"/>
+  <testcase name="testApprovePending_CardinalityZero_RollsBack" classname="io.godstone.mesh.identity.PeerIdentityRepositoryTest" time="0.002"/>
+  <testcase name="testCardinalityMatrix_AdvancePending_ZeroAffected_RollsBack" classname="io.godstone.mesh.identity.PeerIdentityRepositoryTest" time="0.002"/>
+  <testcase name="testInitialPendingCandidate" classname="io.godstone.mesh.identity.PeerIdentityRepositoryTest" time="0.002"/>
+  <testcase name="testApprovePending_SameGenerationWrongStatic_ReturnsStaleCandidateAndDoesNotMutate" classname="io.godstone.mesh.identity.PeerIdentityRepositoryTest" time="0.002"/>
+  <testcase name="testOldAcceptedDuringQuarantineKeepsQuarantined" classname="io.godstone.mesh.identity.PeerIdentityRepositoryTest" time="0.001"/>
+  <testcase name="testApprovePending_Revoked_ReturnsRejectedRevoked" classname="io.godstone.mesh.identity.PeerIdentityRepositoryTest" time="0.002"/>
+  <testcase name="testRevokePeer_ActiveWithPending_RevokesAndClearsPending" classname="io.godstone.mesh.identity.PeerIdentityRepositoryTest" time="0.002"/>
+  <testcase name="testStorageFaultF1_FirstSeenFailure_RollsBack" classname="io.godstone.mesh.identity.PeerIdentityRepositoryTest" time="0.001"/>
+  <testcase name="testConcurrencyC3ExactPendingReplayKeepsQuarantined" classname="io.godstone.mesh.identity.PeerIdentityRepositoryTest" time="0.003"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

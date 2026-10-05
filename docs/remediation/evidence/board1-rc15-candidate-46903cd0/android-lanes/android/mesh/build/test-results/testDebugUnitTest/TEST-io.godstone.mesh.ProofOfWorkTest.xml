@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.godstone.mesh.ProofOfWorkTest" tests="14" skipped="0" failures="0" errors="0" timestamp="2026-10-04T22:15:53" hostname="Naraharikripas-Mac-mini.local" time="0.002">
+  <properties/>
+  <testcase name="zero nonce fails at the production target for KAT content" classname="io.godstone.mesh.ProofOfWorkTest" time="0.0"/>
+  <testcase name="digest binds the sender" classname="io.godstone.mesh.ProofOfWorkTest" time="0.0"/>
+  <testcase name="digest binds the message_nonce" classname="io.godstone.mesh.ProofOfWorkTest" time="0.001"/>
+  <testcase name="digest binds created_at" classname="io.godstone.mesh.ProofOfWorkTest" time="0.0"/>
+  <testcase name="pow nonce mined for message_nonce A fails verification when evaluated against message_nonce B" classname="io.godstone.mesh.ProofOfWorkTest" time="0.0"/>
+  <testcase name="mined nonce is 8 bytes and verifies at the easy target" classname="io.godstone.mesh.ProofOfWorkTest" time="0.0"/>
+  <testcase name="digest binds the type code" classname="io.godstone.mesh.ProofOfWorkTest" time="0.0"/>
+  <testcase name="digest binds the priorityCode" classname="io.godstone.mesh.ProofOfWorkTest" time="0.0"/>
+  <testcase name="locked 20-bit KAT digest reproduces the Python reference" classname="io.godstone.mesh.ProofOfWorkTest" time="0.001"/>
+  <testcase name="locked 20-bit KAT nonce verifies at the production target" classname="io.godstone.mesh.ProofOfWorkTest" time="0.0"/>
+  <testcase name="locked 8-bit KAT nonce verifies at 8-bit and fails at 20-bit" classname="io.godstone.mesh.ProofOfWorkTest" time="0.0"/>
+  <testcase name="locked 8-bit KAT digest reproduces the Python reference" classname="io.godstone.mesh.ProofOfWorkTest" time="0.0"/>
+  <testcase name="digest binds the plaintext" classname="io.godstone.mesh.ProofOfWorkTest" time="0.0"/>
+  <testcase name="pow nonce mined for GROUP priority fails verification when evaluated against BROADCAST or DIRECT priority" classname="io.godstone.mesh.ProofOfWorkTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

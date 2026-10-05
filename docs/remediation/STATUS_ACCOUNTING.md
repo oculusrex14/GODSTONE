@@ -1,22 +1,40 @@
 # Status accounting — AUDIT-003-R1 (counts derived at round 88; narrative carried to round 97)
 
-> **CURRENT STATE (2026-10-04) — DERIVED, NOT CARRIED.** *Everything below this banner is HISTORICAL
+> **CURRENT STATE (2026-10-05) — DERIVED, NOT CARRIED.** *Everything below this banner is HISTORICAL
 > audit-trail narrative from the round-88/97 era and is preserved verbatim; it must NOT be read as the
 > current state.* **The current canonical state is DERIVED from the structured obligations by
 > `scripts/build_structured_closure.py`: 35 internal obligations DISCHARGED and 0 OPEN -- NO finding remains internally
 > OPEN (the four `AUDIT-B1-CTRL-001` closure-control discharges are now earned by their OWN scope-specific
-> generator-semantic strike evidence on the UNCHANGED C0 guard, not fake-closed). The restoration-disconnection
-> mutation `gs-final-006.mutation` is
-> DISCHARGED on its OWN separate four-rod restoration campaign (baseline `8e49631b…`, tested tree `95952ec3…`, 4/4
-> SEMANTIC KILLED), which is NEVER aggregated with the canonical board1 181 (179 semantic + 2 structural). Every
-> discharged obligation carries an authored, production-reachable
+> generator-semantic strike evidence at preparatory B `46903cd0` over unchanged guard logic, not fake-closed;
+> the C0 negative-input court remains distinct history). The restoration-disconnection mutation
+> `gs-final-006.mutation` is DISCHARGED on its OWN separate four-rod restoration campaign
+> (baseline `46903cd040ffae9f2cd20529aad54ac6166bd6ad`, tested tree `d74dc5e2679b69358663402e8c4711bea0d519db`),
+> all four SEMANTIC controls KILLED with restored-green, NEVER aggregated with the canonical controls.
+> Every discharged obligation carries an authored, production-reachable
 > `structured_discharge` (seven fields + external `candidate_binding` naming only the prospective rc15 ref, the external
 > evidence bundle manifest `docs/remediation/evidence/board1-evidence-bundle.json` and the future attestation path
 > `FREEZE_ATTESTATION_rc15.json` reserved until freeze -- no closure SHA embedded); the per-obligation source-review history is carried
 > in place as `review_gap_history`, and a terminal obligation may carry that history ONLY when every attached defect is
 > `REPAIRED_STALE`,
 > 5 external obligations; `findings_with_internal_status_open = 0`; `internal_obligations_open = 0`; `verified_fixed = 0`; builder
-> status `REMEDIATION_IN_PROGRESS`; prospective candidate `production-readiness-board1-rc15`.** **Source census (2026-10-04): all 42 authored review-defect verdicts are `REPAIRED_STALE` / 0 `PARTIAL` / 0 `LIVE` -- the former sole PARTIAL (`IOSR13-ACCESSIBILITY-ROSTER-INCOMPLETE`) is repaired in source (the current iOS UI run passed 43 tests / 0 failures, resolved-role arms in all four combination) with human VoiceOver/TalkBack acceptance staying the EXISTING external obligation.** **Final campaign (2026-10-04): the full board1 campaign KILLED 181/181 required rods (179 semantic + 2 structural, classified separately) on baseline `c5a565f…`/tested tree `f67d8dd1…`, with manifest selftest PASS. Supply preflight (2026-10-04): the four supply refusals are REPAIRED by the canonical generators only -- `ios/project.yml` fingerprint `0c4a39…`, SBOM 566 components incl 3 SQLite 2.6.2 coords, 6 CycloneDX faces refreshed; `verify --all` + `sbom-export --check` PASS with honest warnings (cmake absent / unpinned tool versions / debug-dex nondeterminism; reproducibility NOT claimed). The source families are ALREADY resealed and unchanged by the builder/docs-only edits; only the FINAL-C strict integration is re-run after the tracked writes. The five external gates and the independent verification remain OUTSTANDING:** *no finding carrieth `closure_evidence`, no finding is `VERIFIED_FIXED` (only an independent audit may write it), and no READY/COMPLETE claim is made* -- a terminal status is admitted only in the frozen candidate's AUTHENTICATED attestation. The `PARTIAL`/`OPEN` classes in the historical narrative below describe an earlier era and are superseded.
+> status `REMEDIATION_IN_PROGRESS`; prospective candidate `production-readiness-board1-rc15`.**
+> **Source census (2026-10-04):** all 42 authored review-defect verdicts are `REPAIRED_STALE` / 0 `PARTIAL` /
+> 0 `LIVE`; the iOS UI role roster passed 43 tests / 0 failures in all four combinations. Human
+> VoiceOver/TalkBack acceptance remains the existing external obligation.
+> **Preparatory campaign (2026-10-05):** baseline `46903cd040ffae9f2cd20529aad54ac6166bd6ad`,
+> tested tree `d74dc5e2679b69358663402e8c4711bea0d519db`: **179 SEMANTIC controls KILLED and
+> 2 STRUCTURAL controls KILLED, reported separately**, every required control restored-green.
+> Source-aware manifest validation passed; the raw manifest and 543 digest-checked phase logs are
+> clone-carried at `docs/remediation/evidence/board1-rc15-candidate-46903cd0/canonical-campaign/`.
+> All ten B lanes and the separate four restoration controls and five generator strikes remain separately scoped.
+> **Supply preflight (2026-10-04):** the four supply refusals were repaired by the canonical generators only:
+> `ios/project.yml` fingerprint `0c4a39…`, SBOM 566 components including 3 SQLite 2.6.2 coordinates, and six
+> CycloneDX faces refreshed. `verify --all` and `sbom-export --check` passed with honest warnings:
+> cmake absent, unpinned tool versions and debug-dex nondeterminism; reproducibility is not claimed.
+> **Final immutable C still requires its own strict campaign, integration and candidate-bound gate proof,
+> authenticated hosted green, annotated rc15 tag and attestation-only successor.** The five external obligations
+> and independent verification remain outstanding: no finding carries `closure_evidence`, no finding is
+> `VERIFIED_FIXED`, and no READY/COMPLETE claim is made. Historical `PARTIAL`/`OPEN` narrative below is superseded.
 
 The COUNTS and the class memberships are re-derived from `REMEDIATION_STATE.json`; the narrative
 sections are maintained by hand and say so. Nothing here is new evidence. It states the

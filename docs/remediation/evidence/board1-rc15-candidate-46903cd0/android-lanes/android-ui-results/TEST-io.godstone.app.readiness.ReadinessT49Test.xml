@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.godstone.app.readiness.ReadinessT49Test" tests="21" skipped="0" failures="0" errors="0" timestamp="2026-10-04T22:13:58" hostname="Naraharikripas-Mac-mini.local" time="0.267">
+  <properties/>
+  <testcase name="testTheRealFrozenRoadCarriethProvenanceAndTellethTruth" classname="io.godstone.app.readiness.ReadinessT49Test" time="0.052"/>
+  <testcase name="testBlankSearchReturnethToDocumentsAndTheFieldIsBounded" classname="io.godstone.app.readiness.ReadinessT49Test" time="0.002"/>
+  <testcase name="testAnObsoleteFailureCannotOverwriteNewerResults" classname="io.godstone.app.readiness.ReadinessT49Test" time="0.154"/>
+  <testcase name="testTheProvenanceFaultComethForthAndTheUncitedRowRestethQuietly" classname="io.godstone.app.readiness.ReadinessT49Test" time="0.02"/>
+  <testcase name="testSearchOpensTheWholeDocumentAndBackRestorethTheSearch" classname="io.godstone.app.readiness.ReadinessT49Test" time="0.001"/>
+  <testcase name="testNoMatchesRetainethTheSearchContextAndReturnethToDocuments" classname="io.godstone.app.readiness.ReadinessT49Test" time="0.001"/>
+  <testcase name="testInitialBrowseLoadsDocumentsAndRestethReady" classname="io.godstone.app.readiness.ReadinessT49Test" time="0.001"/>
+  <testcase name="testRetryIsEarnedOnlyWhereTheRoadMayMend" classname="io.godstone.app.readiness.ReadinessT49Test" time="0.001"/>
+  <testcase name="testQueuedSearchCannotOvertakeTheNewerNavigation" classname="io.godstone.app.readiness.ReadinessT49Test" time="0.001"/>
+  <testcase name="testTheUnavailableArchiveNeverMasqueradethAsAnEmptyOne" classname="io.godstone.app.readiness.ReadinessT49Test" time="0.002"/>
+  <testcase name="testProcessRecreationRestorethTheSameJourney" classname="io.godstone.app.readiness.ReadinessT49Test" time="0.001"/>
+  <testcase name="testBackFromTheDocumentRestorethTheSceneUntouched" classname="io.godstone.app.readiness.ReadinessT49Test" time="0.004"/>
+  <testcase name="testTheProvenanceProjectionCarriethTheFrozenWords" classname="io.godstone.app.readiness.ReadinessT49Test" time="0.0"/>
+  <testcase name="testAnEmptyHandleIsAFirstRunAndNotARestorationOfNothing" classname="io.godstone.app.readiness.ReadinessT49Test" time="0.003"/>
+  <testcase name="testProcessRecreationFindethThePlaceInTheSavedStateHandle" classname="io.godstone.app.readiness.ReadinessT49Test" time="0.001"/>
+  <testcase name="testTheShownTaleIsSanitisedNotTheCausesOwnWords" classname="io.godstone.app.readiness.ReadinessT49Test" time="0.001"/>
+  <testcase name="testAProcessRecreationRestorethTheReadingAnchorAndHonourethIt" classname="io.godstone.app.readiness.ReadinessT49Test" time="0.001"/>
+  <testcase name="testAStaleAnchorFallethBackToTheFirstPassageAndIsNotHonoured" classname="io.godstone.app.readiness.ReadinessT49Test" time="0.0"/>
+  <testcase name="testRefreshArchiveStatusPublishethTheTypedVerdict" classname="io.godstone.app.readiness.ReadinessT49Test" time="0.001"/>
+  <testcase name="testTheRealMetadataRoadTellethProjectionAbsenceAndFaultApart" classname="io.godstone.app.readiness.ReadinessT49Test" time="0.017"/>
+  <testcase name="testEditingTheFieldNeverRelabellethSubmittedResults" classname="io.godstone.app.readiness.ReadinessT49Test" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

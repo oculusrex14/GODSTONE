@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.godstone.mesh.delivery.BoundRecipientKeyResolverTest" tests="23" skipped="0" failures="0" errors="0" timestamp="2026-10-04T22:16:12" hostname="Naraharikripas-Mac-mini.local" time="0.031">
+  <properties/>
+  <testcase name="testBoundResolver_NoCacheAcrossLifecycle" classname="io.godstone.mesh.delivery.BoundRecipientKeyResolverTest" time="0.003"/>
+  <testcase name="testBoundResolver_ApprovalRestoresResolution" classname="io.godstone.mesh.delivery.BoundRecipientKeyResolverTest" time="0.003"/>
+  <testcase name="testBoundResolver_UserVerified_ReturnsSigningKey" classname="io.godstone.mesh.delivery.BoundRecipientKeyResolverTest" time="0.001"/>
+  <testcase name="testBoundResolver_AckIntegration_StorageFailureFailsClosed" classname="io.godstone.mesh.delivery.BoundRecipientKeyResolverTest" time="0.001"/>
+  <testcase name="testBoundResolver_Quarantined_ReturnsNull" classname="io.godstone.mesh.delivery.BoundRecipientKeyResolverTest" time="0.002"/>
+  <testcase name="testBoundResolver_Unseen_ReturnsNull" classname="io.godstone.mesh.delivery.BoundRecipientKeyResolverTest" time="0.001"/>
+  <testcase name="testBoundResolver_DefensiveCopy" classname="io.godstone.mesh.delivery.BoundRecipientKeyResolverTest" time="0.001"/>
+  <testcase name="testBoundResolver_AckIntegration_LifecycleQuarantineApprovalRevocation" classname="io.godstone.mesh.delivery.BoundRecipientKeyResolverTest" time="0.003"/>
+  <testcase name="testBoundResolver_AckIntegration_ActiveValidAckSucceeds" classname="io.godstone.mesh.delivery.BoundRecipientKeyResolverTest" time="0.002"/>
+  <testcase name="testBoundResolver_InvalidNodeLength_NoLookup" classname="io.godstone.mesh.delivery.BoundRecipientKeyResolverTest" time="0.0"/>
+  <testcase name="testBoundResolver_OldAcceptedReplayWhilePending_ReturnsNull" classname="io.godstone.mesh.delivery.BoundRecipientKeyResolverTest" time="0.002"/>
+  <testcase name="testBoundResolver_AckIntegration_CorruptLookupFailsClosed" classname="io.godstone.mesh.delivery.BoundRecipientKeyResolverTest" time="0.0"/>
+  <testcase name="testBoundResolver_ThrownLookupException_ReturnsNull" classname="io.godstone.mesh.delivery.BoundRecipientKeyResolverTest" time="0.001"/>
+  <testcase name="testBoundResolver_AckIntegration_TamperedSignatureFailsWithActivePeer" classname="io.godstone.mesh.delivery.BoundRecipientKeyResolverTest" time="0.001"/>
+  <testcase name="testBoundResolver_StorageFailure_ReturnsNull" classname="io.godstone.mesh.delivery.BoundRecipientKeyResolverTest" time="0.0"/>
+  <testcase name="testBoundResolver_ActiveTofu_ReturnsSigningKey" classname="io.godstone.mesh.delivery.BoundRecipientKeyResolverTest" time="0.002"/>
+  <testcase name="testBoundResolver_AckIntegration_PreResolverGuards_ZeroLookup" classname="io.godstone.mesh.delivery.BoundRecipientKeyResolverTest" time="0.002"/>
+  <testcase name="testBoundResolver_AckIntegration_ThrownLookupExceptionFailsClosed" classname="io.godstone.mesh.delivery.BoundRecipientKeyResolverTest" time="0.0"/>
+  <testcase name="testBoundResolver_AckIntegration_UnseenRecipientFailsAtResolver" classname="io.godstone.mesh.delivery.BoundRecipientKeyResolverTest" time="0.002"/>
+  <testcase name="testBoundResolver_Revoked_ReturnsNull" classname="io.godstone.mesh.delivery.BoundRecipientKeyResolverTest" time="0.001"/>
+  <testcase name="testBoundResolver_ReadOnlyAdapter_SingleLookupCall" classname="io.godstone.mesh.delivery.BoundRecipientKeyResolverTest" time="0.001"/>
+  <testcase name="testBoundResolver_ConcurrentRevoke_NoStalePostCommitKey" classname="io.godstone.mesh.delivery.BoundRecipientKeyResolverTest" time="0.002"/>
+  <testcase name="testBoundResolver_Corrupt_ReturnsNull" classname="io.godstone.mesh.delivery.BoundRecipientKeyResolverTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

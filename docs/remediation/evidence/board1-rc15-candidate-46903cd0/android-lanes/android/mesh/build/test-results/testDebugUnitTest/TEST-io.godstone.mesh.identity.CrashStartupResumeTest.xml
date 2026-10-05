@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.godstone.mesh.identity.CrashStartupResumeTest" tests="12" skipped="0" failures="0" errors="0" timestamp="2026-10-04T22:16:16" hostname="Naraharikripas-Mac-mini.local" time="0.021">
+  <properties/>
+  <testcase name="aPendingWipeInTheJournalRefusesBindingApplication" classname="io.godstone.mesh.identity.CrashStartupResumeTest" time="0.001"/>
+  <testcase name="theShippedProviderAdmitsWhenTheJournalSaysNoWipeIsPending" classname="io.godstone.mesh.identity.CrashStartupResumeTest" time="0.002"/>
+  <testcase name="testSR04_ArtifactsDeleted_RegeneratesIdentityBeforeRuntimeConstruction" classname="io.godstone.mesh.identity.CrashStartupResumeTest" time="0.001"/>
+  <testcase name="testSR06_FreshPeerStore_ContainsNoPriorPeerRecords" classname="io.godstone.mesh.identity.CrashStartupResumeTest" time="0.003"/>
+  <testcase name="testSR02_PendingWipe_Requested_FinishesBeforeRuntimeInitialization" classname="io.godstone.mesh.identity.CrashStartupResumeTest" time="0.001"/>
+  <testcase name="testSR03_KeyErased_DeletesExactStoreArtifactsBeforeOpen" classname="io.godstone.mesh.identity.CrashStartupResumeTest" time="0.005"/>
+  <testcase name="aPendingWipeInTheJournalRefusesSensitiveUseEvenWhenTheProcessGateSaysActive" classname="io.godstone.mesh.identity.CrashStartupResumeTest" time="0.001"/>
+  <testcase name="testSR05_FreshRuntime_AfterWipe_HasDifferentNodeId" classname="io.godstone.mesh.identity.CrashStartupResumeTest" time="0.001"/>
+  <testcase name="testSR07_OldRuntimeHandle_RemainsPermanentlyUnusable" classname="io.godstone.mesh.identity.CrashStartupResumeTest" time="0.002"/>
+  <testcase name="testSR01_CleanLaunch_InitializesRuntimeNormally" classname="io.godstone.mesh.identity.CrashStartupResumeTest" time="0.001"/>
+  <testcase name="theConsumerProviderForwardsTheSeamItIsGivenRatherThanSupplyingItsOwn" classname="io.godstone.mesh.identity.CrashStartupResumeTest" time="0.001"/>
+  <testcase name="withNoPendingWipeTheAdmissionPointsAdmit" classname="io.godstone.mesh.identity.CrashStartupResumeTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

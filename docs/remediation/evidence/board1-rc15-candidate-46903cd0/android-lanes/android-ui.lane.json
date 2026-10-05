@@ -1,0 +1,132 @@
+{
+  "classes": {
+    "GsFinal006DocumentKeyPresenceTest": 1,
+    "GsFinal006ReadingAnchorTest": 8,
+    "GsFinal006RenderedReadingListTest": 12,
+    "GsFinal008TruthfulAvailabilityTest": 5,
+    "GsFinal009ProtectedDataGateTest": 9,
+    "GsFinal009TrustGateTest": 3,
+    "LabJourneyDurabilityCourt": 6,
+    "LabJourneyStoreTruthCourt": 6,
+    "LabMeshAppTest": 3,
+    "LabMeshJourneyBoundTest": 5,
+    "LabMeshJourneySemanticsTest": 15,
+    "LabMeshLiveAccessibilityRosterTest": 5,
+    "OracleViewModelTest": 6,
+    "ProbeEffectKeySemantics": 3,
+    "ProviderRegistryTest": 13,
+    "ReadinessArchive003Test": 4,
+    "ReadinessT49Test": 21,
+    "ReadinessT55Test": 15,
+    "ReadinessT57Test": 15,
+    "RenderedTrustCasTest": 6,
+    "SendDurableProofTest": 3,
+    "SosPersistenceJourneyTest": 4
+  },
+  "device": null,
+  "digest": "e0e14a8ebea1941b5a3ff5742a3ff51bcdb72faa93866f1d5a2d01d3d71ac141",
+  "drift": false,
+  "gradle_tasks": [
+    ":app:testLightDebugUnitTest",
+    ":labmesh:testDebugUnitTest"
+  ],
+  "junit": {
+    "errors": 0,
+    "failures": 0,
+    "files": 22,
+    "skipped": 0,
+    "tests": 168
+  },
+  "kind": "ui",
+  "lane": "android:ui",
+  "log": "android-ui.log",
+  "module": ":app+:labmesh",
+  "post_digest": "e0e14a8ebea1941b5a3ff5742a3ff51bcdb72faa93866f1d5a2d01d3d71ac141",
+  "pre_digest": "e0e14a8ebea1941b5a3ff5742a3ff51bcdb72faa93866f1d5a2d01d3d71ac141",
+  "produced_utc": "2026-10-04T22:14:33Z",
+  "raw_rc": 0,
+  "results": {
+    "dir": "android-ui-results",
+    "files": [
+      "TEST-io.godstone.app.di.ProviderRegistryTest.xml",
+      "TEST-io.godstone.app.mesh.GsFinal009ProtectedDataGateTest.xml",
+      "TEST-io.godstone.app.readiness.ReadinessArchive003Test.xml",
+      "TEST-io.godstone.app.readiness.ReadinessT49Test.xml",
+      "TEST-io.godstone.app.readiness.ReadinessT55Test.xml",
+      "TEST-io.godstone.app.readiness.ReadinessT57Test.xml",
+      "TEST-io.godstone.app.trust.GsFinal009TrustGateTest.xml",
+      "TEST-io.godstone.app.ui.browse.GsFinal006DocumentKeyPresenceTest.xml",
+      "TEST-io.godstone.app.ui.browse.GsFinal006ReadingAnchorTest.xml",
+      "TEST-io.godstone.app.ui.browse.GsFinal006RenderedReadingListTest.xml",
+      "TEST-io.godstone.app.ui.browse.GsFinal008TruthfulAvailabilityTest.xml",
+      "TEST-io.godstone.app.ui.browse.ProbeEffectKeySemantics.xml",
+      "TEST-io.godstone.app.ui.oracle.OracleViewModelTest.xml",
+      "TEST-io.godstone.app.ui.send.SendDurableProofTest.xml",
+      "TEST-io.godstone.app.ui.sos.SosPersistenceJourneyTest.xml",
+      "TEST-io.godstone.app.ui.trust.RenderedTrustCasTest.xml",
+      "TEST-io.godstone.labmesh.LabJourneyDurabilityCourt.xml",
+      "TEST-io.godstone.labmesh.LabJourneyStoreTruthCourt.xml",
+      "TEST-io.godstone.labmesh.LabMeshAppTest.xml",
+      "TEST-io.godstone.labmesh.LabMeshJourneyBoundTest.xml",
+      "TEST-io.godstone.labmesh.LabMeshJourneySemanticsTest.xml",
+      "TEST-io.godstone.labmesh.LabMeshLiveAccessibilityRosterTest.xml"
+    ],
+    "sha256": {
+      "TEST-io.godstone.app.di.ProviderRegistryTest.xml": "3d98b2921798555860d8573fd1dda3cbeeee161b434b4b656edf4d738d9771d6",
+      "TEST-io.godstone.app.mesh.GsFinal009ProtectedDataGateTest.xml": "4d06fc90b469c91b21999244a86cadcfbda0e708bd8e98800f93cb7567d59499",
+      "TEST-io.godstone.app.readiness.ReadinessArchive003Test.xml": "2495bbe2e60cf61d8374c6796d0db81d565263b5cddd3b64a21ef6e0ad244c83",
+      "TEST-io.godstone.app.readiness.ReadinessT49Test.xml": "38462699e7a7e088acdbcbd322c524f5ac3e9454338365eaa44ae2dcf142813f",
+      "TEST-io.godstone.app.readiness.ReadinessT55Test.xml": "6e270031bf92810bd00691310ef843c2b7cfe72148ad8270d077e51034e0e187",
+      "TEST-io.godstone.app.readiness.ReadinessT57Test.xml": "b6390b6db59989f6b8ca31b8c378d49d5dcaf21372e54e20b7bc41dd8b501994",
+      "TEST-io.godstone.app.trust.GsFinal009TrustGateTest.xml": "dcba1ca716bdaa827c4ccfd68db9601bff70ffe69ee65c2c30ac57f2f3766044",
+      "TEST-io.godstone.app.ui.browse.GsFinal006DocumentKeyPresenceTest.xml": "1fb4979dfa6344513e18589abba6676339c7a89b6ecb487ed70af0dfe86f7b48",
+      "TEST-io.godstone.app.ui.browse.GsFinal006ReadingAnchorTest.xml": "28adef9c19fcdb0726835f46e0c4af7b668e9154f03f3c93dd4503ea6a9d2f21",
+      "TEST-io.godstone.app.ui.browse.GsFinal006RenderedReadingListTest.xml": "0ef8552709c5ff481b09ea892a1c78f5f70887177d7e3e6b68cda2e8e6d52d19",
+      "TEST-io.godstone.app.ui.browse.GsFinal008TruthfulAvailabilityTest.xml": "318a1e2f170a01e980771ff034eda195939522a7684a3933a989476ac8ed52d8",
+      "TEST-io.godstone.app.ui.browse.ProbeEffectKeySemantics.xml": "e467d6db0e1da5c2b559220ec2aa426716524f3d2800f378ae513d2210280c57",
+      "TEST-io.godstone.app.ui.oracle.OracleViewModelTest.xml": "e06f28e08a9503ebba8540e0c82c75b56633774f9e2d5f3c815b902563d4a24b",
+      "TEST-io.godstone.app.ui.send.SendDurableProofTest.xml": "7838999a3f396de08fb5bc1a227959f28d84aae5318a4ff61ee665f34f074024",
+      "TEST-io.godstone.app.ui.sos.SosPersistenceJourneyTest.xml": "ca09607162a7d3269d08346cdf95804d2de28b5f777e8f47c43a39f71a8c4f6b",
+      "TEST-io.godstone.app.ui.trust.RenderedTrustCasTest.xml": "8c86bed714d064ed4fd18fcedc93b7c7669eb065892c53c30f1cdef78157384d",
+      "TEST-io.godstone.labmesh.LabJourneyDurabilityCourt.xml": "c575403fc8bade973d9a2b75a3b381df751a5d89ad37e8494016cb31a23e51f9",
+      "TEST-io.godstone.labmesh.LabJourneyStoreTruthCourt.xml": "31b28080da363959dff4cd9afef072612a6e9877f5a5c2e4dbc4f08729b8d217",
+      "TEST-io.godstone.labmesh.LabMeshAppTest.xml": "e6861e0baf746ac7cfb3295a9b041652e71a05db4f041bde939bbdd68876ad3e",
+      "TEST-io.godstone.labmesh.LabMeshJourneyBoundTest.xml": "af1a1b8be2ba249d5ab7f5c11b3e5aeb6c54910940082cc64af23dc726ab2154",
+      "TEST-io.godstone.labmesh.LabMeshJourneySemanticsTest.xml": "ef49bfa64cb2a9e1726f5a2ccc957f30b40d5738cb40770dd951d408ea50b345",
+      "TEST-io.godstone.labmesh.LabMeshLiveAccessibilityRosterTest.xml": "ff991263c99b9bc0012e31a6565de90f9299dd9787099e0eea35d95ef0293d19"
+    }
+  },
+  "schema": 1,
+  "seconds": 54.149,
+  "simulation_not_device": false,
+  "stages": [],
+  "steps": [
+    {
+      "argv": [
+        "/private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/gradlew",
+        "-p",
+        "/private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android",
+        ":app:testLightDebugUnitTest",
+        "--rerun-tasks",
+        "--no-daemon",
+        "--console=plain"
+      ],
+      "rc": 0,
+      "step": "gradle-0"
+    },
+    {
+      "argv": [
+        "/private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/gradlew",
+        "-p",
+        "/private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android",
+        ":labmesh:testDebugUnitTest",
+        "--rerun-tasks",
+        "--no-daemon",
+        "--console=plain"
+      ],
+      "rc": 0,
+      "step": "gradle-1"
+    }
+  ],
+  "verdict": "PASSED"
+}

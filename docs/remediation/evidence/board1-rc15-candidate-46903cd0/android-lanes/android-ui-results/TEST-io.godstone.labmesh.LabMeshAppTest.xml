@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.godstone.labmesh.LabMeshAppTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-10-04T22:14:29" hostname="Naraharikripas-Mac-mini.local" time="0.052">
+  <properties/>
+  <testcase name="test_the_lab_carrieth_its_own_identity_and_cannot_manufacture_readiness" classname="io.godstone.labmesh.LabMeshAppTest" time="0.001"/>
+  <testcase name="test_the_lab_driveth_a_real_handshake_and_reacheth_delivered" classname="io.godstone.labmesh.LabMeshAppTest" time="0.048"/>
+  <testcase name="test_the_lab_stoppeth_sending_while_a_wipe_is_in_progress" classname="io.godstone.labmesh.LabMeshAppTest" time="0.003"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

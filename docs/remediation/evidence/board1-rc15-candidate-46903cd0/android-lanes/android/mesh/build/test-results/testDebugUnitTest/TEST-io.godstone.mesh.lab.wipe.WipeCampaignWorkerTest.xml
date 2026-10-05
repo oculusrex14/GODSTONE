@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.godstone.mesh.lab.wipe.WipeCampaignWorkerTest" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-10-04T22:16:22" hostname="Naraharikripas-Mac-mini.local" time="1.146">
+  <properties/>
+  <testcase name="testWipeCampaign" classname="io.godstone.mesh.lab.wipe.WipeCampaignWorkerTest" time="1.146"/>
+  <system-out><![CDATA[GS-WIPE-CAMPAIGN children=2 cycles=3 root=/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/campaign-root-d75f2b58-2977-420c-87aa-36983eac4f1d
+GS-WIPE-CAMPAIGN store-backend=host-JDBC-SQLite (the SQLCipher substitution every host harness makes; NO AndroidKeyStore and NO approved-device-SQLCipher claim)
+GS-WIPE-CAMPAIGN generation=1 exit=0 complete=CAMPAIGN COMPLETE cycles=3 epoch=18 node=49d3944d6507e8ce456fa8bb464ab2b9
+GS-WIPE-CAMPAIGN generation=2 exit=0 complete=CAMPAIGN COMPLETE cycles=3 epoch=36 node=735f36f852813d8b59b9e48cd61ddf2d
+GS-WIPE-CAMPAIGN PASS epoch=36 completions=[CAMPAIGN COMPLETE cycles=3 epoch=18 node=49d3944d6507e8ce456fa8bb464ab2b9, CAMPAIGN COMPLETE cycles=3 epoch=36 node=735f36f852813d8b59b9e48cd61ddf2d]
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

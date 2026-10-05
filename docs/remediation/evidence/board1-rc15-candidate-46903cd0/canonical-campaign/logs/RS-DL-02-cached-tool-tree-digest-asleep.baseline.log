@@ -1,0 +1,6 @@
+test_a_cached_tree_that_is_not_the_pinned_contents_is_refused (test_audit_supplychain_harness.ToolchainDownloadCourt.test_a_cached_tree_that_is_not_the_pinned_contents_is_refused) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.002s
+
+OK

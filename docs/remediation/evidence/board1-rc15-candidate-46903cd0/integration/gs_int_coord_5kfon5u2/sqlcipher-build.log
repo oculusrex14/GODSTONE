@@ -1,0 +1,4 @@
+fetched sqlcipher @ 810db22f575ee7cf94ea96a3e91622b5fcece3dc (v4.17.0)
+built libsqlcipher.0.dylib from 810db22f575ee7cf94ea96a3e91622b5fcece3dc: sha256 8b352d0155aa96a1b8718b7ec3d3024cf7ae72b764213a13ceaaff120f04b7d1 (1225016 bytes)
+staged /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/gs-int-sqlcipher-macos-nj5rcjds/libsqlcipher.0.dylib
+descriptor /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/gs-int-sqlcipher-macos-nj5rcjds/libsqlcipher.0.dylib.artifact.json

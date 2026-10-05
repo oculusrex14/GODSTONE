@@ -1,0 +1,40 @@
+test_a_corrupt_register_is_an_error_never_a_missing_input (test_audit_supplychain_harness.ExternalRegisterCourt.test_a_corrupt_register_is_an_error_never_a_missing_input)
+A broken lock is not evidence that content is away. ... ERROR
+
+======================================================================
+ERROR: test_a_corrupt_register_is_an_error_never_a_missing_input (test_audit_supplychain_harness.ExternalRegisterCourt.test_a_corrupt_register_is_an_error_never_a_missing_input)
+A broken lock is not evidence that content is away.
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/board1-rc15-preparatory-46903cd0-xke1sctz/rod-worktrees/wt_RS-REG-01-corrupt-register-classified-as-missing-input/tools/supplychain/emit_boundary.py", line 68, in _load_json
+    return json.loads(path.read_text(encoding="utf-8"))
+           ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.4_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/json/__init__.py", line 352, in loads
+    return _default_decoder.decode(s)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.4_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/json/decoder.py", line 345, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+               ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.4_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/json/decoder.py", line 361, in raw_decode
+    obj, end = self.scan_once(s, idx)
+               ~~~~~~~~~~~~~~^^^^^^^^
+json.decoder.JSONDecodeError: Expecting property name enclosed in double quotes: line 1 column 2 (char 1)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/private/tmp/board1-rc15-preparatory-46903cd0-xke1sctz/rod-worktrees/wt_RS-REG-01-corrupt-register-classified-as-missing-input/tools/readiness/tests/test_audit_supplychain_harness.py", line 854, in test_a_corrupt_register_is_an_error_never_a_missing_input
+    rc = self.E.main(["--boundary", "noise_fixture", "--check-inputs",
+                      "--root", str(self.root)])
+  File "/private/tmp/board1-rc15-preparatory-46903cd0-xke1sctz/rod-worktrees/wt_RS-REG-01-corrupt-register-classified-as-missing-input/tools/supplychain/emit_boundary.py", line 228, in main
+    verdict = CHECKERS[args.boundary](Path(args.root))
+  File "/private/tmp/board1-rc15-preparatory-46903cd0-xke1sctz/rod-worktrees/wt_RS-REG-01-corrupt-register-classified-as-missing-input/tools/supplychain/emit_boundary.py", line 81, in check_noise_fixture
+    document = _load_json(path)
+  File "/private/tmp/board1-rc15-preparatory-46903cd0-xke1sctz/rod-worktrees/wt_RS-REG-01-corrupt-register-classified-as-missing-input/tools/supplychain/emit_boundary.py", line 70, in _load_json
+    raise RegisterError(f"{path}: {exc}") from exc
+emit_boundary.RegisterError: /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpq94rwzsf/crypto/cacophony_vectors.json: Expecting property name enclosed in double quotes: line 1 column 2 (char 1)
+
+----------------------------------------------------------------------
+Ran 1 test in 0.004s
+
+FAILED (errors=1)

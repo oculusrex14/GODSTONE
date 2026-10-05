@@ -1,0 +1,6 @@
+test_an_edited_body_is_caught_by_its_self_digest (test_audit_supplychain_harness.ReleaseProofCourt.test_an_edited_body_is_caught_by_its_self_digest) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK

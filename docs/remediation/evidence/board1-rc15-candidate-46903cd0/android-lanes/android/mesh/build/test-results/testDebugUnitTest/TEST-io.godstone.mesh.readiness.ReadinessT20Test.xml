@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.godstone.mesh.readiness.ReadinessT20Test" tests="12" skipped="0" failures="0" errors="0" timestamp="2026-10-04T22:16:23" hostname="Naraharikripas-Mac-mini.local" time="0.396">
+  <properties/>
+  <testcase name="testTheCrossedTraceFromAForeignManagerIsRefusedAndTheWrongTokenDiscarded" classname="io.godstone.mesh.readiness.ReadinessT20Test" time="0.031"/>
+  <testcase name="testTheSequenceWrapsAtTwoHundredFiftySixWholeRecordsAndTheDuplicateIsRefused" classname="io.godstone.mesh.readiness.ReadinessT20Test" time="0.043"/>
+  <testcase name="testTheStaleStragglerAtTheWrapFailsClosedAndTheRetransmissionCompletes" classname="io.godstone.mesh.readiness.ReadinessT20Test" time="0.02"/>
+  <testcase name="testEverySourceOfTheCallbackSurfaceIsDeliveredOrNamedForTheRecord" classname="io.godstone.mesh.readiness.ReadinessT20Test" time="0.0"/>
+  <testcase name="testTheOwnedSweepTrippethASilentPeerByTimeAlone" classname="io.godstone.mesh.readiness.ReadinessT20Test" time="0.044"/>
+  <testcase name="testTheRaceAtTheDeadlineInstantSettlesTheSameBothWays" classname="io.godstone.mesh.readiness.ReadinessT20Test" time="0.025"/>
+  <testcase name="testTheIdempotentDuplicateStandsAndTheConflictingDuplicateFailsClosed" classname="io.godstone.mesh.readiness.ReadinessT20Test" time="0.026"/>
+  <testcase name="testFourWholeRecordsArePinnedAndTheFifthIsRefusedItsSlot" classname="io.godstone.mesh.readiness.ReadinessT20Test" time="0.024"/>
+  <testcase name="testTheLedgerOfInvariantsStandsWholeAndReportsEveryCheck" classname="io.godstone.mesh.readiness.ReadinessT20Test" time="0.109"/>
+  <testcase name="testTheMisdatedTerminalFromThePastChangesNothing" classname="io.godstone.mesh.readiness.ReadinessT20Test" time="0.023"/>
+  <testcase name="testTheSilentPeerFallsToTheHeartbeatAlone" classname="io.godstone.mesh.readiness.ReadinessT20Test" time="0.026"/>
+  <testcase name="testTheAbsoluteTermExpiresTheDribbledAssemblyThoughTheSlidingWindowIsRefreshed" classname="io.godstone.mesh.readiness.ReadinessT20Test" time="0.025"/>
+  <system-out><![CDATA[invariant ledger [T20 android identical schedules]: 11 checks, 11 held, 0 broken, 0 skipped
+  HELD  LEASE-ABSOLUTE @ dribble - the term is absolute from the admission
+  HELD  REFRESH-IMMOBILE @ dribble - no arrival moved the deadline
+  HELD  REGISTERS-PURGED @ double fall - the sweep at the term purged the register whole
+  HELD  NOTICE-RAISED @ double fall - the sweep raised the notice for its owner to take
+  HELD  DIFFERENT-ADMISSION @ double fall - no admission identity is ever borne twice (observed t1=5 t2=6)
+  HELD  OWNER-CLOSES @ dribble fall - the relation fell through the owner arm alone (aliveBefore=true noticeBefore=null standingNow=none state=CLOSED)
+  HELD  PUBLICATION-WITHDRAWN @ dribble fall - the fall brought the publication down again
+  HELD  NOTHING-FROM-THE-DRIBBLE @ dribble fall - no part arrived on the stream
+  HELD  WRAP-COMPLETE @ wrap - every whole record arrived across the wrap
+  HELD  WRAP-FRAMING @ wrap - the uint8 framing was not altered for the wrap
+  HELD  SLOTS-RECYCLED @ wrap - the register never grew beyond its concurrent bound
+
+]]></system-out>
+  <system-err><![CDATA[System.logW: A resource was acquired at attached stack trace but never released. See java.io.Closeable for information on avoiding resource leaks.
+java.lang.Throwable: Explicit termination method 'SQLiteConnectionPool.close' not called
+	at dalvik.system.CloseGuard.$$robo$$dalvik_system_CloseGuard$openWithCallSite(CloseGuard.java:288)
+	at dalvik.system.CloseGuard.openWithCallSite(CloseGuard.java)
+	at dalvik.system.CloseGuard.$$robo$$dalvik_system_CloseGuard$open(CloseGuard.java:257)
+	at jdk.internal.reflect.GeneratedMethodAccessor53.invoke(Unknown Source)
+	at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:569)
+	at org.robolectric.shadows.ShadowCloseGuard$CloseGuardReflector$$Reflector69.open(Unknown Source)
+	at org.robolectric.shadows.ShadowCloseGuard.open(ShadowCloseGuard.java:38)
+	at dalvik.system.CloseGuard.open(CloseGuard.java)
+	at android.database.sqlite.SQLiteConnectionPool.$$robo$$android_database_sqlite_SQLiteConnectionPool$open(SQLiteConnectionPool.java:221)
+	at android.database.sqlite.SQLiteConnectionPool.open(SQLiteConnectionPool.java)
+	at android.database.sqlite.SQLiteConnectionPool.$$robo$$android_database_sqlite_SQLiteConnectionPool$open(SQLiteConnectionPool.java:202)
+	at android.database.sqlite.SQLiteConnectionPool.open(SQLiteConnectionPool.java)
+	at android.database.sqlite.SQLiteDatabase.$$robo$$android_database_sqlite_SQLiteDatabase$openInner(SQLiteDatabase.java:1085)
+	at android.database.sqlite.SQLiteDatabase.openInner(SQLiteDatabase.java)
+	at android.database.sqlite.SQLiteDatabase.$$robo$$android_database_sqlite_SQLiteDatabase$open(SQLiteDatabase.java:1065)
+	at android.database.sqlite.SQLiteDatabase.open(SQLiteDatabase.java)
+	at android.database.sqlite.SQLiteDatabase.$$robo$$android_database_sqlite_SQLiteDatabase$openDatabase(SQLiteDatabase.java:929)
+	at android.database.sqlite.SQLiteDatabase.openDatabase(SQLiteDatabase.java)
+	at android.database.sqlite.SQLiteDatabase.$$robo$$android_database_sqlite_SQLiteDatabase$openDatabase(SQLiteDatabase.java:918)
+	at android.database.sqlite.SQLiteDatabase.openDatabase(SQLiteDatabase.java)
+	at android.database.sqlite.SQLiteOpenHelper.$$robo$$android_database_sqlite_SQLiteOpenHelper$getDatabaseLocked(SQLiteOpenHelper.java:373)
+	at android.database.sqlite.SQLiteOpenHelper.getDatabaseLocked(SQLiteOpenHelper.java)
+	at android.database.sqlite.SQLiteOpenHelper.$$robo$$android_database_sqlite_SQLiteOpenHelper$getReadableDatabase(SQLiteOpenHelper.java:340)
+	at android.database.sqlite.SQLiteOpenHelper.getReadableDatabase(SQLiteOpenHelper.java)
+	at io.godstone.mesh.lab.LabSqliteIntentJournal.load(LabDurableDirectSend.kt:50)
+	at io.godstone.mesh.lab.LabSqliteIntentJournal.insertIfAbsent(LabDurableDirectSend.kt:79)
+	at io.godstone.mesh.lab.LabEstateSameEstateTest.eachLabelOwnsItsOwnRealPrivateEstate(LabEstateSameEstateTest.kt:109)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:77)
+	at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:569)
+	at org.junit.runners.model.FrameworkMethod$1.runReflectiveCall(FrameworkMethod.java:59)
+	at org.junit.internal.runners.model.ReflectiveCallable.run(ReflectiveCallable.java:12)
+	at org.junit.runners.model.FrameworkMethod.invokeExplosively(FrameworkMethod.java:56)
+	at org.junit.internal.runners.statements.InvokeMethod.evaluate(InvokeMethod.java:17)
+	at org.junit.internal.runners.statements.RunBefores.evaluate(RunBefores.java:26)
+	at org.junit.internal.runners.statements.RunAfters.evaluate(RunAfters.java:27)
+	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+	at org.robolectric.RobolectricTestRunner$HelperTestRunner$1.evaluate(RobolectricTestRunner.java:489)
+	at org.robolectric.internal.SandboxTestRunner$2.lambda$evaluate$2(SandboxTestRunner.java:291)
+	at org.robolectric.internal.bytecode.Sandbox.lambda$runOnMainThread$0(Sandbox.java:104)
+	at java.base/java.util.concurrent.FutureTask.run(FutureTask.java:264)
+	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1136)
+	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:635)
+	at java.base/java.lang.Thread.run(Thread.java:840)
+
+System.logW: A resource was acquired at attached stack trace but never released. See java.io.Closeable for information on avoiding resource leaks.
+java.lang.Throwable: Explicit termination method 'SQLiteConnection.close' not called
+	at dalvik.system.CloseGuard.$$robo$$dalvik_system_CloseGuard$openWithCallSite(CloseGuard.java:288)
+	at dalvik.system.CloseGuard.openWithCallSite(CloseGuard.java)
+	at dalvik.system.CloseGuard.$$robo$$dalvik_system_CloseGuard$open(CloseGuard.java:257)
+	at jdk.internal.reflect.GeneratedMethodAccessor53.invoke(Unknown Source)
+	at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:569)
+	at org.robolectric.shadows.ShadowCloseGuard$CloseGuardReflector$$Reflector69.open(Unknown Source)
+	at org.robolectric.shadows.ShadowCloseGuard.open(ShadowCloseGuard.java:38)
+	at dalvik.system.CloseGuard.open(CloseGuard.java)
+	at android.database.sqlite.SQLiteConnection.$$robo$$android_database_sqlite_SQLiteConnection$__constructor__(SQLiteConnection.java:182)
+	at android.database.sqlite.SQLiteConnection.<init>(SQLiteConnection.java:173)
+	at android.database.sqlite.SQLiteConnection.$$robo$$android_database_sqlite_SQLiteConnection$open(SQLiteConnection.java:202)
+	at android.database.sqlite.SQLiteConnection.open(SQLiteConnection.java)
+	at android.database.sqlite.SQLiteConnectionPool.$$robo$$android_database_sqlite_SQLiteConnectionPool$openConnectionLocked(SQLiteConnectionPool.java:512)
+	at android.database.sqlite.SQLiteConnectionPool.openConnectionLocked(SQLiteConnectionPool.java)
+	at android.database.sqlite.SQLiteConnectionPool.$$robo$$android_database_sqlite_SQLiteConnectionPool$open(SQLiteConnectionPool.java:210)
+	at android.database.sqlite.SQLiteConnectionPool.open(SQLiteConnectionPool.java)
+	at android.database.sqlite.SQLiteConnectionPool.$$robo$$android_database_sqlite_SQLiteConnectionPool$open(SQLiteConnectionPool.java:202)
+	at android.database.sqlite.SQLiteConnectionPool.open(SQLiteConnectionPool.java)
+	at android.database.sqlite.SQLiteDatabase.$$robo$$android_database_sqlite_SQLiteDatabase$openInner(SQLiteDatabase.java:1085)
+	at android.database.sqlite.SQLiteDatabase.openInner(SQLiteDatabase.java)
+	at android.database.sqlite.SQLiteDatabase.$$robo$$android_database_sqlite_SQLiteDatabase$open(SQLiteDatabase.java:1065)
+	at android.database.sqlite.SQLiteDatabase.open(SQLiteDatabase.java)
+	at android.database.sqlite.SQLiteDatabase.$$robo$$android_database_sqlite_SQLiteDatabase$openDatabase(SQLiteDatabase.java:929)
+	at android.database.sqlite.SQLiteDatabase.openDatabase(SQLiteDatabase.java)
+	at android.database.sqlite.SQLiteDatabase.$$robo$$android_database_sqlite_SQLiteDatabase$openDatabase(SQLiteDatabase.java:918)
+	at android.database.sqlite.SQLiteDatabase.openDatabase(SQLiteDatabase.java)
+	at android.database.sqlite.SQLiteOpenHelper.$$robo$$android_database_sqlite_SQLiteOpenHelper$getDatabaseLocked(SQLiteOpenHelper.java:373)
+	at android.database.sqlite.SQLiteOpenHelper.getDatabaseLocked(SQLiteOpenHelper.java)
+	at android.database.sqlite.SQLiteOpenHelper.$$robo$$android_database_sqlite_SQLiteOpenHelper$getReadableDatabase(SQLiteOpenHelper.java:340)
+	at android.database.sqlite.SQLiteOpenHelper.getReadableDatabase(SQLiteOpenHelper.java)
+	at io.godstone.mesh.lab.LabSqliteIntentJournal.load(LabDurableDirectSend.kt:50)
+	at io.godstone.mesh.lab.LabSqliteIntentJournal.insertIfAbsent(LabDurableDirectSend.kt:79)
+	at io.godstone.mesh.lab.LabEstateSameEstateTest.eachLabelOwnsItsOwnRealPrivateEstate(LabEstateSameEstateTest.kt:109)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:77)
+	at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:569)
+	at org.junit.runners.model.FrameworkMethod$1.runReflectiveCall(FrameworkMethod.java:59)
+	at org.junit.internal.runners.model.ReflectiveCallable.run(ReflectiveCallable.java:12)
+	at org.junit.runners.model.FrameworkMethod.invokeExplosively(FrameworkMethod.java:56)
+	at org.junit.internal.runners.statements.InvokeMethod.evaluate(InvokeMethod.java:17)
+	at org.junit.internal.runners.statements.RunBefores.evaluate(RunBefores.java:26)
+	at org.junit.internal.runners.statements.RunAfters.evaluate(RunAfters.java:27)
+	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+	at org.robolectric.RobolectricTestRunner$HelperTestRunner$1.evaluate(RobolectricTestRunner.java:489)
+	at org.robolectric.internal.SandboxTestRunner$2.lambda$evaluate$2(SandboxTestRunner.java:291)
+	at org.robolectric.internal.bytecode.Sandbox.lambda$runOnMainThread$0(Sandbox.java:104)
+	at java.base/java.util.concurrent.FutureTask.run(FutureTask.java:264)
+	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1136)
+	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:635)
+	at java.base/java.lang.Thread.run(Thread.java:840)
+
+]]></system-err>
+</testsuite>

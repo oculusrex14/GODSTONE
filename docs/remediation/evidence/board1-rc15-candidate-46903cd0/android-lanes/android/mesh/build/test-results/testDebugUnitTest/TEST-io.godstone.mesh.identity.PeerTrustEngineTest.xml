@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.godstone.mesh.identity.PeerTrustEngineTest" tests="47" skipped="0" failures="0" errors="0" timestamp="2026-10-04T22:16:16" hostname="Naraharikripas-Mac-mini.local" time="0.005">
+  <properties/>
+  <testcase name="testT05ExactAcceptedUserVerifiedReconnect" classname="io.godstone.mesh.identity.PeerTrustEngineTest" time="0.0"/>
+  <testcase name="testEffectiveStatePrecedence" classname="io.godstone.mesh.identity.PeerTrustEngineTest" time="0.0"/>
+  <testcase name="testT10PendingExactCandidate" classname="io.godstone.mesh.identity.PeerTrustEngineTest" time="0.001"/>
+  <testcase name="testT04ExactAcceptedTofuReconnect" classname="io.godstone.mesh.identity.PeerTrustEngineTest" time="0.0"/>
+  <testcase name="testT02UnseenGeneration7" classname="io.godstone.mesh.identity.PeerTrustEngineTest" time="0.0"/>
+  <testcase name="testT06AcceptedLowerGeneration" classname="io.godstone.mesh.identity.PeerTrustEngineTest" time="0.0"/>
+  <testcase name="testT07SameAcceptedGenerationDifferentStatic" classname="io.godstone.mesh.identity.PeerTrustEngineTest" time="0.0"/>
+  <testcase name="testT13PendingAcceptedGenerationDifferentStatic" classname="io.godstone.mesh.identity.PeerTrustEngineTest" time="0.0"/>
+  <testcase name="testT15PendingIntermediateGenerationAcceptedStatic" classname="io.godstone.mesh.identity.PeerTrustEngineTest" time="0.001"/>
+  <testcase name="testT12PendingGenLowerThanAccepted" classname="io.godstone.mesh.identity.PeerTrustEngineTest" time="0.0"/>
+  <testcase name="testT03UnseenUint32Max" classname="io.godstone.mesh.identity.PeerTrustEngineTest" time="0.0"/>
+  <testcase name="testV12PendingGenerationEqualsAccepted" classname="io.godstone.mesh.identity.PeerTrustEngineTest" time="0.0"/>
+  <testcase name="testV02ValidUserVerifiedActiveRecord" classname="io.godstone.mesh.identity.PeerTrustEngineTest" time="0.0"/>
+  <testcase name="testV18PendingGenerationOutOfRange" classname="io.godstone.mesh.identity.PeerTrustEngineTest" time="0.0"/>
+  <testcase name="testV05NodeIdLengthInvalid" classname="io.godstone.mesh.identity.PeerTrustEngineTest" time="0.0"/>
+  <testcase name="testV09PendingGenerationOnly" classname="io.godstone.mesh.identity.PeerTrustEngineTest" time="0.0"/>
+  <testcase name="testV17AcceptedGenerationOutOfRange" classname="io.godstone.mesh.identity.PeerTrustEngineTest" time="0.0"/>
+  <testcase name="testT11PendingOldAcceptedExactReconnect" classname="io.godstone.mesh.identity.PeerTrustEngineTest" time="0.0"/>
+  <testcase name="testT20NewerThanPendingNovelStatic" classname="io.godstone.mesh.identity.PeerTrustEngineTest" time="0.001"/>
+  <testcase name="testPendingPeerIdentityView" classname="io.godstone.mesh.identity.PeerTrustEngineTest" time="0.0"/>
+  <testcase name="testT01UnseenGeneration0" classname="io.godstone.mesh.identity.PeerTrustEngineTest" time="0.0"/>
+  <testcase name="testT17PendingGenerationExactPendingStatic" classname="io.godstone.mesh.identity.PeerTrustEngineTest" time="0.0"/>
+  <testcase name="testT09HigherGenerationDistinctStatic" classname="io.godstone.mesh.identity.PeerTrustEngineTest" time="0.0"/>
+  <testcase name="testV08NodeIdSigningKeyMismatch" classname="io.godstone.mesh.identity.PeerTrustEngineTest" time="0.0"/>
+  <testcase name="testV01ValidTofuActiveRecord" classname="io.godstone.mesh.identity.PeerTrustEngineTest" time="0.0"/>
+  <testcase name="testV13PendingGenerationLessThanAccepted" classname="io.godstone.mesh.identity.PeerTrustEngineTest" time="0.0"/>
+  <testcase name="testV06SigningKeyLengthInvalid" classname="io.godstone.mesh.identity.PeerTrustEngineTest" time="0.0"/>
+  <testcase name="testV04ValidRevokedRecord" classname="io.godstone.mesh.identity.PeerTrustEngineTest" time="0.0"/>
+  <testcase name="testV14PendingStaticEqualsAccepted" classname="io.godstone.mesh.identity.PeerTrustEngineTest" time="0.0"/>
+  <testcase name="testT08HigherGenerationAcceptedStatic" classname="io.godstone.mesh.identity.PeerTrustEngineTest" time="0.001"/>
+  <testcase name="testV10PendingStaticOnly" classname="io.godstone.mesh.identity.PeerTrustEngineTest" time="0.0"/>
+  <testcase name="testV16AcceptedGenerationNegative" classname="io.godstone.mesh.identity.PeerTrustEngineTest" time="0.0"/>
+  <testcase name="testV11PendingStaticWrongLength" classname="io.godstone.mesh.identity.PeerTrustEngineTest" time="0.0"/>
+  <testcase name="testT23RevokedExactReconnect" classname="io.godstone.mesh.identity.PeerTrustEngineTest" time="0.0"/>
+  <testcase name="testT18PendingGenerationDifferentStatic" classname="io.godstone.mesh.identity.PeerTrustEngineTest" time="0.0"/>
+  <testcase name="testT25ActiveNodeIdSigningKeyCollision" classname="io.godstone.mesh.identity.PeerTrustEngineTest" time="0.0"/>
+  <testcase name="testT21NewerThanPendingAcceptedStatic" classname="io.godstone.mesh.identity.PeerTrustEngineTest" time="0.0"/>
+  <testcase name="testV03ValidPendingRecord" classname="io.godstone.mesh.identity.PeerTrustEngineTest" time="0.0"/>
+  <testcase name="testV15RevokedWithPending" classname="io.godstone.mesh.identity.PeerTrustEngineTest" time="0.0"/>
+  <testcase name="testTrustLevelPersistedCodes" classname="io.godstone.mesh.identity.PeerTrustEngineTest" time="0.0"/>
+  <testcase name="testT16PendingIntermediateGenerationPendingStatic" classname="io.godstone.mesh.identity.PeerTrustEngineTest" time="0.001"/>
+  <testcase name="testT24RevokedHigherGeneration" classname="io.godstone.mesh.identity.PeerTrustEngineTest" time="0.0"/>
+  <testcase name="testT19PendingGenerationAcceptedStatic" classname="io.godstone.mesh.identity.PeerTrustEngineTest" time="0.0"/>
+  <testcase name="testVerifiedPeerIdentityView" classname="io.godstone.mesh.identity.PeerTrustEngineTest" time="0.0"/>
+  <testcase name="testV07AcceptedStaticLengthInvalid" classname="io.godstone.mesh.identity.PeerTrustEngineTest" time="0.0"/>
+  <testcase name="testT22NewerThanPendingPendingStatic" classname="io.godstone.mesh.identity.PeerTrustEngineTest" time="0.0"/>
+  <testcase name="testT14PendingIntermediateGenerationNovelStatic" classname="io.godstone.mesh.identity.PeerTrustEngineTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

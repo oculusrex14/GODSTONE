@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.godstone.mesh.readiness.ReadinessT31Test" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-10-04T22:16:25" hostname="Naraharikripas-Mac-mini.local" time="0.003">
+  <properties/>
+  <testcase name="testAlteredSchemaYieldsRepairNotRecreate" classname="io.godstone.mesh.readiness.ReadinessT31Test" time="0.0"/>
+  <testcase name="testDuplicateLaunchIsIdempotent" classname="io.godstone.mesh.readiness.ReadinessT31Test" time="0.0"/>
+  <testcase name="testCrashAtEachStatementRollsBackAndReRunsIdempotently" classname="io.godstone.mesh.readiness.ReadinessT31Test" time="0.002"/>
+  <testcase name="testImmutableFieldsByteIdenticalAndBindingsPreserved" classname="io.godstone.mesh.readiness.ReadinessT31Test" time="0.0"/>
+  <testcase name="testEverySupportedVersionReachesCurrent" classname="io.godstone.mesh.readiness.ReadinessT31Test" time="0.0"/>
+  <testcase name="testFutureVersionIsUnsupportedAndNothingDeleted" classname="io.godstone.mesh.readiness.ReadinessT31Test" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

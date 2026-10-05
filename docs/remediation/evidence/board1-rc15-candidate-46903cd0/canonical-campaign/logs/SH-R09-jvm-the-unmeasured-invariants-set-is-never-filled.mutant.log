@@ -1,0 +1,39 @@
+
+24 tests completed, 1 failed
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':mesh:testDebugUnitTest'.
+> There were failing tests. See the report at: file:///private/tmp/board1-rc15-preparatory-46903cd0-xke1sctz/rod-worktrees/wt_SH-R09-jvm-the-unmeasured-invariants-set-is-never-filled/android/mesh/build/reports/tests/testDebugUnitTest/index.html
+
+* Try:
+> Run with --scan to get full insights.
+
+BUILD FAILED in 30s
+
+TEST-SUITE TEST-io.godstone.mesh.readiness.ReadinessT72Test.xml tests=24 skipped=0 failures=1 errors=0
+TEST-CASE PASS testGSSTRESS001theFifthOwnerObserversIsCensused
+TEST-CASE PASS test_w00_the_result_carrieth_the_resource_model_category
+TEST-CASE PASS test_w04_no_duplicate_delivery_under_the_retry_cap
+TEST-CASE PASS testGSSTRESS001theThirdOwnerAdmittedLeasesIsCensused
+TEST-CASE PASS test_w10_a_failed_seed_is_recorded_and_reproducible
+TEST-CASE PASS test_w09_each_defect_is_caught_by_name
+TEST-CASE PASS test_w14_the_session_invariant_is_asked_of_a_real_owner
+TEST-CASE PASS testGSSTRESS001aMeasuredCleanOwnerIsNeitherAccusedNorUnmeasured
+TEST-CASE PASS test_w06_the_census_plateau_is_structural
+TEST-CASE PASS test_w01_ten_thousand_cycles_over_multiple_peers
+TEST-CASE PASS test_w03_no_duplicate_inbox_row
+TEST-CASE PASS test_w08_the_five_faults_are_applied_at_their_steps
+TEST-CASE PASS testGSSTRESS001theSixthOwnerPendingAcksIsCensused
+TEST-CASE PASS test_w07_the_fault_schedule_is_bounded_and_deterministic
+TEST-CASE PASS testGSSTRESS001theFourthOwnerTimersIsCensused
+TEST-CASE PASS testGSSTRESS001anUnmeasurableOwnerIsNamedRatherThanAssumedClean
+TEST-CASE PASS testGSSTRESS001theThirdOwnerIsDistinctFromTheSecond
+TEST-CASE PASS testGSSTRESS001theStoreObserversAreADistinctOwnerFromTheAuthoritys
+TEST-CASE PASS test_w09b_the_lifecycle_defects_are_independent
+TEST-CASE PASS test_w02_zero_leaks_after_shutdown
+TEST-CASE PASS test_w11_the_campaign_is_bounded_in_time
+TEST-CASE PASS test_w05_no_uncaught_malformed_input
+TEST-CASE PASS testGSSTRESS001theSecondOwnerIsCensusedAndAccused
+TEST-CASE FAIL test_w09c_the_result_carrieth_its_category_and_its_unmeasured_set

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.godstone.mesh.readiness.ReadinessT09Test" tests="13" skipped="0" failures="0" errors="0" timestamp="2026-10-04T22:16:23" hostname="Naraharikripas-Mac-mini.local" time="0.009">
+  <properties/>
+  <testcase name="testLinkInfoServedByGattNotOnAir" classname="io.godstone.mesh.readiness.ReadinessT09Test" time="0.007"/>
+  <testcase name="testNoIdentityHintOrRecordLeaksIntoTheAir" classname="io.godstone.mesh.readiness.ReadinessT09Test" time="0.0"/>
+  <testcase name="testAdapterUnavailableIsTypedNotSilent" classname="io.godstone.mesh.readiness.ReadinessT09Test" time="0.0"/>
+  <testcase name="testSemanticNegativeReAddingServiceDataFailsTheAdapterAssertion" classname="io.godstone.mesh.readiness.ReadinessT09Test" time="0.0"/>
+  <testcase name="testServiceNotReadyGateIsTyped" classname="io.godstone.mesh.readiness.ReadinessT09Test" time="0.0"/>
+  <testcase name="testPermissionDenialIsTypedAndLeavesStateClean" classname="io.godstone.mesh.readiness.ReadinessT09Test" time="0.0"/>
+  <testcase name="testLegacyPayloadBudgetAccounting" classname="io.godstone.mesh.readiness.ReadinessT09Test" time="0.0"/>
+  <testcase name="testDispatchedInstructionStreamMatchesCanonical" classname="io.godstone.mesh.readiness.ReadinessT09Test" time="0.0"/>
+  <testcase name="testPlatformStartFailureSurfacesTypedError" classname="io.godstone.mesh.readiness.ReadinessT09Test" time="0.001"/>
+  <testcase name="testCanonicalPayloadIsServiceUuidOnly" classname="io.godstone.mesh.readiness.ReadinessT09Test" time="0.0"/>
+  <testcase name="testScannerSharesTheCanonicalAdvertisedUuid" classname="io.godstone.mesh.readiness.ReadinessT09Test" time="0.0"/>
+  <testcase name="testOversizedPayloadRefusedBeforePlatform" classname="io.godstone.mesh.readiness.ReadinessT09Test" time="0.0"/>
+  <testcase name="testStopWithoutOutstandingSubmissionIsNoOpNotFailure" classname="io.godstone.mesh.readiness.ReadinessT09Test" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

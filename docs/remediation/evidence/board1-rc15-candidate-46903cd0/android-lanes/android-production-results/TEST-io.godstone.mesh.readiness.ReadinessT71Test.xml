@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.godstone.mesh.readiness.ReadinessT71Test" tests="13" skipped="0" failures="0" errors="0" timestamp="2026-10-04T22:16:26" hostname="Naraharikripas-Mac-mini.local" time="0.009">
+  <properties/>
+  <testcase name="test_w13_the_isles_share_one_vocabulary" classname="io.godstone.mesh.readiness.ReadinessT71Test" time="0.001"/>
+  <testcase name="test_w11_the_ring_bound_is_a_construction" classname="io.godstone.mesh.readiness.ReadinessT71Test" time="0.005"/>
+  <testcase name="test_w08_the_sentinels_appear_nowhere_in_any_scenario" classname="io.godstone.mesh.readiness.ReadinessT71Test" time="0.002"/>
+  <testcase name="test_w06_relation_ids_are_ephemeral_and_opaque" classname="io.godstone.mesh.readiness.ReadinessT71Test" time="0.0"/>
+  <testcase name="test_w02_a_body_or_a_key_is_refused_by_name" classname="io.godstone.mesh.readiness.ReadinessT71Test" time="0.0"/>
+  <testcase name="test_w09_the_vocabulary_is_closed" classname="io.godstone.mesh.readiness.ReadinessT71Test" time="0.0"/>
+  <testcase name="test_w12_nothing_is_transmitted" classname="io.godstone.mesh.readiness.ReadinessT71Test" time="0.0"/>
+  <testcase name="test_w01_the_recorder_is_opt_in" classname="io.godstone.mesh.readiness.ReadinessT71Test" time="0.0"/>
+  <testcase name="test_w04_counters_saturate_and_gauges_never_go_negative" classname="io.godstone.mesh.readiness.ReadinessT71Test" time="0.0"/>
+  <testcase name="test_w05_durations_are_monotonic_microseconds" classname="io.godstone.mesh.readiness.ReadinessT71Test" time="0.001"/>
+  <testcase name="test_w03_the_ring_is_bounded_and_drop_oldest_is_counted" classname="io.godstone.mesh.readiness.ReadinessT71Test" time="0.0"/>
+  <testcase name="test_w10_redaction_is_by_refusal" classname="io.godstone.mesh.readiness.ReadinessT71Test" time="0.0"/>
+  <testcase name="test_w07_the_five_scenarios_run_against_a_live_recorder" classname="io.godstone.mesh.readiness.ReadinessT71Test" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

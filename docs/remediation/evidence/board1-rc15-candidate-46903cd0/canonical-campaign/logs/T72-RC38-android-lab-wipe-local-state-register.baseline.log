@@ -1,0 +1,9 @@
+e: The daemon has terminated unexpectedly on startup attempt #1 with error code: 0. The daemon process output:
+    1. Kotlin compile daemon is ready
+
+TEST-SUITE TEST-io.godstone.labmesh.LabMeshJourneyBoundTest.xml tests=5 skipped=0 failures=0 errors=0
+TEST-CASE PASS test_aRefusedEstateRendersRecoveryOnlyWithLiveWipeControls
+TEST-CASE PASS test_the_rendered_sos_arm_and_cancel_reach_the_nodes_own_durable_row
+TEST-CASE PASS test_the_durable_readout_is_absent_until_the_runtime_committeth
+TEST-CASE PASS test_the_rendered_journey_sendeth_and_renders_the_runtimes_own_durable_id
+TEST-CASE PASS test_the_rendered_wipe_reaches_the_durable_record_and_survives_a_reopen

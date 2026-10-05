@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.godstone.mesh.readiness.ReadinessT29Test" tests="13" skipped="0" failures="0" errors="0" timestamp="2026-10-04T22:16:25" hostname="Naraharikripas-Mac-mini.local" time="0.002">
+  <properties/>
+  <testcase name="testTheClassifierDecidethOnRealBytesAndNotOnABooleanTheCourtSetteth" classname="io.godstone.mesh.readiness.ReadinessT29Test" time="0.001"/>
+  <testcase name="testEncryptedAtRestIsRequiredAndPlainStoreRejected" classname="io.godstone.mesh.readiness.ReadinessT29Test" time="0.0"/>
+  <testcase name="testUnknownSchemaVersionIsUnsupportedVersion" classname="io.godstone.mesh.readiness.ReadinessT29Test" time="0.0"/>
+  <testcase name="testSqlcipherAdapterSurfacesUnsupportedVersionFromTheNativeHeader" classname="io.godstone.mesh.readiness.ReadinessT29Test" time="0.001"/>
+  <testcase name="testKeyAcquisitionFaultIsUnavailable" classname="io.godstone.mesh.readiness.ReadinessT29Test" time="0.0"/>
+  <testcase name="testOpenHappyPathYieldsAvailableEncryptedBackupExcludedStore" classname="io.godstone.mesh.readiness.ReadinessT29Test" time="0.0"/>
+  <testcase name="testMalformedHeaderFaultIsCorrupt" classname="io.godstone.mesh.readiness.ReadinessT29Test" time="0.0"/>
+  <testcase name="testSqlcipherAdapterMapsNativeWrongKeyFaultThroughTheClassifier" classname="io.godstone.mesh.readiness.ReadinessT29Test" time="0.0"/>
+  <testcase name="testSqlcipherAdapterRejectsAPlainBindingViaTheEncryptedAtRestPredicate" classname="io.godstone.mesh.readiness.ReadinessT29Test" time="0.0"/>
+  <testcase name="testWrongKeyFaultIsLockedAndNeverAnEmptyHealthyStore" classname="io.godstone.mesh.readiness.ReadinessT29Test" time="0.0"/>
+  <testcase name="testUnclassifiedFaultFailsClosedNeverAvailable" classname="io.godstone.mesh.readiness.ReadinessT29Test" time="0.0"/>
+  <testcase name="testWriteFaultsAreClassifiedAndAtomicEnqueueRollsBackFailClosed" classname="io.godstone.mesh.readiness.ReadinessT29Test" time="0.0"/>
+  <testcase name="testSqlcipherAdapterCompositionYieldsAvailableForAGenuineEncryptedStore" classname="io.godstone.mesh.readiness.ReadinessT29Test" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

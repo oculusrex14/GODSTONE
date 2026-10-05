@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.godstone.mesh.store.ReadinessStore003Test" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-10-04T22:16:37" hostname="Naraharikripas-Mac-mini.local" time="0.02">
+  <properties/>
+  <testcase name="W02 the migration engine is bound to the upgrade" classname="io.godstone.mesh.store.ReadinessStore003Test" time="0.004"/>
+  <testcase name="W06 a brand new file is created at the current revision" classname="io.godstone.mesh.store.ReadinessStore003Test" time="0.004"/>
+  <testcase name="W01 the versioned upgrade doth not drop durable tables" classname="io.godstone.mesh.store.ReadinessStore003Test" time="0.002"/>
+  <testcase name="W05 a drifting older schema is refused without deleting or re-stamping" classname="io.godstone.mesh.store.ReadinessStore003Test" time="0.004"/>
+  <testcase name="W04 an older stamped file must migrate instead of losing durable rows" classname="io.godstone.mesh.store.ReadinessStore003Test" time="0.006"/>
+  <testcase name="W07 the immutable digest fold reads real bytes" classname="io.godstone.mesh.store.ReadinessStore003Test" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

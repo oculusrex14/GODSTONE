@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.godstone.mesh.readiness.ReadinessStore001Test" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-10-04T22:16:23" hostname="Naraharikripas-Mac-mini.local" time="0.002">
+  <properties/>
+  <testcase name="test_w03_the_classifier_decideth_on_the_bytes_not_on_a_boolean" classname="io.godstone.mesh.readiness.ReadinessStore001Test" time="0.001"/>
+  <testcase name="test_w04_the_native_boundary_is_named_and_not_claimed" classname="io.godstone.mesh.readiness.ReadinessStore001Test" time="0.0"/>
+  <testcase name="test_w02_an_encrypted_shaped_file_is_available" classname="io.godstone.mesh.readiness.ReadinessStore001Test" time="0.001"/>
+  <testcase name="test_w01_a_real_plain_sqlite_database_is_locked" classname="io.godstone.mesh.readiness.ReadinessStore001Test" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

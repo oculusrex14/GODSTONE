@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.godstone.mesh.identity.GsFinal003FullEstateErasureTest" tests="9" skipped="0" failures="0" errors="0" timestamp="2026-10-04T22:16:16" hostname="Naraharikripas-Mac-mini.local" time="0.052">
+  <properties/>
+  <testcase name="thePeerFamilyNamesTheRealDatabaseSidecarsAndKeys" classname="io.godstone.mesh.identity.GsFinal003FullEstateErasureTest" time="0.005"/>
+  <testcase name="aNameWithNoOwnerIsAbsentAndErasesNothing" classname="io.godstone.mesh.identity.GsFinal003FullEstateErasureTest" time="0.006"/>
+  <testcase name="theRecoveryIdentityEraseIsVerifiedOverTheRealPreferences" classname="io.godstone.mesh.identity.GsFinal003FullEstateErasureTest" time="0.009"/>
+  <testcase name="theMeshFamilyNamesTheRealDatabaseSidecarsAndKeys" classname="io.godstone.mesh.identity.GsFinal003FullEstateErasureTest" time="0.006"/>
+  <testcase name="readabilityIsTakenFromTheJournalNotFromTheVault" classname="io.godstone.mesh.identity.GsFinal003FullEstateErasureTest" time="0.004"/>
+  <testcase name="theIdentityFamilyIsATargetIncludingTheAndroidxKeyset" classname="io.godstone.mesh.identity.GsFinal003FullEstateErasureTest" time="0.003"/>
+  <testcase name="aSurvivingArtifactIsAFailureNamingTheRealFile" classname="io.godstone.mesh.identity.GsFinal003FullEstateErasureTest" time="0.007"/>
+  <testcase name="theRecoveryIdentityEraseRefusesOverASurvivor" classname="io.godstone.mesh.identity.GsFinal003FullEstateErasureTest" time="0.005"/>
+  <testcase name="everyOwnerDefinedTargetIsErasedAndVerified" classname="io.godstone.mesh.identity.GsFinal003FullEstateErasureTest" time="0.007"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

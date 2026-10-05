@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.godstone.app.readiness.ReadinessArchive003Test" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-10-04T22:13:58" hostname="Naraharikripas-Mac-mini.local" time="0.002">
+  <properties/>
+  <testcase name="test_w01_a_search_hit_is_clickable_and_openeth_its_document" classname="io.godstone.app.readiness.ReadinessArchive003Test" time="0.001"/>
+  <testcase name="test_w03_the_view_model_exposeth_the_two_roads_the_screen_calleth" classname="io.godstone.app.readiness.ReadinessArchive003Test" time="0.0"/>
+  <testcase name="test_w02_the_hit_carrieth_an_accessible_action" classname="io.godstone.app.readiness.ReadinessArchive003Test" time="0.0"/>
+  <testcase name="test_w04_the_no_results_phase_is_rendered_with_an_action" classname="io.godstone.app.readiness.ReadinessArchive003Test" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

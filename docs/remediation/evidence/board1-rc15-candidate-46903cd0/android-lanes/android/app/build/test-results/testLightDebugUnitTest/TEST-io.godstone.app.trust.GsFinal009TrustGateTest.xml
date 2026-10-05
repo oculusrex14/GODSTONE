@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.godstone.app.trust.GsFinal009TrustGateTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-10-04T22:13:59" hostname="Naraharikripas-Mac-mini.local" time="0.0">
+  <properties/>
+  <testcase name="testGF009TheUnavailableProjectionIsExplicitAndClaimethNothing" classname="io.godstone.app.trust.GsFinal009TrustGateTest" time="0.0"/>
+  <testcase name="testGF009AUnavailableGateProvokethZeroProtectedReadsAndZeroCommands" classname="io.godstone.app.trust.GsFinal009TrustGateTest" time="0.0"/>
+  <testcase name="testGF009AnOpenGateReallyReachethThePort" classname="io.godstone.app.trust.GsFinal009TrustGateTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

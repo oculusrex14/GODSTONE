@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.godstone.mesh.readiness.ReadinessT60LiveRosterTest" tests="8" skipped="0" failures="0" errors="0" timestamp="2026-10-04T22:16:26" hostname="Naraharikripas-Mac-mini.local" time="0.005">
+  <properties/>
+  <testcase name="test_the_trace_names_each_mode_and_its_refusal" classname="io.godstone.mesh.readiness.ReadinessT60LiveRosterTest" time="0.003"/>
+  <testcase name="test_a_description_lost_in_the_runtime_is_refused" classname="io.godstone.mesh.readiness.ReadinessT60LiveRosterTest" time="0.0"/>
+  <testcase name="test_the_log_reports_the_post_transform_values_the_user_receives" classname="io.godstone.mesh.readiness.ReadinessT60LiveRosterTest" time="0.0"/>
+  <testcase name="test_a_control_folded_below_the_minimum_is_refused_with_its_size" classname="io.godstone.mesh.readiness.ReadinessT60LiveRosterTest" time="0.0"/>
+  <testcase name="test_every_mode_is_decided_and_a_healthy_screen_passes_all_of_them" classname="io.godstone.mesh.readiness.ReadinessT60LiveRosterTest" time="0.001"/>
+  <testcase name="test_a_post_transform_status_clip_is_refused_in_its_mode" classname="io.godstone.mesh.readiness.ReadinessT60LiveRosterTest" time="0.0"/>
+  <testcase name="test_the_roster_takes_its_four_modes_from_the_contract" classname="io.godstone.mesh.readiness.ReadinessT60LiveRosterTest" time="0.0"/>
+  <testcase name="test_a_meaning_flip_is_refused_in_both_directions" classname="io.godstone.mesh.readiness.ReadinessT60LiveRosterTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

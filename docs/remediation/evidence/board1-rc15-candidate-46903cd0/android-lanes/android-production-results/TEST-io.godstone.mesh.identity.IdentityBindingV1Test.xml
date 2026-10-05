@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.godstone.mesh.identity.IdentityBindingV1Test" tests="19" skipped="0" failures="0" errors="0" timestamp="2026-10-04T22:16:16" hostname="Naraharikripas-Mac-mini.local" time="0.003">
+  <properties/>
+  <testcase name="malformed authenticated static context rejected" classname="io.godstone.mesh.identity.IdentityBindingV1Test" time="0.0"/>
+  <testcase name="endian_lock KAT assertion" classname="io.godstone.mesh.identity.IdentityBindingV1Test" time="0.0"/>
+  <testcase name="bad version rejected" classname="io.godstone.mesh.identity.IdentityBindingV1Test" time="0.0"/>
+  <testcase name="parse and encode round-trip byte-identical" classname="io.godstone.mesh.identity.IdentityBindingV1Test" time="0.0"/>
+  <testcase name="malformed advertised hint context rejected" classname="io.godstone.mesh.identity.IdentityBindingV1Test" time="0.0"/>
+  <testcase name="exact 80-byte preimage reproduction" classname="io.godstone.mesh.identity.IdentityBindingV1Test" time="0.001"/>
+  <testcase name="bad signature one-bit corruption rejected" classname="io.godstone.mesh.identity.IdentityBindingV1Test" time="0.0"/>
+  <testcase name="fresh_generation_zero KAT assertion" classname="io.godstone.mesh.identity.IdentityBindingV1Test" time="0.0"/>
+  <testcase name="truncated 132-byte payload rejected" classname="io.godstone.mesh.identity.IdentityBindingV1Test" time="0.0"/>
+  <testcase name="max_generation KAT assertion" classname="io.godstone.mesh.identity.IdentityBindingV1Test" time="0.0"/>
+  <testcase name="valid signature accepted" classname="io.godstone.mesh.identity.IdentityBindingV1Test" time="0.0"/>
+  <testcase name="generation big-endian parsing verification" classname="io.godstone.mesh.identity.IdentityBindingV1Test" time="0.0"/>
+  <testcase name="oversized 134-byte payload rejected" classname="io.godstone.mesh.identity.IdentityBindingV1Test" time="0.0"/>
+  <testcase name="advertised hint mismatch rejected" classname="io.godstone.mesh.identity.IdentityBindingV1Test" time="0.0"/>
+  <testcase name="wrong signing public key rejected" classname="io.godstone.mesh.identity.IdentityBindingV1Test" time="0.001"/>
+  <testcase name="domain separator immutability and signaturePreimage reproducibility" classname="io.godstone.mesh.identity.IdentityBindingV1Test" time="0.0"/>
+  <testcase name="exact 133-byte serialization" classname="io.godstone.mesh.identity.IdentityBindingV1Test" time="0.0"/>
+  <testcase name="remote Noise static mismatch rejected" classname="io.godstone.mesh.identity.IdentityBindingV1Test" time="0.0"/>
+  <testcase name="Kotlin defensive-copy test" classname="io.godstone.mesh.identity.IdentityBindingV1Test" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

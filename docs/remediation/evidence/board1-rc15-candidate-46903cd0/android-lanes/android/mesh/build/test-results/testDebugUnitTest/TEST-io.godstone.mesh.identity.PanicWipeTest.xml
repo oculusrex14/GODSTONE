@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.godstone.mesh.identity.PanicWipeTest" tests="8" skipped="0" failures="0" errors="0" timestamp="2026-10-04T22:16:16" hostname="Naraharikripas-Mac-mini.local" time="0.001">
+  <properties/>
+  <testcase name="begin with no crash runs every step once in crypto-erasure-first order" classname="io.godstone.mesh.identity.PanicWipeTest" time="0.0"/>
+  <testcase name="resumes after a crash before regenerateIdentity -- ARTIFACTS_DELETED persisted" classname="io.godstone.mesh.identity.PanicWipeTest" time="0.0"/>
+  <testcase name="resumes after a crash before eraseKeys -- REQUESTED persisted, eraseKeys runs once" classname="io.godstone.mesh.identity.PanicWipeTest" time="0.0"/>
+  <testcase name="resumeIfPending is a no-op when no wipe is pending" classname="io.godstone.mesh.identity.PanicWipeTest" time="0.0"/>
+  <testcase name="crypto erasure happens before artifact deletion" classname="io.godstone.mesh.identity.PanicWipeTest" time="0.001"/>
+  <testcase name="deleteArtifacts failure leaves journal at KEY_ERASED and resume retries and completes" classname="io.godstone.mesh.identity.PanicWipeTest" time="0.0"/>
+  <testcase name="resumeIfPending completes a wipe interrupted at KEY_ERASED" classname="io.godstone.mesh.identity.PanicWipeTest" time="0.0"/>
+  <testcase name="resumes after a crash before deleteArtifacts -- KEY_ERASED persisted, eraseKeys NOT re-run" classname="io.godstone.mesh.identity.PanicWipeTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

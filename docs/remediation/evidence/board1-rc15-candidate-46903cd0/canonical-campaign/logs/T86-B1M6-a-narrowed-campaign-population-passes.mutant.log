@@ -1,0 +1,36 @@
+/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpyrn8xqp1/repo/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpyrn8xqp1/repo/ci/mutations.py'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpyrn8xqp1/repo/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpyrn8xqp1/repo/ci/mutations.py'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpyrn8xqp1/repo/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpyrn8xqp1/repo/ci/mutations.py'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpyrn8xqp1/repo/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpyrn8xqp1/repo/ci/mutations.py'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+test_a_campaign_population_that_disagrees_with_the_ledger_is_refused (test_board1_gate_manifest.ManifestContractTests.test_a_campaign_population_that_disagrees_with_the_ledger_is_refused)
+*** THE POPULATION COMES FROM THE LEDGER, NOT FROM THE MANIFEST'S OWN CLAIM. *** ... /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpyrn8xqp1/repo/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpyrn8xqp1/repo/ci/mutations.py'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+FAIL
+
+======================================================================
+FAIL: test_a_campaign_population_that_disagrees_with_the_ledger_is_refused (test_board1_gate_manifest.ManifestContractTests.test_a_campaign_population_that_disagrees_with_the_ledger_is_refused)
+*** THE POPULATION COMES FROM THE LEDGER, NOT FROM THE MANIFEST'S OWN CLAIM. ***
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/board1-rc15-preparatory-46903cd0-xke1sctz/rod-worktrees/wt_T86-B1M6-a-narrowed-campaign-population-passes/tools/readiness/tests/test_board1_gate_manifest.py", line 323, in test_a_campaign_population_that_disagrees_with_the_ledger_is_refused
+    self.assertTrue(self.fx.check(bad),
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+                    "a manifest whose recorded selection is EMPTY while the envelope selected every required rod "
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                    "must be refused; the mutant accepts it")
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: [] is not true : a manifest whose recorded selection is EMPTY while the envelope selected every required rod must be refused; the mutant accepts it
+
+----------------------------------------------------------------------
+Ran 1 test in 5.839s
+
+FAILED (failures=1)

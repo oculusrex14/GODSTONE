@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.godstone.labmesh.LabJourneyDurabilityCourt" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-10-04T22:14:55" hostname="Naraharikripas-Mac-mini.local" time="3.075">
+  <properties/>
+  <testcase name="theRenderedSosJourneyIsDurableAcrossRelaunchesForTheSameMessage" classname="io.godstone.labmesh.LabJourneyDurabilityCourt" time="1.637"/>
+  <testcase name="theRenderedWipeJourneyIsDurableAndResumesWithoutRewinding" classname="io.godstone.labmesh.LabJourneyDurabilityCourt" time="0.032"/>
+  <testcase name="aRequestedEstateRefusesTheRenderedPrivateCommands" classname="io.godstone.labmesh.LabJourneyDurabilityCourt" time="0.009"/>
+  <testcase name="theRenderedSendPersistsTheSameMsgIdAndLabelAcrossARelaunch" classname="io.godstone.labmesh.LabJourneyDurabilityCourt" time="1.371"/>
+  <testcase name="aCorruptRecordOffersTheOperatorResolutionRenderedFromTheRecord" classname="io.godstone.labmesh.LabJourneyDurabilityCourt" time="0.009"/>
+  <testcase name="theRenderedDurableReadoutIsAbsentUntilTheStoreCommits" classname="io.godstone.labmesh.LabJourneyDurabilityCourt" time="0.016"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

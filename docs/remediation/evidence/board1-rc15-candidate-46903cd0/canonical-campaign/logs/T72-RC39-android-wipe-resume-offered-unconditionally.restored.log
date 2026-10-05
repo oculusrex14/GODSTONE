@@ -1,0 +1,10 @@
+
+TEST-SUITE TEST-io.godstone.mesh.lab.LabWipeJourneyTest.xml tests=8 skipped=0 failures=0 errors=0
+TEST-CASE PASS beginWipeRetiresLiveEstateBeforeDrivingLadder
+TEST-CASE PASS anUnreadableRecordRendersAsCorruptAndOffersNoResume
+TEST-CASE PASS theJourneyTravelsTheSameRecoveryGraphAsTheStartup
+TEST-CASE PASS resolveCorruptForOperatorDrivesFullErasureAndNeverClaimsCleanStart
+TEST-CASE PASS theRenderedJourneyIsDurableAcrossAReopen
+TEST-CASE PASS theSosRetryRemainsTheNodesOwnDoor
+TEST-CASE PASS theHarnessLocalRegisterIsNotTheDurableOwner
+TEST-CASE PASS theRecoveryContractIsStateAwareAndExhaustive

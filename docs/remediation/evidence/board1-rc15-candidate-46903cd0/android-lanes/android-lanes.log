@@ -1,0 +1,346 @@
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.9/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+Calculating task graph as no cached configuration is available for tasks: :app:testLightDebugUnitTest :core:testDebugUnitTest :mesh:testDebugUnitTest :labmesh:testDebugUnitTest
+
+> Configure project :app
+WARNING: The option setting 'android.experimental.enableTestFixturesKotlinSupport=true' is experimental.
+The current default is 'false'.
+
+> Task :core:preBuild UP-TO-DATE
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :llm:preBuild UP-TO-DATE
+> Task :mesh:preBuild UP-TO-DATE
+> Task :core:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :mesh:generateDebugUnitTestAssets UP-TO-DATE
+> Task :mesh:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :llm:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :mesh:generateDebugTestFixturesAssets UP-TO-DATE
+> Task :app:preBuild UP-TO-DATE
+> Task :core:preDebugBuild UP-TO-DATE
+> Task :llm:preDebugBuild UP-TO-DATE
+> Task :mesh:preDebugBuild UP-TO-DATE
+> Task :core:preDebugUnitTestBuild UP-TO-DATE
+> Task :app:preLightDebugUnitTestBuild UP-TO-DATE
+> Task :app:preLightDebugBuild UP-TO-DATE
+> Task :app:createLightDebugCompatibleScreenManifests
+> Task :core:generateDebugResValues
+> Task :core:javaPreCompileDebug
+> Task :app:javaPreCompileLightDebug
+> Task :app:generateLightDebugResValues
+> Task :app:generateLightDebugBuildConfig
+> Task :llm:generateDebugResValues
+> Task :core:writeDebugAarMetadata
+> Task :core:generateDebugResources
+> Task :llm:javaPreCompileDebug
+> Task :llm:generateDebugResources
+> Task :app:mergeLightDebugShaders
+> Task :core:mergeDebugShaders
+> Task :core:extractDeepLinksDebug
+> Task :app:extractDeepLinksLightDebug
+> Task :app:javaPreCompileLightDebugUnitTest
+> Task :core:compileDebugShaders NO-SOURCE
+> Task :core:generateDebugAssets UP-TO-DATE
+> Task :app:compileLightDebugShaders NO-SOURCE
+> Task :app:generateLightDebugResources
+> Task :app:generateLightDebugAssets UP-TO-DATE
+> Task :mesh:preDebugTestFixturesBuild UP-TO-DATE
+> Task :mesh:generateDebugResValues
+> Task :core:javaPreCompileDebugUnitTest
+> Task :mesh:generateDebugResources
+> Task :llm:packageDebugResources
+> Task :core:packageDebugResources
+> Task :core:processDebugManifest
+> Task :mesh:packageDebugResources
+> Task :app:packageLightDebugResources
+> Task :core:compileDebugLibraryResources
+> Task :mesh:javaPreCompileDebugTestFixtures
+> Task :mesh:mergeDebugShaders
+> Task :core:packageDebugAssets
+> Task :app:mapLightDebugSourceSetPaths
+> Task :mesh:compileDebugShaders NO-SOURCE
+> Task :mesh:generateDebugAssets UP-TO-DATE
+> Task :mesh:javaPreCompileDebug
+> Task :mesh:packageDebugAssets
+> Task :mesh:packageDebugTestFixturesAssets
+> Task :mesh:preDebugUnitTestBuild UP-TO-DATE
+> Task :llm:parseDebugLocalResources
+> Task :app:mergeLightDebugAssets
+> Task :core:parseDebugLocalResources
+> Task :mesh:mergeDebugAssets
+> Task :mesh:parseDebugLocalResources
+> Task :mesh:mergeDebugUnitTestAssets
+> Task :mesh:writeDebugAarMetadata
+> Task :app:parseLightDebugLocalResources
+> Task :mesh:writeDebugTestFixturesAarMetadata
+> Task :mesh:generateDebugUnitTestResValues
+> Task :mesh:generateDebugTestFixturesEmptyResourceFiles
+> Task :mesh:generateDebugUnitTestResources
+> Task :app:checkLightDebugAarMetadata
+> Task :mesh:extractDeepLinksDebug
+> Task :llm:generateDebugRFile
+> Task :mesh:checkDebugUnitTestAarMetadata
+> Task :mesh:mapDebugUnitTestSourceSetPaths
+> Task :core:generateDebugRFile
+> Task :mesh:generateDebugRFile
+> Task :mesh:processDebugTestFixturesJavaRes NO-SOURCE
+> Task :labmesh:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :mesh:processDebugManifest
+> Task :labmesh:preBuild UP-TO-DATE
+> Task :labmesh:preDebugUnitTestBuild UP-TO-DATE
+> Task :labmesh:preDebugBuild UP-TO-DATE
+> Task :mesh:javaPreCompileDebugUnitTest
+> Task :labmesh:generateDebugResValues
+> Task :labmesh:generateDebugBuildConfig
+> Task :core:generateDebugUnitTestStubRFile
+> Task :mesh:processDebugTestFixturesManifest
+> Task :labmesh:createDebugCompatibleScreenManifests
+> Task :labmesh:generateDebugResources
+> Task :labmesh:mapDebugSourceSetPaths
+> Task :labmesh:checkDebugAarMetadata
+> Task :labmesh:extractDeepLinksDebug
+> Task :labmesh:packageDebugResources
+> Task :labmesh:javaPreCompileDebug
+> Task :labmesh:javaPreCompileDebugUnitTest
+> Task :labmesh:parseDebugLocalResources
+> Task :labmesh:mergeDebugShaders
+> Task :labmesh:compileDebugShaders NO-SOURCE
+> Task :mesh:compileDebugLibraryResources
+> Task :labmesh:generateDebugAssets UP-TO-DATE
+> Task :labmesh:mergeDebugAssets
+
+> Task :app:processLightDebugMainManifest
+/private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/app/src/main/AndroidManifest.xml:6:5-87 Warning:
+	uses-permission#android.permission.INTERNET was tagged at AndroidManifest.xml:6 to remove other declarations but no other declaration present
+
+> Task :mesh:processDebugUnitTestManifest
+
+> Task :labmesh:processDebugMainManifest
+/private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/labmesh/src/main/AndroidManifest.xml:16:5-87 Warning:
+	uses-permission#android.permission.INTERNET was tagged at AndroidManifest.xml:16 to remove other declarations but no other declaration present
+
+> Task :app:processLightDebugManifest
+> Task :labmesh:processDebugManifest
+> Task :labmesh:processDebugManifestForPackage
+> Task :app:processLightDebugManifestForPackage
+> Task :mesh:mergeDebugUnitTestResources
+> Task :mesh:processDebugUnitTestResources
+> Task :mesh:packageDebugUnitTestForUnitTest
+> Task :mesh:generateDebugUnitTestConfig
+> Task :labmesh:mergeDebugResources
+> Task :app:mergeLightDebugResources
+> Task :app:processLightDebugResources
+> Task :labmesh:processDebugResources
+> Task :app:packageLightDebugUnitTestForUnitTest
+> Task :labmesh:packageDebugUnitTestForUnitTest
+> Task :app:generateLightDebugUnitTestConfig
+> Task :labmesh:generateDebugUnitTestConfig
+
+> Task :core:compileDebugKotlin
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/core/src/main/java/io/godstone/core/archive/ArchiveDatabase.kt:51:21 Condition is always 'true'.
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/core/src/main/java/io/godstone/core/archive/ArchiveInstaller.kt:161:18 Only safe (?.) or non-null asserted (!!.) calls are allowed on a nullable receiver of type 'java.io.File?'.
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/core/src/main/java/io/godstone/core/archive/ArchiveInstaller.kt:161:41 Only safe (?.) or non-null asserted (!!.) calls are allowed on a nullable receiver of type 'java.io.File?'.
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/core/src/main/java/io/godstone/core/archive/ArchiveInstaller.kt:161:61 Only safe (?.) or non-null asserted (!!.) calls are allowed on a nullable receiver of type 'java.io.File?'.
+
+> Task :core:compileDebugJavaWithJavac NO-SOURCE
+> Task :core:processDebugJavaRes
+> Task :core:bundleLibRuntimeToJarDebug
+> Task :core:bundleLibCompileToJarDebug
+
+> Task :core:compileDebugUnitTestKotlin
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/core/src/test/java/io/godstone/core/readiness/ReadinessArchive002Test.kt:46:33 Java type mismatch: inferred type is 'kotlin.String?', but 'kotlin.String' was expected.
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/core/src/test/java/io/godstone/core/readiness/ReadinessT47Test.kt:156:29 Java type mismatch: inferred type is 'kotlin.String?', but 'kotlin.String' was expected.
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/core/src/test/java/io/godstone/core/readiness/ReadinessT47Test.kt:756:9 Only safe (?.) or non-null asserted (!!.) calls are allowed on a nullable receiver of type 'java.io.File?'.
+
+> Task :core:compileDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :core:processDebugUnitTestJavaRes
+
+> Task :llm:compileDebugKotlin
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/llm/src/main/java/io/godstone/llm/provenance/ModelStaging.kt:115:17 Condition is always 'true'.
+
+> Task :llm:compileDebugJavaWithJavac NO-SOURCE
+> Task :llm:processDebugJavaRes
+> Task :llm:bundleLibCompileToJarDebug
+> Task :llm:bundleLibRuntimeToJarDebug
+> Task :core:testDebugUnitTest
+> Task :app:kspLightDebugKotlin
+> Task :mesh:kspDebugKotlin
+> Task :app:compileLightDebugKotlin
+> Task :app:compileLightDebugJavaWithJavac
+> Task :app:hiltAggregateDepsLightDebug
+> Task :app:hiltJavaCompileLightDebug
+> Task :app:processLightDebugJavaRes
+> Task :app:bundleLightDebugClassesToCompileJar
+> Task :app:transformLightDebugClassesWithAsm
+> Task :app:bundleLightDebugClassesToRuntimeJar
+> Task :app:kspLightDebugUnitTestKotlin
+
+> Task :app:compileLightDebugUnitTestKotlin
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/app/src/test/java/io/godstone/app/readiness/ReadinessArchive003Test.kt:19:33 Java type mismatch: inferred type is 'kotlin.String?', but 'kotlin.String' was expected.
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/app/src/test/java/io/godstone/app/readiness/ReadinessT49Test.kt:144:29 Java type mismatch: inferred type is 'kotlin.String?', but 'kotlin.String' was expected.
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/app/src/test/java/io/godstone/app/readiness/ReadinessT49Test.kt:265:21 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/app/src/test/java/io/godstone/app/readiness/ReadinessT49Test.kt:266:47 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/app/src/test/java/io/godstone/app/readiness/ReadinessT49Test.kt:281:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/app/src/test/java/io/godstone/app/readiness/ReadinessT49Test.kt:295:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/app/src/test/java/io/godstone/app/readiness/ReadinessT49Test.kt:298:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/app/src/test/java/io/godstone/app/readiness/ReadinessT49Test.kt:301:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/app/src/test/java/io/godstone/app/readiness/ReadinessT49Test.kt:308:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/app/src/test/java/io/godstone/app/readiness/ReadinessT49Test.kt:315:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/app/src/test/java/io/godstone/app/readiness/ReadinessT49Test.kt:325:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/app/src/test/java/io/godstone/app/readiness/ReadinessT49Test.kt:326:49 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/app/src/test/java/io/godstone/app/readiness/ReadinessT49Test.kt:331:31 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/app/src/test/java/io/godstone/app/readiness/ReadinessT49Test.kt:345:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/app/src/test/java/io/godstone/app/readiness/ReadinessT49Test.kt:346:72 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/app/src/test/java/io/godstone/app/readiness/ReadinessT49Test.kt:351:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/app/src/test/java/io/godstone/app/readiness/ReadinessT49Test.kt:358:13 Check for instance is always 'true'.
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/app/src/test/java/io/godstone/app/readiness/ReadinessT49Test.kt:360:64 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/app/src/test/java/io/godstone/app/readiness/ReadinessT49Test.kt:373:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/app/src/test/java/io/godstone/app/readiness/ReadinessT49Test.kt:374:50 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/app/src/test/java/io/godstone/app/readiness/ReadinessT49Test.kt:387:21 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/app/src/test/java/io/godstone/app/readiness/ReadinessT49Test.kt:399:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/app/src/test/java/io/godstone/app/readiness/ReadinessT49Test.kt:400:50 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/app/src/test/java/io/godstone/app/readiness/ReadinessT49Test.kt:412:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/app/src/test/java/io/godstone/app/readiness/ReadinessT49Test.kt:414:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/app/src/test/java/io/godstone/app/readiness/ReadinessT49Test.kt:425:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/app/src/test/java/io/godstone/app/readiness/ReadinessT49Test.kt:428:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/app/src/test/java/io/godstone/app/readiness/ReadinessT49Test.kt:471:29 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/app/src/test/java/io/godstone/app/readiness/ReadinessT49Test.kt:475:21 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/app/src/test/java/io/godstone/app/readiness/ReadinessT49Test.kt:485:21 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/app/src/test/java/io/godstone/app/readiness/ReadinessT49Test.kt:493:33 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/app/src/test/java/io/godstone/app/readiness/ReadinessT49Test.kt:506:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/app/src/test/java/io/godstone/app/readiness/ReadinessT49Test.kt:507:50 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/app/src/test/java/io/godstone/app/readiness/ReadinessT49Test.kt:509:34 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/app/src/test/java/io/godstone/app/readiness/ReadinessT49Test.kt:510:20 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/app/src/test/java/io/godstone/app/readiness/ReadinessT49Test.kt:521:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/app/src/test/java/io/godstone/app/readiness/ReadinessT49Test.kt:523:21 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/app/src/test/java/io/godstone/app/readiness/ReadinessT49Test.kt:527:31 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/app/src/test/java/io/godstone/app/readiness/ReadinessT49Test.kt:530:21 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/app/src/test/java/io/godstone/app/readiness/ReadinessT49Test.kt:540:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/app/src/test/java/io/godstone/app/readiness/ReadinessT49Test.kt:541:56 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/app/src/test/java/io/godstone/app/readiness/ReadinessT49Test.kt:542:37 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/app/src/test/java/io/godstone/app/readiness/ReadinessT49Test.kt:548:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/app/src/test/java/io/godstone/app/readiness/ReadinessT49Test.kt:558:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/app/src/test/java/io/godstone/app/readiness/ReadinessT49Test.kt:559:56 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/app/src/test/java/io/godstone/app/readiness/ReadinessT49Test.kt:563:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/app/src/test/java/io/godstone/app/readiness/ReadinessT49Test.kt:571:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/app/src/test/java/io/godstone/app/readiness/ReadinessT49Test.kt:575:34 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/app/src/test/java/io/godstone/app/readiness/ReadinessT49Test.kt:585:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/app/src/test/java/io/godstone/app/readiness/ReadinessT49Test.kt:644:25 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/app/src/test/java/io/godstone/app/readiness/ReadinessT49Test.kt:647:58 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/app/src/test/java/io/godstone/app/readiness/ReadinessT49Test.kt:655:29 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/app/src/test/java/io/godstone/app/readiness/ReadinessT49Test.kt:683:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/app/src/test/java/io/godstone/app/readiness/ReadinessT49Test.kt:685:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/app/src/test/java/io/godstone/app/readiness/ReadinessT49Test.kt:694:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/app/src/test/java/io/godstone/app/readiness/ReadinessT49Test.kt:719:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/app/src/test/java/io/godstone/app/readiness/ReadinessT49Test.kt:721:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/app/src/test/java/io/godstone/app/readiness/ReadinessT49Test.kt:723:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/app/src/test/java/io/godstone/app/readiness/ReadinessT49Test.kt:728:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/app/src/test/java/io/godstone/app/readiness/ReadinessT49Test.kt:750:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/app/src/test/java/io/godstone/app/readiness/ReadinessT49Test.kt:760:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/app/src/test/java/io/godstone/app/readiness/ReadinessT49Test.kt:866:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/app/src/test/java/io/godstone/app/readiness/ReadinessT49Test.kt:868:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/app/src/test/java/io/godstone/app/readiness/ReadinessT49Test.kt:881:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/app/src/test/java/io/godstone/app/readiness/ReadinessT49Test.kt:883:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/app/src/test/java/io/godstone/app/readiness/ReadinessT49Test.kt:895:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/app/src/test/java/io/godstone/app/readiness/ReadinessT49Test.kt:897:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/app/src/test/java/io/godstone/app/readiness/ReadinessT49Test.kt:906:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/app/src/test/java/io/godstone/app/readiness/ReadinessT49Test.kt:916:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/app/src/test/java/io/godstone/app/readiness/ReadinessT49Test.kt:918:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/app/src/test/java/io/godstone/app/readiness/ReadinessT55Test.kt:598:25 Java type mismatch: inferred type is 'kotlin.String?', but 'kotlin.String' was expected.
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/app/src/test/java/io/godstone/app/readiness/ReadinessT57Test.kt:523:25 Java type mismatch: inferred type is 'kotlin.String?', but 'kotlin.String' was expected.
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/app/src/test/java/io/godstone/app/ui/browse/GsFinal006RenderedReadingListTest.kt:136:50 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/app/src/test/java/io/godstone/app/ui/browse/GsFinal006RenderedReadingListTest.kt:502:58 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/app/src/test/java/io/godstone/app/ui/oracle/OracleViewModelTest.kt:69:21 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/app/src/test/java/io/godstone/app/ui/oracle/OracleViewModelTest.kt:73:25 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/app/src/test/java/io/godstone/app/ui/oracle/OracleViewModelTest.kt:80:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/app/src/test/java/io/godstone/app/ui/oracle/OracleViewModelTest.kt:94:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/app/src/test/java/io/godstone/app/ui/oracle/OracleViewModelTest.kt:97:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/app/src/test/java/io/godstone/app/ui/oracle/OracleViewModelTest.kt:120:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/app/src/test/java/io/godstone/app/ui/oracle/OracleViewModelTest.kt:122:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/app/src/test/java/io/godstone/app/ui/oracle/OracleViewModelTest.kt:132:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/app/src/test/java/io/godstone/app/ui/oracle/OracleViewModelTest.kt:134:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/app/src/test/java/io/godstone/app/ui/oracle/OracleViewModelTest.kt:154:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/app/src/test/java/io/godstone/app/ui/oracle/OracleViewModelTest.kt:157:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/app/src/test/java/io/godstone/app/ui/oracle/OracleViewModelTest.kt:176:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/app/src/test/java/io/godstone/app/ui/oracle/OracleViewModelTest.kt:179:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/app/src/test/java/io/godstone/app/ui/oracle/OracleViewModelTest.kt:210:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/app/src/test/java/io/godstone/app/ui/oracle/OracleViewModelTest.kt:213:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/app/src/test/java/io/godstone/app/ui/oracle/OracleViewModelTest.kt:236:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/app/src/test/java/io/godstone/app/ui/oracle/OracleViewModelTest.kt:238:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/app/src/test/java/io/godstone/app/ui/oracle/OracleViewModelTest.kt:241:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/app/src/test/java/io/godstone/app/ui/oracle/OracleViewModelTest.kt:255:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/app/src/test/java/io/godstone/app/ui/oracle/OracleViewModelTest.kt:258:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/app/src/test/java/io/godstone/app/ui/oracle/OracleViewModelTest.kt:260:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+
+> Task :app:compileLightDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :app:hiltAggregateDepsLightDebugUnitTest
+> Task :app:hiltJavaCompileLightDebugUnitTest NO-SOURCE
+> Task :app:processLightDebugUnitTestJavaRes
+> Task :app:transformLightDebugUnitTestClassesWithAsm
+
+> Task :mesh:compileDebugKotlin
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/mesh/src/main/java/io/godstone/mesh/delivery/RecipientInboxRepository.kt:370:13 Check for instance is always 'false'.
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/mesh/src/main/java/io/godstone/mesh/transport/GattClient.kt:316:80 'var value: ByteArray!' is deprecated. Deprecated in Java.
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/mesh/src/main/java/io/godstone/mesh/transport/GattClient.kt:338:48 'var value: ByteArray!' is deprecated. Deprecated in Java.
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/mesh/src/main/java/io/godstone/mesh/transport/GattClient.kt:427:18 'var value: ByteArray!' is deprecated. Deprecated in Java.
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/mesh/src/main/java/io/godstone/mesh/transport/GattClient.kt:438:11 'fun writeCharacteristic(p0: BluetoothGattCharacteristic!): Boolean' is deprecated. Deprecated in Java.
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/mesh/src/main/java/io/godstone/mesh/transport/GattClient.kt:446:14 'var value: ByteArray!' is deprecated. Deprecated in Java.
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/mesh/src/main/java/io/godstone/mesh/transport/GattClient.kt:457:11 'fun writeDescriptor(p0: BluetoothGattDescriptor!): Boolean' is deprecated. Deprecated in Java.
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/mesh/src/main/java/io/godstone/mesh/transport/GattClient.kt:498:12 'var value: ByteArray!' is deprecated. Deprecated in Java.
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/mesh/src/main/java/io/godstone/mesh/transport/GattClient.kt:500:27 'fun writeCharacteristic(p0: BluetoothGattCharacteristic!): Boolean' is deprecated. Deprecated in Java.
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/mesh/src/main/java/io/godstone/mesh/transport/GattServer.kt:635:12 'var value: ByteArray!' is deprecated. Deprecated in Java.
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/mesh/src/main/java/io/godstone/mesh/transport/GattServer.kt:636:27 'fun notifyCharacteristicChanged(p0: BluetoothDevice!, p1: BluetoothGattCharacteristic!, p2: Boolean): Boolean' is deprecated. Deprecated in Java.
+
+> Task :mesh:processDebugJavaRes
+> Task :mesh:compileDebugJavaWithJavac
+> Task :mesh:transformDebugClassesWithAsm
+> Task :mesh:bundleLibRuntimeToJarDebug
+> Task :mesh:bundleLibCompileToJarDebug
+> Task :mesh:compileDebugTestFixturesKotlin
+> Task :mesh:compileDebugTestFixturesJavaWithJavac NO-SOURCE
+> Task :mesh:bundleLibRuntimeToJarDebugTestFixtures
+> Task :mesh:createFullJarDebugTestFixtures
+> Task :labmesh:compileDebugKotlin
+> Task :labmesh:processDebugJavaRes
+> Task :labmesh:compileDebugJavaWithJavac
+> Task :labmesh:bundleDebugClassesToRuntimeJar
+> Task :labmesh:bundleDebugClassesToCompileJar
+> Task :mesh:kspDebugUnitTestKotlin
+> Task :app:testLightDebugUnitTest
+> Task :labmesh:compileDebugUnitTestKotlin
+> Task :labmesh:compileDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :labmesh:processDebugUnitTestJavaRes
+> Task :labmesh:testDebugUnitTest
+
+> Task :mesh:compileDebugUnitTestKotlin
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/mesh/src/test/java/io/godstone/mesh/RouterTest.kt:260:17 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/mesh/src/test/java/io/godstone/mesh/RouterTest.kt:326:17 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/mesh/src/test/java/io/godstone/mesh/crypto/ReadinessT06Test.kt:70:24 Java type mismatch: inferred type is 'kotlin.String?', but 'kotlin.String' was expected.
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/mesh/src/test/java/io/godstone/mesh/crypto/ReadinessT07Test.kt:164:32 Java type mismatch: inferred type is 'kotlin.String?', but 'kotlin.String' was expected.
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/mesh/src/test/java/io/godstone/mesh/lab/crash/RealLateLifecycleScenarioTest.kt:136:88 Condition is always 'true'.
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessStore001Test.kt:91:26 Java type mismatch: inferred type is 'kotlin.String?', but 'kotlin.String' was expected.
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessStore001Test.kt:94:21 Java type mismatch: inferred type is 'java.io.File?', but 'java.io.File' was expected.
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT24PublicationTest.kt:48:13 Expected performance impact from inlining is insignificant. Inlining works best for functions with parameters of function types.
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT24PublicationTest.kt:49:13 Expected performance impact from inlining is insignificant. Inlining works best for functions with parameters of function types.
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT24Test.kt:49:13 Expected performance impact from inlining is insignificant. Inlining works best for functions with parameters of function types.
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT24Test.kt:50:13 Expected performance impact from inlining is insignificant. Inlining works best for functions with parameters of function types.
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT38Test.kt:98:32 Java type mismatch: inferred type is 'kotlin.String?', but 'kotlin.String' was expected.
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT40Test.kt:64:36 Java type mismatch: inferred type is 'kotlin.String?', but 'kotlin.String' was expected.
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT44Test.kt:364:33 Java type mismatch: inferred type is 'kotlin.String?', but 'kotlin.String' was expected.
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT83Test.kt:858:47 Java type mismatch: inferred type is 'kotlin.String?', but 'kotlin.String' was expected.
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/mesh/src/test/java/io/godstone/mesh/store/ReadinessStore003Test.kt:208:31 Java type mismatch: inferred type is 'kotlin.String?', but 'kotlin.String' was expected.
+
+> Task :mesh:compileDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :mesh:hiltAggregateDepsDebugUnitTest
+> Task :mesh:hiltJavaCompileDebugUnitTest NO-SOURCE
+> Task :mesh:processDebugUnitTestJavaRes
+> Task :mesh:transformDebugUnitTestClassesWithAsm
+> Task :mesh:testDebugUnitTest
+
+BUILD SUCCESSFUL in 1m 25s
+139 actionable tasks: 139 executed
+Configuration cache entry stored.
+lane android:ui: raw_rc=0 verdict=PASSED tests=168 digest=e0e14a8ebea1941b…
+lane android:simulator: raw_rc=0 verdict=PASSED tests=40 digest=3ac94888b1d87f72…
+lane android:production: raw_rc=0 verdict=PASSED tests=1479 digest=d1036829a830436a…
+Android lanes: worst-rc=0, evidence written for 7 lanes
+  (*the raw gradle statuses are EVIDENCE; the verdict comes from `ci/check_lane_results.py --scope android`*)

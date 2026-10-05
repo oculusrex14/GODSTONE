@@ -1,0 +1,23 @@
+
+8 tests completed, 1 failed
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':mesh:testDebugUnitTest'.
+> There were failing tests. See the report at: file:///private/tmp/board1-rc15-preparatory-46903cd0-xke1sctz/rod-worktrees/wt_T72-RC39-android-wipe-resume-offered-unconditionally/android/mesh/build/reports/tests/testDebugUnitTest/index.html
+
+* Try:
+> Run with --scan to get full insights.
+
+BUILD FAILED in 30s
+
+TEST-SUITE TEST-io.godstone.mesh.lab.LabWipeJourneyTest.xml tests=8 skipped=0 failures=1 errors=0
+TEST-CASE PASS beginWipeRetiresLiveEstateBeforeDrivingLadder
+TEST-CASE PASS anUnreadableRecordRendersAsCorruptAndOffersNoResume
+TEST-CASE PASS theJourneyTravelsTheSameRecoveryGraphAsTheStartup
+TEST-CASE PASS resolveCorruptForOperatorDrivesFullErasureAndNeverClaimsCleanStart
+TEST-CASE PASS theRenderedJourneyIsDurableAcrossAReopen
+TEST-CASE PASS theSosRetryRemainsTheNodesOwnDoor
+TEST-CASE PASS theHarnessLocalRegisterIsNotTheDurableOwner
+TEST-CASE FAIL theRecoveryContractIsStateAwareAndExhaustive

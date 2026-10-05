@@ -1,0 +1,7 @@
+test_an_internal_compile_failure_with_a_forged_marker_is_not_external (test_audit_supplychain_harness.ReleaseProofCaptureCourt.test_an_internal_compile_failure_with_a_forged_marker_is_not_external)
+The contract arm Main named: a marker does not launder a real internal red. ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK

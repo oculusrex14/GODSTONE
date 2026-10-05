@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.godstone.mesh.wire.v2.WireV2VectorTest" tests="19" skipped="0" failures="0" errors="0" timestamp="2026-10-04T22:16:37" hostname="Naraharikripas-Mac-mini.local" time="0.001">
+  <properties/>
+  <testcase name="reject_hop_count_over_max is rejected at the wire layer" classname="io.godstone.mesh.wire.v2.WireV2VectorTest" time="0.0"/>
+  <testcase name="reject_v1_frame is rejected at the wire layer" classname="io.godstone.mesh.wire.v2.WireV2VectorTest" time="0.0"/>
+  <testcase name="decoded frame equals original frame by content" classname="io.godstone.mesh.wire.v2.WireV2VectorTest" time="0.0"/>
+  <testcase name="encode_hello reproduces golden vector" classname="io.godstone.mesh.wire.v2.WireV2VectorTest" time="0.0"/>
+  <testcase name="copy method does not alias mutable arrays between original and copy" classname="io.godstone.mesh.wire.v2.WireV2VectorTest" time="0.0"/>
+  <testcase name="getter array mutation does not leak or alter FrameV2 state" classname="io.godstone.mesh.wire.v2.WireV2VectorTest" time="0.0"/>
+  <testcase name="content-based equals and hashCode work across distinct allocations" classname="io.godstone.mesh.wire.v2.WireV2VectorTest" time="0.0"/>
+  <testcase name="encode output is stable against attempted external mutation" classname="io.godstone.mesh.wire.v2.WireV2VectorTest" time="0.0"/>
+  <testcase name="reject_sos_missing_flags parses as a frame but is refused by the SOS validator" classname="io.godstone.mesh.wire.v2.WireV2VectorTest" time="0.0"/>
+  <testcase name="decode round-trips every positive golden vector" classname="io.godstone.mesh.wire.v2.WireV2VectorTest" time="0.0"/>
+  <testcase name="encode_digest reproduces golden vector" classname="io.godstone.mesh.wire.v2.WireV2VectorTest" time="0.0"/>
+  <testcase name="sos validator rejects a non-sos type" classname="io.godstone.mesh.wire.v2.WireV2VectorTest" time="0.0"/>
+  <testcase name="reject_bad_crc is rejected at the wire layer" classname="io.godstone.mesh.wire.v2.WireV2VectorTest" time="0.0"/>
+  <testcase name="encode_sos reproduces golden vector" classname="io.godstone.mesh.wire.v2.WireV2VectorTest" time="0.0"/>
+  <testcase name="reject_sos_missing_payload_magic parses as a frame but is refused by the SOS validator" classname="io.godstone.mesh.wire.v2.WireV2VectorTest" time="0.0"/>
+  <testcase name="encode_message reproduces golden vector" classname="io.godstone.mesh.wire.v2.WireV2VectorTest" time="0.0"/>
+  <testcase name="constructor input mutation does not alter FrameV2 state" classname="io.godstone.mesh.wire.v2.WireV2VectorTest" time="0.0"/>
+  <testcase name="sos validator accepts the golden sos vector" classname="io.godstone.mesh.wire.v2.WireV2VectorTest" time="0.0"/>
+  <testcase name="reject_legacy_type_0x02 is rejected at the wire layer" classname="io.godstone.mesh.wire.v2.WireV2VectorTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

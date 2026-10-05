@@ -1,0 +1,28 @@
+# phase-log: CLOS-PARTIAL-BLIND.mutant.log
+# argv: ["/opt/homebrew/opt/python@3.14/bin/python3.14", "-m", "unittest", "-v", "tools.readiness.tests.test_closure_law_refuses.ObligationStateMachine.test_one_partial_obligation_prevents_zero", "tools.readiness.tests.test_closure_law_refuses.ObligationStateMachine.test_only_all_discharged_reaches_zero"]
+# rc: 1
+# --- raw stdout ---
+
+# --- raw stderr ---
+test_one_partial_obligation_prevents_zero (tools.readiness.tests.test_closure_law_refuses.ObligationStateMachine.test_one_partial_obligation_prevents_zero)
+*** THE CASE THE OLD `== "OPEN"` FILTER GOT WRONG. *** ... FAIL
+test_only_all_discharged_reaches_zero (tools.readiness.tests.test_closure_law_refuses.ObligationStateMachine.test_only_all_discharged_reaches_zero) ... ok
+
+======================================================================
+FAIL: test_one_partial_obligation_prevents_zero (tools.readiness.tests.test_closure_law_refuses.ObligationStateMachine.test_one_partial_obligation_prevents_zero)
+*** THE CASE THE OLD `== "OPEN"` FILTER GOT WRONG. ***
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/board1-rc15-preparatory-46903cd0-xke1sctz/closure-worktrees/board1-rc15-closure-strikes.7b5pwquw/wt-clos-partial-blind/tools/readiness/tests/test_closure_law_refuses.py", line 485, in test_one_partial_obligation_prevents_zero
+    self.assertEqual(self._count_with(m)["internal_obligations_unresolved"], 1,
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                     "*** ONE PARTIAL obligation MUST keep the unresolved count at ONE -- a filter that honours "
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                     "only the OPEN spelling of 'not finished' under-counts silently. ***")
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 0 != 1 : *** ONE PARTIAL obligation MUST keep the unresolved count at ONE -- a filter that honours only the OPEN spelling of 'not finished' under-counts silently. ***
+
+----------------------------------------------------------------------
+Ran 2 tests in 2.540s
+
+FAILED (failures=1)

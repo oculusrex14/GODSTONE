@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.godstone.mesh.readiness.ReadinessT43Test" tests="15" skipped="0" failures="0" errors="0" timestamp="2026-10-04T22:16:25" hostname="Naraharikripas-Mac-mini.local" time="0.01">
+  <properties/>
+  <testcase name="test_w06_cancellation_and_expiry_win_over_a_late_ack" classname="io.godstone.mesh.readiness.ReadinessT43Test" time="0.001"/>
+  <testcase name="test_w04_a_wrong_recipients_ack_is_rejected" classname="io.godstone.mesh.readiness.ReadinessT43Test" time="0.001"/>
+  <testcase name="test_w05_a_duplicate_ack_is_idempotent" classname="io.godstone.mesh.readiness.ReadinessT43Test" time="0.001"/>
+  <testcase name="test_w13_a_broadcast_send_leaveth_the_sos_label_queued" classname="io.godstone.mesh.readiness.ReadinessT43Test" time="0.001"/>
+  <testcase name="test_gf003_the_delivery_read_road_is_gated_on_a_pending_wipe" classname="io.godstone.mesh.readiness.ReadinessT43Test" time="0.0"/>
+  <testcase name="test_w11_the_offer_ledger_is_bounded_and_fail_closed" classname="io.godstone.mesh.readiness.ReadinessT43Test" time="0.0"/>
+  <testcase name="test_w07_a_restart_preserveth_the_honest_status" classname="io.godstone.mesh.readiness.ReadinessT43Test" time="0.001"/>
+  <testcase name="test_w09_the_legacy_migration_rewriteth_through_the_engine" classname="io.godstone.mesh.readiness.ReadinessT43Test" time="0.001"/>
+  <testcase name="test_w12_an_unreadable_row_is_never_labelled_queued" classname="io.godstone.mesh.readiness.ReadinessT43Test" time="0.0"/>
+  <testcase name="test_w01_att_success_without_remote_storage_leaveth_it_queued" classname="io.godstone.mesh.readiness.ReadinessT43Test" time="0.001"/>
+  <testcase name="test_gf003_the_directed_authoring_road_is_gated_on_a_pending_wipe" classname="io.godstone.mesh.readiness.ReadinessT43Test" time="0.001"/>
+  <testcase name="test_w03_the_intended_recipients_ack_produceth_delivered" classname="io.godstone.mesh.readiness.ReadinessT43Test" time="0.001"/>
+  <testcase name="test_w08_a_legacy_handed_row_is_read_as_queued" classname="io.godstone.mesh.readiness.ReadinessT43Test" time="0.0"/>
+  <testcase name="test_w10_no_relay_receipt_is_ever_claimed" classname="io.godstone.mesh.readiness.ReadinessT43Test" time="0.0"/>
+  <testcase name="test_w02_a_refused_send_leaveth_the_label_queued" classname="io.godstone.mesh.readiness.ReadinessT43Test" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

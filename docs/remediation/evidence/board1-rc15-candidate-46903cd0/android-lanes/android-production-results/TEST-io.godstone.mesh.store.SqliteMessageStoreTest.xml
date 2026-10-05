@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.godstone.mesh.store.SqliteMessageStoreTest" tests="56" skipped="0" failures="0" errors="0" timestamp="2026-10-04T22:16:37" hostname="Naraharikripas-Mac-mini.local" time="0.207">
+  <properties/>
+  <testcase name="gsstore004TheMintGrantethTheRowsOwnKindAndNotADefaultedDirect" classname="io.godstone.mesh.store.SqliteMessageStoreTest" time="0.007"/>
+  <testcase name="gsstore004TheBudgetIsPersistedWithTheRowAndNeverReplenished" classname="io.godstone.mesh.store.SqliteMessageStoreTest" time="0.004"/>
+  <testcase name="C6_6 enqueueDirectOutbound conflicting recipient fails closed with ConflictRecipient" classname="io.godstone.mesh.store.SqliteMessageStoreTest" time="0.004"/>
+  <testcase name="duplicate msg_id is ignored" classname="io.godstone.mesh.store.SqliteMessageStoreTest" time="0.005"/>
+  <testcase name="C6_6_2 capacity eviction protects QUEUED_DURABLY active direct frame from new direct pressure" classname="io.godstone.mesh.store.SqliteMessageStoreTest" time="0.004"/>
+  <testcase name="gsstore004AConservativeDebitIsPersistedBack" classname="io.godstone.mesh.store.SqliteMessageStoreTest" time="0.004"/>
+  <testcase name="C6_6_1 enqueueDirectOutbound same msgId different ttl fails closed with CanonicalFrameMismatch" classname="io.godstone.mesh.store.SqliteMessageStoreTest" time="0.002"/>
+  <testcase name="C6_6_2 inbound persist cannot orphan local active direct delivery row" classname="io.godstone.mesh.store.SqliteMessageStoreTest" time="0.004"/>
+  <testcase name="all-SOS flooding stays inside the hard cap -- SOS evicted last, newest retained" classname="io.godstone.mesh.store.SqliteMessageStoreTest" time="0.004"/>
+  <testcase name="C6_6 enqueueDirectOutbound fault before delivery insert rolls back held insert" classname="io.godstone.mesh.store.SqliteMessageStoreTest" time="0.003"/>
+  <testcase name="forEachHeldOrderedByPriority stops when visit returns false" classname="io.godstone.mesh.store.SqliteMessageStoreTest" time="0.003"/>
+  <testcase name="C6_6_1 enqueueDirectOutbound same msgId different valid flags fails closed with CanonicalFrameMismatch" classname="io.godstone.mesh.store.SqliteMessageStoreTest" time="0.003"/>
+  <testcase name="fault after eviction rolls back and the evicted rows are restored" classname="io.godstone.mesh.store.SqliteMessageStoreTest" time="0.003"/>
+  <testcase name="fault before contains rolls back and reopens valid" classname="io.godstone.mesh.store.SqliteMessageStoreTest" time="0.003"/>
+  <testcase name="C6_6_1 enqueueDirectOutbound wrong preexisting provenance fails closed with InconsistentState" classname="io.godstone.mesh.store.SqliteMessageStoreTest" time="0.004"/>
+  <testcase name="gsstore004TheRetentionWriteBackSurvivethATransactionFailure" classname="io.godstone.mesh.store.SqliteMessageStoreTest" time="0.004"/>
+  <testcase name="gsstore004ASpentBudgetIsNotForwardedButALowOneIs" classname="io.godstone.mesh.store.SqliteMessageStoreTest" time="0.004"/>
+  <testcase name="gsstore004RepeatedRestartsLeaveTheRetentionStateConsistent" classname="io.godstone.mesh.store.SqliteMessageStoreTest" time="0.007"/>
+  <testcase name="C6_6 enqueueDirectOutbound happy path atomically creates held frame and QUEUED_DURABLY single-recipient delivery row" classname="io.godstone.mesh.store.SqliteMessageStoreTest" time="0.003"/>
+  <testcase name="C6_6 enqueueDirectOutbound held-only inconsistency fails closed with InconsistentState" classname="io.godstone.mesh.store.SqliteMessageStoreTest" time="0.003"/>
+  <testcase name="C6_6 enqueueDirectOutbound delivery-only inconsistency fails closed with InconsistentState" classname="io.godstone.mesh.store.SqliteMessageStoreTest" time="0.002"/>
+  <testcase name="C6_6_3 raw SQL corrupted type negative 16 does not alias SOS and fails closed" classname="io.godstone.mesh.store.SqliteMessageStoreTest" time="0.004"/>
+  <testcase name="C6_6_2 unbound relay frames evict before active delivery bound frames" classname="io.godstone.mesh.store.SqliteMessageStoreTest" time="0.003"/>
+  <testcase name="gsfinal005AStoreOpenedTheProductionWayStillEnforcesRetention" classname="io.godstone.mesh.store.SqliteMessageStoreTest" time="0.004"/>
+  <testcase name="C6_6_1 enqueueDirectOutbound same msgId different routingTag fails closed with CanonicalFrameMismatch" classname="io.godstone.mesh.store.SqliteMessageStoreTest" time="0.003"/>
+  <testcase name="capacity-rejected frame may be retried later after room is freed - dedup window not poisoned" classname="io.godstone.mesh.store.SqliteMessageStoreTest" time="0.004"/>
+  <testcase name="eviction does not run while under budget" classname="io.godstone.mesh.store.SqliteMessageStoreTest" time="0.004"/>
+  <testcase name="gsstore004TheSweepAlsoRunsOnThePolicyCadence" classname="io.godstone.mesh.store.SqliteMessageStoreTest" time="0.004"/>
+  <testcase name="C6_6_2 terminal delivery row without held frame returns RejectedTerminalState" classname="io.godstone.mesh.store.SqliteMessageStoreTest" time="0.004"/>
+  <testcase name="C6_6_1 enqueueDirectOutbound local origin provenance is localOriginNodeId not msgId" classname="io.godstone.mesh.store.SqliteMessageStoreTest" time="0.003"/>
+  <testcase name="gsstore004TheSweepRetirethTheSpentRowFromStorage" classname="io.godstone.mesh.store.SqliteMessageStoreTest" time="0.003"/>
+  <testcase name="persist then read back preserves all fields" classname="io.godstone.mesh.store.SqliteMessageStoreTest" time="0.005"/>
+  <testcase name="ordinary frame evicted under all-SOS pressure reports REJECTED_CAPACITY and is absent" classname="io.godstone.mesh.store.SqliteMessageStoreTest" time="0.004"/>
+  <testcase name="C6_6 enqueueDirectOutbound same exact retry is idempotent and returns AlreadyQueuedSameBinding" classname="io.godstone.mesh.store.SqliteMessageStoreTest" time="0.004"/>
+  <testcase name="priority order is SOS first then ascending with recency tie-break" classname="io.godstone.mesh.store.SqliteMessageStoreTest" time="0.004"/>
+  <testcase name="bounded capacity evicts oldest non-SOS first and returns under the cap" classname="io.godstone.mesh.store.SqliteMessageStoreTest" time="0.003"/>
+  <testcase name="C6_6 enqueueDirectOutbound store reopen preserves both held frames and delivery rows on disk" classname="io.godstone.mesh.store.SqliteMessageStoreTest" time="0.004"/>
+  <testcase name="C6_6 enqueueDirectOutbound policy rejection on non-direct or unsealed or invalid msg_id" classname="io.godstone.mesh.store.SqliteMessageStoreTest" time="0.003"/>
+  <testcase name="forEachHeldMsgId streams all ids while visit returns true" classname="io.godstone.mesh.store.SqliteMessageStoreTest" time="0.004"/>
+  <testcase name="C6_6_2 pre-SQL outbound validation rejects malformed fields before database mutation" classname="io.godstone.mesh.store.SqliteMessageStoreTest" time="0.003"/>
+  <testcase name="C6_6 enqueueDirectOutbound under tight capacity rejects and leaves zero delivery and zero held rows" classname="io.godstone.mesh.store.SqliteMessageStoreTest" time="0.003"/>
+  <testcase name="C6_6_1 enqueueDirectOutbound same msgId different hopCount fails closed with CanonicalFrameMismatch" classname="io.godstone.mesh.store.SqliteMessageStoreTest" time="0.004"/>
+  <testcase name="C6_6_1 enqueueDirectOutbound same msgId different payload fails closed with CanonicalFrameMismatch" classname="io.godstone.mesh.store.SqliteMessageStoreTest" time="0.004"/>
+  <testcase name="C6_6_2 capacity eviction protects HANDED_TO_RELAY active direct frame under pressure" classname="io.godstone.mesh.store.SqliteMessageStoreTest" time="0.003"/>
+  <testcase name="C6_6 enqueueDirectOutbound fault after evict rolls back and restores evicted rows" classname="io.godstone.mesh.store.SqliteMessageStoreTest" time="0.004"/>
+  <testcase name="C6_6_2 raw SQL corrupted type integer does not alias TypeV2 and fails closed" classname="io.godstone.mesh.store.SqliteMessageStoreTest" time="0.003"/>
+  <testcase name="new SOS under all-SOS pressure keeps cap satisfied and newest SOS retained with truthful result" classname="io.godstone.mesh.store.SqliteMessageStoreTest" time="0.005"/>
+  <testcase name="C6_6 enqueueDirectOutbound terminal delivery state fails closed with RejectedTerminalState" classname="io.godstone.mesh.store.SqliteMessageStoreTest" time="0.004"/>
+  <testcase name="C6_6_2 raw SQL corrupted ttl or flags fails closed" classname="io.godstone.mesh.store.SqliteMessageStoreTest" time="0.003"/>
+  <testcase name="precise eviction deletes the smallest prefix that meets the overshoot" classname="io.godstone.mesh.store.SqliteMessageStoreTest" time="0.004"/>
+  <testcase name="fault after insert rolls back the transaction and leaves a valid bounded store" classname="io.godstone.mesh.store.SqliteMessageStoreTest" time="0.004"/>
+  <testcase name="SOS frames are retained even when they are the oldest rows" classname="io.godstone.mesh.store.SqliteMessageStoreTest" time="0.004"/>
+  <testcase name="gsstore004TheSweepIsConnectedToStartup" classname="io.godstone.mesh.store.SqliteMessageStoreTest" time="0.004"/>
+  <testcase name="C6_6 enqueueDirectOutbound fault after held insert rolls back both held and delivery rows" classname="io.godstone.mesh.store.SqliteMessageStoreTest" time="0.003"/>
+  <testcase name="rows with an unknown type code are skipped not thrown" classname="io.godstone.mesh.store.SqliteMessageStoreTest" time="0.002"/>
+  <testcase name="C6_6 enqueueDirectOutbound fault after delivery insert rolls back whole transaction" classname="io.godstone.mesh.store.SqliteMessageStoreTest" time="0.003"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

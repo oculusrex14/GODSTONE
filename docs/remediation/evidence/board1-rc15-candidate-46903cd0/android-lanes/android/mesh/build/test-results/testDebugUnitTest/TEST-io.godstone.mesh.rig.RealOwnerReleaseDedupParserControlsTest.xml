@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.godstone.mesh.rig.RealOwnerReleaseDedupParserControlsTest" tests="8" skipped="0" failures="0" errors="0" timestamp="2026-10-04T22:16:36" hostname="Naraharikripas-Mac-mini.local" time="0.082">
+  <properties/>
+  <testcase name="theParserRefusesEachMutatedGateAndAcceptsTheValidFrameInTheSameRun" classname="io.godstone.mesh.rig.RealOwnerReleaseDedupParserControlsTest" time="0.011"/>
+  <testcase name="theInvalidatorRetiresTheSessionOwnerAtTheWipeBoundary" classname="io.godstone.mesh.rig.RealOwnerReleaseDedupParserControlsTest" time="0.009"/>
+  <testcase name="theAgeTimerLeaseIsReleasedOnCancellationAndReArmedForTheSuccessor" classname="io.godstone.mesh.rig.RealOwnerReleaseDedupParserControlsTest" time="0.008"/>
+  <testcase name="theSessionOwnerIsRetiredByStopEvenOnANodeThatWasNeverStarted" classname="io.godstone.mesh.rig.RealOwnerReleaseDedupParserControlsTest" time="0.008"/>
+  <testcase name="theTransportReleasesItsWriterAndTheWritersReservationsAtStop" classname="io.godstone.mesh.rig.RealOwnerReleaseDedupParserControlsTest" time="0.01"/>
+  <testcase name="theDeliveryDedupAnswersAlreadyQueuedSameBindingAtTheRealTracker" classname="io.godstone.mesh.rig.RealOwnerReleaseDedupParserControlsTest" time="0.014"/>
+  <testcase name="theUserPayloadSurvivesTheRealRoadAndIsReadBackAtTheRecipient" classname="io.godstone.mesh.rig.RealOwnerReleaseDedupParserControlsTest" time="0.01"/>
+  <testcase name="theInboxDedupAnswersTheFiledAckAndAddsNoSecondDurableRow" classname="io.godstone.mesh.rig.RealOwnerReleaseDedupParserControlsTest" time="0.012"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.godstone.app.ui.browse.GsFinal006RenderedReadingListTest" tests="12" skipped="0" failures="0" errors="0" timestamp="2026-10-04T22:13:59" hostname="Naraharikripas-Mac-mini.local" time="2.27">
+  <properties/>
+  <testcase name="aResolvedTargetReallyPlacesTheReader" classname="io.godstone.app.ui.browse.GsFinal006RenderedReadingListTest" time="1.739"/>
+  <testcase name="anUncitedRowRenderethNeitherCitationNorAFabricatedBanner" classname="io.godstone.app.ui.browse.GsFinal006RenderedReadingListTest" time="0.119"/>
+  <testcase name="anAppLevelRecreationRestoresTheReadersPlaceThroughTheRealHandle" classname="io.godstone.app.ui.browse.GsFinal006RenderedReadingListTest" time="0.071"/>
+  <testcase name="aReadersOwnScrollAfterThePlacementIsReallyRecorded" classname="io.godstone.app.ui.browse.GsFinal006RenderedReadingListTest" time="0.051"/>
+  <testcase name="openingANewDocumentShowsThatDocumentsBeginning" classname="io.godstone.app.ui.browse.GsFinal006RenderedReadingListTest" time="0.044"/>
+  <testcase name="theCitationLineRenderethForADocumentedRow" classname="io.godstone.app.ui.browse.GsFinal006RenderedReadingListTest" time="0.033"/>
+  <testcase name="theReaderIsNotYankedBackToTheRestoredTargetByTheirOwnScroll" classname="io.godstone.app.ui.browse.GsFinal006RenderedReadingListTest" time="0.038"/>
+  <testcase name="theAppsOwnPlacementDoesNotOverwriteTheReadersAnchor" classname="io.godstone.app.ui.browse.GsFinal006RenderedReadingListTest" time="0.03"/>
+  <testcase name="aSecondScrollIsAlsoRecorded" classname="io.godstone.app.ui.browse.GsFinal006RenderedReadingListTest" time="0.038"/>
+  <testcase name="aFallbackPlacementIsNotRecordedAsTheReadersNewAnchor" classname="io.godstone.app.ui.browse.GsFinal006RenderedReadingListTest" time="0.023"/>
+  <testcase name="aScrollAfterAnUnrelatedStateChangeIsStillRecorded" classname="io.godstone.app.ui.browse.GsFinal006RenderedReadingListTest" time="0.045"/>
+  <testcase name="aProvenanceFaultRenderethItsCauseAndEarnethItsRetry" classname="io.godstone.app.ui.browse.GsFinal006RenderedReadingListTest" time="0.037"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

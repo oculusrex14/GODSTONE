@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.godstone.mesh.delivery.DeliveryIdentityImmutabilityTest" tests="8" skipped="0" failures="0" errors="0" timestamp="2026-10-04T22:16:12" hostname="Naraharikripas-Mac-mini.local" time="0.0">
+  <properties/>
+  <testcase name="DeliveryRecord copy preserves the immutability contract" classname="io.godstone.mesh.delivery.DeliveryIdentityImmutabilityTest" time="0.0"/>
+  <testcase name="DeliveryRow with a null expectedRecipient stays null and is stable" classname="io.godstone.mesh.delivery.DeliveryIdentityImmutabilityTest" time="0.0"/>
+  <testcase name="DeliveryRecord exported msgId is a fresh copy that cannot reach internal storage" classname="io.godstone.mesh.delivery.DeliveryIdentityImmutabilityTest" time="0.0"/>
+  <testcase name="DeliveryRecord msgId is isolated from constructor-input mutation" classname="io.godstone.mesh.delivery.DeliveryIdentityImmutabilityTest" time="0.0"/>
+  <testcase name="DeliveryRow expectedRecipient is isolated from constructor-input mutation" classname="io.godstone.mesh.delivery.DeliveryIdentityImmutabilityTest" time="0.0"/>
+  <testcase name="DeliveryRecord exported expectedRecipientNodeId is a fresh copy that cannot reach internal storage" classname="io.godstone.mesh.delivery.DeliveryIdentityImmutabilityTest" time="0.0"/>
+  <testcase name="DeliveryRecord expectedRecipientNodeId is isolated from constructor-input mutation" classname="io.godstone.mesh.delivery.DeliveryIdentityImmutabilityTest" time="0.0"/>
+  <testcase name="DeliveryRow exported expectedRecipient is a fresh copy that cannot reach internal storage" classname="io.godstone.mesh.delivery.DeliveryIdentityImmutabilityTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

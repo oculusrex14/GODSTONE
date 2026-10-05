@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.godstone.mesh.readiness.ReadinessT32Test" tests="7" skipped="0" failures="0" errors="0" timestamp="2026-10-04T22:16:25" hostname="Naraharikripas-Mac-mini.local" time="0.001">
+  <properties/>
+  <testcase name="testRepeatedMaliciousCrashBoundAndTombstoneDiscipline" classname="io.godstone.mesh.readiness.ReadinessT32Test" time="0.001"/>
+  <testcase name="testClockRollbackNeverExtendsRetention" classname="io.godstone.mesh.readiness.ReadinessT32Test" time="0.0"/>
+  <testcase name="testExpiryTransactionVsAckCancelAndReplayAfterExpiry" classname="io.godstone.mesh.readiness.ReadinessT32Test" time="0.0"/>
+  <testcase name="testRebootWithoutContinuityIsBoundedAndEventuallyExpires" classname="io.godstone.mesh.readiness.ReadinessT32Test" time="0.0"/>
+  <testcase name="testSameBootRestartReusesMonotonicAnchor" classname="io.godstone.mesh.readiness.ReadinessT32Test" time="0.0"/>
+  <testcase name="testUnknownClockTakesConservativeBranch" classname="io.godstone.mesh.readiness.ReadinessT32Test" time="0.0"/>
+  <testcase name="testClockForwardMayExpireEarly" classname="io.godstone.mesh.readiness.ReadinessT32Test" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

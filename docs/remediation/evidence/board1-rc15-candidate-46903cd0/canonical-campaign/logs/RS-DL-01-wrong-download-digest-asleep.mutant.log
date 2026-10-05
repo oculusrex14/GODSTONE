@@ -1,0 +1,17 @@
+test_a_wrong_digest_is_refused_by_name (test_audit_supplychain_harness.ToolchainDownloadCourt.test_a_wrong_digest_is_refused_by_name) ... FAIL
+
+======================================================================
+FAIL: test_a_wrong_digest_is_refused_by_name (test_audit_supplychain_harness.ToolchainDownloadCourt.test_a_wrong_digest_is_refused_by_name)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/board1-rc15-preparatory-46903cd0-xke1sctz/rod-worktrees/wt_RS-DL-01-wrong-download-digest-asleep/tools/readiness/tests/test_audit_supplychain_harness.py", line 73, in test_a_wrong_digest_is_refused_by_name
+    self.assertTrue(any("NOT THE PINNED ARCHIVE" in item for item in problems),
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                    problems)
+                    ^^^^^^^^^
+AssertionError: False is not true : []
+
+----------------------------------------------------------------------
+Ran 1 test in 0.001s
+
+FAILED (failures=1)

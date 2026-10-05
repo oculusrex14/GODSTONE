@@ -1,0 +1,50 @@
+{
+  "artifacts": [
+    {
+      "bytes": 81920,
+      "counts": {
+        "chunks": 7,
+        "documents": 3
+      },
+      "dangerous_modes": 0,
+      "declared_counts": {
+        "chunks": "7",
+        "documents": "3"
+      },
+      "development_fixture_key": true,
+      "dex_entries": 14,
+      "duplicate_entries": 0,
+      "entries_found": 1,
+      "entry": "assets/archive_light.db",
+      "errors": [],
+      "evidence": "packaged-bytes-present",
+      "expected_sha256": "6a97f16af9401e708fc3bf9bfd3150c938679a551a3ffb79db906bf551843d7a",
+      "fixture_marker_found": true,
+      "fts": "ok",
+      "integrity": "ok",
+      "kind": ".apk",
+      "native_libraries": [
+        "lib/arm64-v8a/libandroidx.graphics.path.so",
+        "lib/arm64-v8a/libsqliteJni.so",
+        "lib/armeabi-v7a/libandroidx.graphics.path.so",
+        "lib/armeabi-v7a/libsqliteJni.so",
+        "lib/x86/libandroidx.graphics.path.so",
+        "lib/x86/libsqliteJni.so",
+        "lib/x86_64/libandroidx.graphics.path.so",
+        "lib/x86_64/libsqliteJni.so"
+      ],
+      "path": "/tmp/board1-rc15-final-inputs-zdu1lyse/android-light/apks/app-light-debug.apk",
+      "radio_grants": [],
+      "schema_version": "3",
+      "sha256": "6a97f16af9401e708fc3bf9bfd3150c938679a551a3ffb79db906bf551843d7a",
+      "status": "byte-matched",
+      "symlink_entries": 0,
+      "tier": "LIGHT",
+      "traversal_entries": 0
+    }
+  ],
+  "evidence": "packaged-bytes-present",
+  "expected_sha256": "6a97f16af9401e708fc3bf9bfd3150c938679a551a3ffb79db906bf551843d7a",
+  "schema": 1,
+  "verdict": "pass"
+}

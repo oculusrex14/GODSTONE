@@ -1,0 +1,6 @@
+test_a_moved_version_is_refused_by_name (test_audit_supplychain_harness.SbomVersionDriftCourt.test_a_moved_version_is_refused_by_name) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK

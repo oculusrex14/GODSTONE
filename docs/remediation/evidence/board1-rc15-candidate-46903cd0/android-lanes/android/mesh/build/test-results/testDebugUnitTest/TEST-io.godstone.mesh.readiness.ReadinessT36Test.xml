@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.godstone.mesh.readiness.ReadinessT36Test" tests="13" skipped="0" failures="0" errors="0" timestamp="2026-10-04T22:16:25" hostname="Naraharikripas-Mac-mini.local" time="0.016">
+  <properties/>
+  <testcase name="testRacedAcceptorReusethTheWinningRowAndDiscardethTheLosingFrame" classname="io.godstone.mesh.readiness.ReadinessT36Test" time="0.004"/>
+  <testcase name="testBodyProfileGateBeforeAnyAuthoring" classname="io.godstone.mesh.readiness.ReadinessT36Test" time="0.001"/>
+  <testcase name="testMultiRecipientDistinctIds" classname="io.godstone.mesh.readiness.ReadinessT36Test" time="0.001"/>
+  <testcase name="testFullCallPathCommandToSignedAck" classname="io.godstone.mesh.readiness.ReadinessT36Test" time="0.001"/>
+  <testcase name="testRetryOfSameIntentTokenLoadsIdenticalPersistedBytes" classname="io.godstone.mesh.readiness.ReadinessT36Test" time="0.001"/>
+  <testcase name="testRestartRetryIdenticalBytes" classname="io.godstone.mesh.readiness.ReadinessT36Test" time="0.001"/>
+  <testcase name="testUnapprovedRecipientYieldsTypedDistinctRejections" classname="io.godstone.mesh.readiness.ReadinessT36Test" time="0.001"/>
+  <testcase name="testSequentialRepeatOfTheSameRevisionResolvesToOneLogicalMessage" classname="io.godstone.mesh.readiness.ReadinessT36Test" time="0.0"/>
+  <testcase name="testChangedRecipientOrBodyOrPriorityCreatesNewLogicalSend" classname="io.godstone.mesh.readiness.ReadinessT36Test" time="0.001"/>
+  <testcase name="testDiskFullRefusesSendDistinguishingFailureFromEmpty" classname="io.godstone.mesh.readiness.ReadinessT36Test" time="0.002"/>
+  <testcase name="testIdentityOnlyAfterDurableEnqueue" classname="io.godstone.mesh.readiness.ReadinessT36Test" time="0.001"/>
+  <testcase name="testDoubleTapYieldsTwoExplicitIntentsTwoLogicalSends" classname="io.godstone.mesh.readiness.ReadinessT36Test" time="0.001"/>
+  <testcase name="testKeyRotationRacePinsTheAcceptedGeneration" classname="io.godstone.mesh.readiness.ReadinessT36Test" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

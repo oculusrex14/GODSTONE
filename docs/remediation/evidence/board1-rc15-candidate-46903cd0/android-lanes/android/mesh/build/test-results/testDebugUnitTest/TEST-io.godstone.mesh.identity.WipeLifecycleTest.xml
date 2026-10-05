@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.godstone.mesh.identity.WipeLifecycleTest" tests="16" skipped="0" failures="0" errors="0" timestamp="2026-10-04T22:16:16" hostname="Naraharikripas-Mac-mini.local" time="0.027">
+  <properties/>
+  <testcase name="testWipe_DeterministicOrdering_GateSessionsPeerMessageKeys" classname="io.godstone.mesh.identity.WipeLifecycleTest" time="0.004"/>
+  <testcase name="testWipe_W05_MessageStoreClosed_AfterInvalidation" classname="io.godstone.mesh.identity.WipeLifecycleTest" time="0.005"/>
+  <testcase name="testWipe_W04_PeerStoreClosed_AfterInvalidation" classname="io.godstone.mesh.identity.WipeLifecycleTest" time="0.001"/>
+  <testcase name="testWipe_CrashAtNewIdentity_ResumesWipeAndCompletes" classname="io.godstone.mesh.identity.WipeLifecycleTest" time="0.0"/>
+  <testcase name="testWipe_W15_RealDatabaseArtifactsAndSidecars_DeletedAfterClosure" classname="io.godstone.mesh.identity.WipeLifecycleTest" time="0.008"/>
+  <testcase name="testWipe_TrustAuthorityReturnsStorageFailure_AfterInvalidation" classname="io.godstone.mesh.identity.WipeLifecycleTest" time="0.001"/>
+  <testcase name="testWipe_CrashAtArtifactsDeleted_ResumesWipeAndCompletes" classname="io.godstone.mesh.identity.WipeLifecycleTest" time="0.001"/>
+  <testcase name="testWipe_ResolverReturnsNull_AfterInvalidation" classname="io.godstone.mesh.identity.WipeLifecycleTest" time="0.001"/>
+  <testcase name="testWipe_OldRuntimeHandleRemainsInvalid_AfterWipeCompletes" classname="io.godstone.mesh.identity.WipeLifecycleTest" time="0.001"/>
+  <testcase name="testWipe_FreshRuntimeInstance_AfterWipeWorksNormally" classname="io.godstone.mesh.identity.WipeLifecycleTest" time="0.001"/>
+  <testcase name="testWipe_CrashAtRequested_ResumesWipeAndCompletes" classname="io.godstone.mesh.identity.WipeLifecycleTest" time="0.0"/>
+  <testcase name="testWipe_CrashAtKeyErased_ResumesWipeAndCompletes" classname="io.godstone.mesh.identity.WipeLifecycleTest" time="0.0"/>
+  <testcase name="testWipe_FullExecution_ErasesKeysAndDeletesArtifactsAndRegeneratesIdentity" classname="io.godstone.mesh.identity.WipeLifecycleTest" time="0.001"/>
+  <testcase name="testWipe_W06_InvalidatorFailure_PreventsKeyErasure_PreservesRequestedState" classname="io.godstone.mesh.identity.WipeLifecycleTest" time="0.0"/>
+  <testcase name="testWipe_SessionManagerInvalidated_RefusesAllOperations" classname="io.godstone.mesh.identity.WipeLifecycleTest" time="0.002"/>
+  <testcase name="testWipe_CleanIdle_NoOp" classname="io.godstone.mesh.identity.WipeLifecycleTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

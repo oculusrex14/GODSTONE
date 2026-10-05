@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.godstone.mesh.readiness.Audit002SosSyncTest" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-10-04T22:16:23" hostname="Naraharikripas-Mac-mini.local" time="0.008">
+  <properties/>
+  <testcase name="theSosRoadIsNotWipeGatedAndThatIsPinnedRatherThanAssumed" classname="io.godstone.mesh.readiness.Audit002SosSyncTest" time="0.002"/>
+  <testcase name="cancelDuringFirstPendingOfferMustSuppressLaterPeerOffer" classname="io.godstone.mesh.readiness.Audit002SosSyncTest" time="0.002"/>
+  <testcase name="missingSigningAuthorityMustNotQueueUnauthenticatedSos" classname="io.godstone.mesh.readiness.Audit002SosSyncTest" time="0.0"/>
+  <testcase name="configuredAuthorityProducesVerifiableSos" classname="io.godstone.mesh.readiness.Audit002SosSyncTest" time="0.002"/>
+  <testcase name="inventoryReceiverMustEnforce64PageRunLimit" classname="io.godstone.mesh.readiness.Audit002SosSyncTest" time="0.002"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

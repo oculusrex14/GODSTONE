@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.godstone.mesh.di.GsFinal003ContextProviderTest" tests="8" skipped="0" failures="0" errors="0" timestamp="2026-10-04T22:16:13" hostname="Naraharikripas-Mac-mini.local" time="1.257">
+  <properties/>
+  <testcase name="testGF003TheProvidersAnswerIsReadPerCallRatherThanCached" classname="io.godstone.mesh.di.GsFinal003ContextProviderTest" time="1.17"/>
+  <testcase name="testGF003TheAckGateIsReadPerCallRatherThanCached" classname="io.godstone.mesh.di.GsFinal003ContextProviderTest" time="0.009"/>
+  <testcase name="testGF003ACleanDeviceLetsTheWholeAckSurfaceThrough" classname="io.godstone.mesh.di.GsFinal003ContextProviderTest" time="0.007"/>
+  <testcase name="testGF003TheProviderPermitsOnACompletedWipe" classname="io.godstone.mesh.di.GsFinal003ContextProviderTest" time="0.005"/>
+  <testcase name="testGF002TheInstanceEntryHandethTheTypedOutcomeToItsCaller" classname="io.godstone.mesh.di.GsFinal003ContextProviderTest" time="0.048"/>
+  <testcase name="testGF003TheProviderRefusesOnEveryPendingRungOfTheLadder" classname="io.godstone.mesh.di.GsFinal003ContextProviderTest" time="0.007"/>
+  <testcase name="testGF003TheProviderPermitsOnAnAbsentJournal" classname="io.godstone.mesh.di.GsFinal003ContextProviderTest" time="0.005"/>
+  <testcase name="testGF003APendingWipeRefusesTheWholeAckSurface" classname="io.godstone.mesh.di.GsFinal003ContextProviderTest" time="0.006"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

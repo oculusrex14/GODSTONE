@@ -1,0 +1,21 @@
+Test Suite 'Selected tests' started at 2026-10-05 05:47:36.952.
+Test Suite 'GodstoneMeshTests.xctest' started at 2026-10-05 05:47:36.967.
+Test Suite 'GsIntegration001ProcessTests' started at 2026-10-05 05:47:36.967.
+Test Case '-[GodstoneMeshTests.GsIntegration001ProcessTests testGSINT001ProcessCrashCampaign]' started.
+Test Case '-[GodstoneMeshTests.GsIntegration001ProcessTests testGSINT001ProcessCrashCampaign]' passed (3.251 seconds).
+Test Suite 'GsIntegration001ProcessTests' passed at 2026-10-05 05:47:40.218.
+	 Executed 1 test, with 0 failures (0 unexpected) in 3.251 (3.251) seconds
+Test Suite 'GodstoneMeshTests.xctest' passed at 2026-10-05 05:47:40.218.
+	 Executed 1 test, with 0 failures (0 unexpected) in 3.251 (3.251) seconds
+Test Suite 'Selected tests' passed at 2026-10-05 05:47:40.218.
+	 Executed 1 test, with 0 failures (0 unexpected) in 3.251 (3.266) seconds
+GS-INT-PROC harness: executable=/Applications/Xcode.app/Contents/Developer/usr/bin/xctest bundle=/tmp/board1-rc15-preparatory-46903cd0-xke1sctz/judge/ios/Packages/GodstoneFoundation/.build/out/Products/Debug/GodstoneMeshTests.xctest selector=GodstoneMeshTests.GsIntegration001ProcessTests/testGSINT001ProcessCrashCampaign
+GS-INT-PROC harness: child env keys=[GS_INT_PROC_ROLE, GS_INT_PROC_BOUNDARY, GS_INT_PROC_DETAIL, GS_INT_PROC_PHASE, GS_INT_PROC_ESTATE] (values: a boundary name, a non-secret detail, a phase, and a temporary estate path)
+GS-INT-PROC scenario outboundEnqueue: PASS
+GS-INT-PROC scenario inboundCommit: PASS
+GS-INT-PROC scenario ackCreate: PASS
+GS-INT-PROC scenario ackCommit: PASS
+GS-INT-PROC scenario senderAckRetire: PASS
+GS-INT-PROC scenario preSend: PASS
+GS-INT-PROC scenario handshake@pre-ready: PASS
+GS-INT-PROC scenario handshake@authenticated: PASS

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.godstone.mesh.di.GsFinal003FileWipeJournalReadabilityTest" tests="8" skipped="0" failures="0" errors="0" timestamp="2026-10-04T22:16:14" hostname="Naraharikripas-Mac-mini.local" time="0.706">
+  <properties/>
+  <testcase name="anAbsentRecordIsACleanStart" classname="io.godstone.mesh.di.GsFinal003FileWipeJournalReadabilityTest" time="0.64"/>
+  <testcase name="aFreshReopenReadsTheGenerationItStandsAt" classname="io.godstone.mesh.di.GsFinal003FileWipeJournalReadabilityTest" time="0.013"/>
+  <testcase name="aWrittenStateIsReadable" classname="io.godstone.mesh.di.GsFinal003FileWipeJournalReadabilityTest" time="0.012"/>
+  <testcase name="theShippedBarrierRefusesOverACorruptRecord" classname="io.godstone.mesh.di.GsFinal003FileWipeJournalReadabilityTest" time="0.012"/>
+  <testcase name="aBadOrdinalIsNotACleanStart" classname="io.godstone.mesh.di.GsFinal003FileWipeJournalReadabilityTest" time="0.008"/>
+  <testcase name="theShippedBarrierDecidesCleanOnACleanDevice" classname="io.godstone.mesh.di.GsFinal003FileWipeJournalReadabilityTest" time="0.007"/>
+  <testcase name="aStoreThatCannotNameAGenerationFailsClosedToZero" classname="io.godstone.mesh.di.GsFinal003FileWipeJournalReadabilityTest" time="0.007"/>
+  <testcase name="aCompletedWipeIsADifferentRevisionNotTheSameRungAgain" classname="io.godstone.mesh.di.GsFinal003FileWipeJournalReadabilityTest" time="0.007"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -1,0 +1,70 @@
+{
+  "classes": {
+    "LabJourneyDurabilityCourt": 6,
+    "LabJourneyStoreTruthCourt": 6,
+    "LabMeshAppTest": 3,
+    "LabMeshJourneyBoundTest": 5,
+    "LabMeshJourneySemanticsTest": 15,
+    "LabMeshLiveAccessibilityRosterTest": 5
+  },
+  "device": null,
+  "digest": "3ac94888b1d87f72f2a48fddf48a183eb5bdbd730ba0f397d5f6784619b1ddef",
+  "drift": false,
+  "gradle_tasks": [
+    ":labmesh:testDebugUnitTest"
+  ],
+  "junit": {
+    "errors": 0,
+    "failures": 0,
+    "files": 6,
+    "skipped": 0,
+    "tests": 40
+  },
+  "kind": "simulator",
+  "lane": "android:simulator",
+  "log": "android-simulator.log",
+  "module": ":labmesh",
+  "post_digest": "3ac94888b1d87f72f2a48fddf48a183eb5bdbd730ba0f397d5f6784619b1ddef",
+  "pre_digest": "3ac94888b1d87f72f2a48fddf48a183eb5bdbd730ba0f397d5f6784619b1ddef",
+  "produced_utc": "2026-10-04T22:15:02Z",
+  "raw_rc": 0,
+  "results": {
+    "dir": "android-simulator-results",
+    "files": [
+      "TEST-io.godstone.labmesh.LabJourneyDurabilityCourt.xml",
+      "TEST-io.godstone.labmesh.LabJourneyStoreTruthCourt.xml",
+      "TEST-io.godstone.labmesh.LabMeshAppTest.xml",
+      "TEST-io.godstone.labmesh.LabMeshJourneyBoundTest.xml",
+      "TEST-io.godstone.labmesh.LabMeshJourneySemanticsTest.xml",
+      "TEST-io.godstone.labmesh.LabMeshLiveAccessibilityRosterTest.xml"
+    ],
+    "sha256": {
+      "TEST-io.godstone.labmesh.LabJourneyDurabilityCourt.xml": "a7067a6dfe940b0c78bfddcc1a51bf55f5260b2521cfd4dc9061bab478045b36",
+      "TEST-io.godstone.labmesh.LabJourneyStoreTruthCourt.xml": "c99ca130fd56cc903cb5935d14df0f3237161ae580655a0f212ab09d3a72a038",
+      "TEST-io.godstone.labmesh.LabMeshAppTest.xml": "8b314b176f9ace3c2ddfc0a6f6d4a7046a523587366fcddbdcc2692a09e9e3db",
+      "TEST-io.godstone.labmesh.LabMeshJourneyBoundTest.xml": "46f3f05b1fe6fc450f693d54512a6c5873160c408a1be29c45ad1e7471a6c5a6",
+      "TEST-io.godstone.labmesh.LabMeshJourneySemanticsTest.xml": "eca32fdb77d3c6cb23134b1f026d4a2a808bd9e0f9009ac02d90a4c3e6afa8dd",
+      "TEST-io.godstone.labmesh.LabMeshLiveAccessibilityRosterTest.xml": "4553723e22fd10a8593805af8919ae7e6116325682f4536064cd63de8fcb8f39"
+    }
+  },
+  "schema": 1,
+  "seconds": 28.821,
+  "simulation_not_device": true,
+  "stages": [],
+  "steps": [
+    {
+      "argv": [
+        "/private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/gradlew",
+        "-p",
+        "/private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android",
+        ":labmesh:testDebugUnitTest",
+        "--rerun-tasks",
+        "--no-daemon",
+        "--console=plain"
+      ],
+      "rc": 0,
+      "step": "gradle-0"
+    }
+  ],
+  "verdict": "PASSED"
+}

@@ -1,0 +1,18 @@
+test_an_excluded_binary_resource_is_refused (test_audit_supplychain_harness.IosContentInventoryCourt.test_an_excluded_binary_resource_is_refused) ... FAIL
+
+======================================================================
+FAIL: test_an_excluded_binary_resource_is_refused (test_audit_supplychain_harness.IosContentInventoryCourt.test_an_excluded_binary_resource_is_refused)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/board1-rc15-preparatory-46903cd0-xke1sctz/rod-worktrees/wt_RS-IOS-03-excluded-resource-pattern-asleep/tools/readiness/tests/test_audit_supplychain_harness.py", line 383, in test_an_excluded_binary_resource_is_refused
+    self.assertEqual("FAIL", report["verdict"])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'FAIL' != 'PASS'
+- FAIL
++ PASS
+
+
+----------------------------------------------------------------------
+Ran 1 test in 0.016s
+
+FAILED (failures=1)

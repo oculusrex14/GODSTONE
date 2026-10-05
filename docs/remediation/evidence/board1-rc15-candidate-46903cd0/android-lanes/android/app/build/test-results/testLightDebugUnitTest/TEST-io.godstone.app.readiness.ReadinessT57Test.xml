@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.godstone.app.readiness.ReadinessT57Test" tests="15" skipped="0" failures="0" errors="0" timestamp="2026-10-04T22:13:59" hostname="Naraharikripas-Mac-mini.local" time="0.005">
+  <properties/>
+  <testcase name="test_w01_offline_then_a_peer_then_the_ack" classname="io.godstone.app.readiness.ReadinessT57Test" time="0.001"/>
+  <testcase name="test_w13_the_app_never_writeth_a_status_of_its_own" classname="io.godstone.app.readiness.ReadinessT57Test" time="0.001"/>
+  <testcase name="test_w12_nothing_is_secure_before_the_key_is_confirmed" classname="io.godstone.app.readiness.ReadinessT57Test" time="0.0"/>
+  <testcase name="test_w04_duplicate_taps_create_one_row" classname="io.godstone.app.readiness.ReadinessT57Test" time="0.0"/>
+  <testcase name="test_w08_cancel_nameth_the_relayed_copy_limitation" classname="io.godstone.app.readiness.ReadinessT57Test" time="0.0"/>
+  <testcase name="test_w05_revoke_blocketh_the_conversation" classname="io.godstone.app.readiness.ReadinessT57Test" time="0.001"/>
+  <testcase name="test_w10_a_denied_permission_is_explained" classname="io.godstone.app.readiness.ReadinessT57Test" time="0.0"/>
+  <testcase name="test_w06_the_compose_bound_is_bytes_not_characters" classname="io.godstone.app.readiness.ReadinessT57Test" time="0.001"/>
+  <testcase name="test_w07_the_sos_control_requireth_an_arm" classname="io.godstone.app.readiness.ReadinessT57Test" time="0.0"/>
+  <testcase name="test_w09_a_relaunch_restoreth_the_active_call" classname="io.godstone.app.readiness.ReadinessT57Test" time="0.0"/>
+  <testcase name="test_w02_a_transport_boolean_never_projecteth_delivered" classname="io.godstone.app.readiness.ReadinessT57Test" time="0.0"/>
+  <testcase name="test_w11_an_unsupported_direction_is_explained_distinctly" classname="io.godstone.app.readiness.ReadinessT57Test" time="0.0"/>
+  <testcase name="test_ux041_the_recipient_selector_dispatches_and_the_send_follows_it" classname="io.godstone.app.readiness.ReadinessT57Test" time="0.001"/>
+  <testcase name="test_ux044_the_platform_state_reaches_the_projection_and_is_consulted" classname="io.godstone.app.readiness.ReadinessT57Test" time="0.0"/>
+  <testcase name="test_w03_failed_storage_leaveth_the_estate_and_the_draft" classname="io.godstone.app.readiness.ReadinessT57Test" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

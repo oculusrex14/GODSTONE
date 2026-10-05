@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.godstone.mesh.render.LifecycleProbeVerificationTest" tests="7" skipped="0" failures="0" errors="0" timestamp="2026-10-04T22:16:26" hostname="Naraharikripas-Mac-mini.local" time="0.001">
+  <properties/>
+  <testcase name="powerLossAtTheRealBoundaryStopsTheTransportOnceAndIsTerminal" classname="io.godstone.mesh.render.LifecycleProbeVerificationTest" time="0.001"/>
+  <testcase name="inFlightWorkReportedByTheTransportReachesTheAuthorityAndMakesTheDrainUnclean" classname="io.godstone.mesh.render.LifecycleProbeVerificationTest" time="0.0"/>
+  <testcase name="backgroundChurnCannotRestartTheRealTransportAfterStop" classname="io.godstone.mesh.render.LifecycleProbeVerificationTest" time="0.0"/>
+  <testcase name="theAuthorityOwnsOneLeaseObjectAndAFreshAuthorityInheritsNone" classname="io.godstone.mesh.render.LifecycleProbeVerificationTest" time="0.0"/>
+  <testcase name="aCallbackDuringTheWipeIsDroppedByTheRetiredContext" classname="io.godstone.mesh.render.LifecycleProbeVerificationTest" time="0.0"/>
+  <testcase name="aCoarseTransportClaimsNothingRatherThanAFabricatedCount" classname="io.godstone.mesh.render.LifecycleProbeVerificationTest" time="0.0"/>
+  <testcase name="theDrainReportsTheRealTransportNumbersNotAConstant" classname="io.godstone.mesh.render.LifecycleProbeVerificationTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

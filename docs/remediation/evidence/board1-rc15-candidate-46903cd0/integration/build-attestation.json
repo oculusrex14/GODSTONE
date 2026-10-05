@@ -1,0 +1,29 @@
+{
+  "schema_version": 2,
+  "producer": "tools/readiness/build_provenance.py",
+  "producer_attempt": "20261005T000331Z-d35ce8",
+  "candidate_sha": "46903cd040ffae9f2cd20529aad54ac6166bd6ad",
+  "candidate_tree": "d74dc5e2679b69358663402e8c4711bea0d519db",
+  "whole_source_digest": "137f2c5896ce7b770bd7286ea49fedf3fe794f5e6fc00048286ca3b842bf44e5",
+  "recipe_digest": "a1f586e669529c407f16ee147387f9ed665cf73f8f2b33d62dafb2b0be920448",
+  "bundle_digest": "55ff00ce2bc84e90a07e02a1c52729b3aa236ffbd453c44124bd00f3d16bb0a4",
+  "mode": "macos",
+  "library_name": "libsqlcipher.0.dylib",
+  "library_sha256": "8b352d0155aa96a1b8718b7ec3d3024cf7ae72b764213a13ceaaff120f04b7d1",
+  "library_bytes": 1225016,
+  "library_path": "/private/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/gs-int-sqlcipher-macos-nj5rcjds/libsqlcipher.0.dylib",
+  "descriptor_sha256": "cfbff89bfbbe9aba4607d67efcf89d78918410a2e46ebeada3e7cc88caeff53b",
+  "descriptor_path": "/private/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/gs-int-sqlcipher-macos-nj5rcjds/libsqlcipher.0.dylib.artifact.json",
+  "pinned_source_commit": "810db22f575ee7cf94ea96a3e91622b5fcece3dc",
+  "pinned_source_tag": "v4.17.0",
+  "pinned_source_repo": "https://github.com/sqlcipher/sqlcipher.git",
+  "pinned_platform": "MACOS",
+  "pinned_arch": "arm64",
+  "pinned_cipher_version_major": 4,
+  "approved_toolchain": {
+    "xcode": "27.0",
+    "sdk_version": "MacOSX.sdk"
+  },
+  "expected_source_sha256": "93a683194ac3e61a359e24d90f9e67380cf25caafc20aac9bc5814c4595bb716",
+  "source_digest": "8814ed2c27161d0ad4200ae3dbb1e9768caf6cf04b0295b9206d2d7abe22f508"
+}

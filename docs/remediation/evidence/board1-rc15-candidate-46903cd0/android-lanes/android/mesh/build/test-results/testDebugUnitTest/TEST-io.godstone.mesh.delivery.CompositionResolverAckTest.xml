@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.godstone.mesh.delivery.CompositionResolverAckTest" tests="8" skipped="0" failures="0" errors="0" timestamp="2026-10-04T22:16:12" hostname="Naraharikripas-Mac-mini.local" time="0.014">
+  <properties/>
+  <testcase name="testComposition_RevokedPeer_ResolverReturnsNull_AndAckFails" classname="io.godstone.mesh.delivery.CompositionResolverAckTest" time="0.002"/>
+  <testcase name="testComposition_TamperedAckSignature_FailsVerification" classname="io.godstone.mesh.delivery.CompositionResolverAckTest" time="0.001"/>
+  <testcase name="testComposition_UserVerifiedPeer_ResolvesSigningKey_AndValidAckSucceeds" classname="io.godstone.mesh.delivery.CompositionResolverAckTest" time="0.003"/>
+  <testcase name="testComposition_QuarantinedPeer_ResolverReturnsNull_AndAckFails" classname="io.godstone.mesh.delivery.CompositionResolverAckTest" time="0.002"/>
+  <testcase name="testComposition_UnseenPeer_ResolverReturnsNull_AndAckFails" classname="io.godstone.mesh.delivery.CompositionResolverAckTest" time="0.001"/>
+  <testcase name="testComposition_ActiveTofuPeer_ResolvesSigningKey_AndValidAckSucceeds" classname="io.godstone.mesh.delivery.CompositionResolverAckTest" time="0.001"/>
+  <testcase name="testComposition_ApprovedPendingRotation_RestoresAckResolution" classname="io.godstone.mesh.delivery.CompositionResolverAckTest" time="0.002"/>
+  <testcase name="testComposition_SameRepositoryBacksResolverAndTrustAuthority" classname="io.godstone.mesh.delivery.CompositionResolverAckTest" time="0.002"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

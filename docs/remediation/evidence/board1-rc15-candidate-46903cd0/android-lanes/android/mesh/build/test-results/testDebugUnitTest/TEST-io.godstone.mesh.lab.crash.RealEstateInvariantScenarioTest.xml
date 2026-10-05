@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.godstone.mesh.lab.crash.RealEstateInvariantScenarioTest" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-10-04T22:16:19" hostname="Naraharikripas-Mac-mini.local" time="0.185">
+  <properties/>
+  <testcase name="test_w02_theEvictionPlanKeepsTheCapAndMovesDeliveryStateTogether" classname="io.godstone.mesh.lab.crash.RealEstateInvariantScenarioTest" time="0.007"/>
+  <testcase name="test_w03_aCheckpointIsNeverDueInsideAnOpenTransaction" classname="io.godstone.mesh.lab.crash.RealEstateInvariantScenarioTest" time="0.004"/>
+  <testcase name="test_w01_theHeldHardCapIsEnforcedAndAQueryFailureIsNeverAccepted" classname="io.godstone.mesh.lab.crash.RealEstateInvariantScenarioTest" time="0.005"/>
+  <testcase name="test_w04_anAbortedTransactionFiresNothing" classname="io.godstone.mesh.lab.crash.RealEstateInvariantScenarioTest" time="0.004"/>
+  <testcase name="test_w06_aCrashedAuthorsEstateDoesNotGrowAcrossTheKill" classname="io.godstone.mesh.lab.crash.RealEstateInvariantScenarioTest" time="0.159"/>
+  <testcase name="test_w05_aRegistrationDuringDispatchIsDeferredNotReentrant" classname="io.godstone.mesh.lab.crash.RealEstateInvariantScenarioTest" time="0.006"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

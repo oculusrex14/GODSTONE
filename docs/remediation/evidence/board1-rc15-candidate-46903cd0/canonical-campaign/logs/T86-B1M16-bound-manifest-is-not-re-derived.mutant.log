@@ -1,0 +1,39 @@
+FREEZE: board1-court-rc -> f45cca6e350cf17c137d868db0402ccb60dbd4ac (tree b32b25edb9b6fd77e7ebfcb6c6e9f6a02ef3ff65) bound to run 1 attempt 1 7/7 jobs success
+  attestation written to /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpg1w77sng/repo/docs/remediation/evidence/FREEZE_ATTESTATION_rc15.json
+  auditor block stays NULL: the terminal builder verdict is READY_FOR_EXTERNAL_REAUDIT, NEVER VERIFIED_FIXED
+ATTESTATION VALID: board1-court-rc -> f45cca6e350cf17c137d868db0402ccb60dbd4ac (tree b32b25edb9b6fd77e7ebfcb6c6e9f6a02ef3ff65); run 1 attempt 1; re-derived without rewriting the file
+/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpg1w77sng/repo/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpg1w77sng/repo/ci/mutations.py'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpg1w77sng/repo/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpg1w77sng/repo/ci/mutations.py'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpg1w77sng/repo/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpg1w77sng/repo/ci/mutations.py'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+test_a_manifest_edited_after_the_attestation_bound_it_is_refused (test_board1_gate_manifest.AttestationBindingTests.test_a_manifest_edited_after_the_attestation_bound_it_is_refused)
+*** THE ATTESTATION'S BOUND MANIFEST IS AN ANCHOR, AND ITS DIGEST IS RE-DERIVED. *** ... /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpg1w77sng/repo/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpg1w77sng/repo/ci/mutations.py'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpg1w77sng/repo/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpg1w77sng/repo/ci/mutations.py'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpg1w77sng/repo/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpg1w77sng/repo/ci/mutations.py'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+FAIL
+
+======================================================================
+FAIL: test_a_manifest_edited_after_the_attestation_bound_it_is_refused (test_board1_gate_manifest.AttestationBindingTests.test_a_manifest_edited_after_the_attestation_bound_it_is_refused)
+*** THE ATTESTATION'S BOUND MANIFEST IS AN ANCHOR, AND ITS DIGEST IS RE-DERIVED. ***
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/board1-rc15-preparatory-46903cd0-xke1sctz/rod-worktrees/wt_T86-B1M16-bound-manifest-is-not-re-derived/tools/readiness/tests/test_board1_gate_manifest.py", line 720, in test_a_manifest_edited_after_the_attestation_bound_it_is_refused
+    self.assertNotEqual(board1.validate_attestation(self.att), 0)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 0 == 0
+
+----------------------------------------------------------------------
+Ran 1 test in 6.360s
+
+FAILED (failures=1)

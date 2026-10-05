@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.godstone.mesh.rig.Board1DurableBoundaryWorkerTest" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-10-04T22:16:26" hostname="Naraharikripas-Mac-mini.local" time="9.996">
+  <properties/>
+  <testcase name="testBoard1DurableBoundaryCampaign" classname="io.godstone.mesh.rig.Board1DurableBoundaryWorkerTest" time="9.996"/>
+  <system-out><![CDATA[GS-BOUNDARY platform=android java=/opt/homebrew/Cellar/openjdk@17/17.0.20/libexec/openjdk.jdk/Contents/Home/bin/java
+GS-BOUNDARY store-backend=host-JDBC-SQLite (the SQLCipher substitution every host harness makes; NO AndroidKeyStore and NO approved-device-SQLCipher claim)
+GS-BOUNDARY classpath-entries=128 root=/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/gs-board1-boundary-2a880d37-452b-474e-a656-49290a936ff5
+GS-BOUNDARY outboundEnqueue: prepare-pid=98014 warmup=GS-BOUNDARY warm-up attempt=1 link ready=true ready=true alive-at-marker=true termination=abrupt child-exit=137 no-graceful-completion=true record={"author":"android-boundary-peer", "boundary":"outboundEnqueue", "detail":"the atomic held+delivery enqueue returned success; halting inside the first radio offer, before any byte reacheth the transport", "kind":"at_boundary", "msg_id":"5752550b8e03d4bd2beebd2f59a2dcb8", "platform":"android", "v":1} ;; recover-exit=0 complete=COMPLETE outboundEnqueue PASS durable_row=present detail=author=android-boundary-peer state=QUEUED_DURABLY offered=1
+GS-BOUNDARY inboundCommit: prepare-pid=98041 warmup=(warm-up did not run: inboundCommit never links) ready=true alive-at-marker=true termination=abrupt child-exit=137 no-graceful-completion=true record={"boundary":"inboundCommit", "detail":"the held+ACK-obligation transaction returned success; halting at the production 'signing' seam, before any ACK is constructed", "holder":"android-boundary", "kind":"at_boundary", "msg_id":"52d9a96a90c82c32f010f80da40e3d2a", "platform":"android", "v":1} ;; recover-exit=0 complete=COMPLETE inboundCommit PASS durable_row=present detail=holder=android-boundary acks=1 retired=1 inboxRows=1
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

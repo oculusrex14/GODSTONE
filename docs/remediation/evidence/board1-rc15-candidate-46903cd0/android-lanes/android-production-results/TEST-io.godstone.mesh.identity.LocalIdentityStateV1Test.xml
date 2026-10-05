@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.godstone.mesh.identity.LocalIdentityStateV1Test" tests="32" skipped="0" failures="0" errors="0" timestamp="2026-10-04T22:16:16" hostname="Naraharikripas-Mac-mini.local" time="0.007">
+  <properties/>
+  <testcase name="test 32 AndroidWipeArtifacts has no default zero-arg constructor" classname="io.godstone.mesh.identity.LocalIdentityStateV1Test" time="0.001"/>
+  <testcase name="test 21 vector 3 issues exact locked max_generation binding" classname="io.godstone.mesh.identity.LocalIdentityStateV1Test" time="0.0"/>
+  <testcase name="test 3 V1 generation 0 parses" classname="io.godstone.mesh.identity.LocalIdentityStateV1Test" time="0.0"/>
+  <testcase name="test 10 fresh state uses commit not apply" classname="io.godstone.mesh.identity.LocalIdentityStateV1Test" time="0.0"/>
+  <testcase name="test 6 malformed 68-byte state rejected" classname="io.godstone.mesh.identity.LocalIdentityStateV1Test" time="0.001"/>
+  <testcase name="test 26 Noise static private key accessor does not expose mutable backing state" classname="io.godstone.mesh.identity.LocalIdentityStateV1Test" time="0.0"/>
+  <testcase name="test 2 V1 generation is big-endian" classname="io.godstone.mesh.identity.LocalIdentityStateV1Test" time="0.0"/>
+  <testcase name="test 22 issueIdentityBinding has no generation parameter" classname="io.godstone.mesh.identity.LocalIdentityStateV1Test" time="0.001"/>
+  <testcase name="test 27 fromKeyMaterial fixed to generation 0" classname="io.godstone.mesh.identity.LocalIdentityStateV1Test" time="0.0"/>
+  <testcase name="test 25 nodeId and nodeHint are defensive copies" classname="io.godstone.mesh.identity.LocalIdentityStateV1Test" time="0.0"/>
+  <testcase name="test 8 unknown V1 version rejected" classname="io.godstone.mesh.identity.LocalIdentityStateV1Test" time="0.0"/>
+  <testcase name="test 13 migration removes all four legacy values" classname="io.godstone.mesh.identity.LocalIdentityStateV1Test" time="0.0"/>
+  <testcase name="test 18 malformed Base64 rejects as corruption" classname="io.godstone.mesh.identity.LocalIdentityStateV1Test" time="0.0"/>
+  <testcase name="test 11 failed commit throws persistence failure" classname="io.godstone.mesh.identity.LocalIdentityStateV1Test" time="0.001"/>
+  <testcase name="test 7 malformed 70-byte state rejected" classname="io.godstone.mesh.identity.LocalIdentityStateV1Test" time="0.0"/>
+  <testcase name="test 5 V1 generation 0xffffffff parses 4294967295" classname="io.godstone.mesh.identity.LocalIdentityStateV1Test" time="0.0"/>
+  <testcase name="test 30 AndroidWipeArtifacts regenerate failure leaves journal at ARTIFACTS_DELETED" classname="io.godstone.mesh.identity.LocalIdentityStateV1Test" time="0.0"/>
+  <testcase name="test 31 AndroidWipeArtifacts successful wipe generates generation 0" classname="io.godstone.mesh.identity.LocalIdentityStateV1Test" time="0.001"/>
+  <testcase name="test 4 V1 generation 0x01020304 parses 16909060" classname="io.godstone.mesh.identity.LocalIdentityStateV1Test" time="0.0"/>
+  <testcase name="test 28 staticDhPriv is not public API" classname="io.godstone.mesh.identity.LocalIdentityStateV1Test" time="0.0"/>
+  <testcase name="test 16 partial legacy state rejects as corruption" classname="io.godstone.mesh.identity.LocalIdentityStateV1Test" time="0.001"/>
+  <testcase name="test 12 complete legacy state migrates to V1 generation 0" classname="io.godstone.mesh.identity.LocalIdentityStateV1Test" time="0.0"/>
+  <testcase name="test 17 V1 and legacy mixed state rejects as corruption" classname="io.godstone.mesh.identity.LocalIdentityStateV1Test" time="0.0"/>
+  <testcase name="test 20 vector 2 issues exact locked endian_lock binding" classname="io.godstone.mesh.identity.LocalIdentityStateV1Test" time="0.0"/>
+  <testcase name="test 24 identity public arrays are defensive copies" classname="io.godstone.mesh.identity.LocalIdentityStateV1Test" time="0.0"/>
+  <testcase name="test 19 vector 1 issues exact locked fresh_generation_zero binding" classname="io.godstone.mesh.identity.LocalIdentityStateV1Test" time="0.0"/>
+  <testcase name="test 23 issuer output validates through C8 1A IdentityBindingValidator" classname="io.godstone.mesh.identity.LocalIdentityStateV1Test" time="0.0"/>
+  <testcase name="test 29 AndroidWipeArtifacts erase failure leaves journal at REQUESTED" classname="io.godstone.mesh.identity.LocalIdentityStateV1Test" time="0.001"/>
+  <testcase name="test 1 V1 state exact length 69" classname="io.godstone.mesh.identity.LocalIdentityStateV1Test" time="0.0"/>
+  <testcase name="test 15 legacy X public private mismatch rejects as corruption" classname="io.godstone.mesh.identity.LocalIdentityStateV1Test" time="0.0"/>
+  <testcase name="test 14 legacy Ed public private mismatch rejects as corruption" classname="io.godstone.mesh.identity.LocalIdentityStateV1Test" time="0.0"/>
+  <testcase name="test 9 empty persistence creates generation-0 V1 state" classname="io.godstone.mesh.identity.LocalIdentityStateV1Test" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

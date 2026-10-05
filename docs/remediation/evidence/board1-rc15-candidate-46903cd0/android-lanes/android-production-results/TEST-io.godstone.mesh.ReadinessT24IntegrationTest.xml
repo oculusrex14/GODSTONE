@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.godstone.mesh.ReadinessT24IntegrationTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-10-04T22:15:53" hostname="Naraharikripas-Mac-mini.local" time="0.002">
+  <properties/>
+  <testcase name="testThePeerStatusFollowethPresenceTransitionsByContent" classname="io.godstone.mesh.ReadinessT24IntegrationTest" time="0.001"/>
+  <testcase name="testTheStartSequenceAttachethConsumersEreTheAdaptersBeOpened" classname="io.godstone.mesh.ReadinessT24IntegrationTest" time="0.0"/>
+  <testcase name="testTheInboundClearIsFailClosedUponUndecodableBytes" classname="io.godstone.mesh.ReadinessT24IntegrationTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

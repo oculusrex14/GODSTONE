@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.godstone.mesh.readiness.ReadinessT21Test" tests="16" skipped="0" failures="0" errors="0" timestamp="2026-10-04T22:16:24" hostname="Naraharikripas-Mac-mini.local" time="0.414">
+  <properties/>
+  <testcase name="testTheHS3ReservationFailureClosesTheRelationExactly" classname="io.godstone.mesh.readiness.ReadinessT21Test" time="0.022"/>
+  <testcase name="testAndroid01_theResponderNeverBeginnethOnItsOwn" classname="io.godstone.mesh.readiness.ReadinessT21Test" time="0.212"/>
+  <testcase name="testAnUnexpectedRecordAfterTheTrustClosesTheRelationExactly" classname="io.godstone.mesh.readiness.ReadinessT21Test" time="0.024"/>
+  <testcase name="testTheTrustRejectionWithholdsHS3AndClosesTheRelationExactly" classname="io.godstone.mesh.readiness.ReadinessT21Test" time="0.015"/>
+  <testcase name="testTheHS3PrecedesEveryDATAInTheWriterOrder" classname="io.godstone.mesh.readiness.ReadinessT21Test" time="0.031"/>
+  <testcase name="testTheComparatorOrdersAsTheLawStates" classname="io.godstone.mesh.readiness.ReadinessT21Test" time="0.001"/>
+  <testcase name="testTheBadBindingAndBadStaticKeyAndBadHintEachWithholdAllApplicationData" classname="io.godstone.mesh.readiness.ReadinessT21Test" time="0.012"/>
+  <testcase name="testAndroid01_theApplicationBeginnethD2ItselfUponThePhysicallyReadyRelation" classname="io.godstone.mesh.readiness.ReadinessT21Test" time="0.002"/>
+  <testcase name="testNoApplicationDATAProceedsBeforeTheTrustedCryptographicReady" classname="io.godstone.mesh.readiness.ReadinessT21Test" time="0.016"/>
+  <testcase name="testTheInitiatorEmitsHS1UponTheDuplexWitnessedInAscendantOrder" classname="io.godstone.mesh.readiness.ReadinessT21Test" time="0.013"/>
+  <testcase name="testTheControllerReadyAlonePublishesNoLinkReady" classname="io.godstone.mesh.readiness.ReadinessT21Test" time="0.015"/>
+  <testcase name="testTheBeginIsRefusedWhileTheDuplexLiesUnwitnessed" classname="io.godstone.mesh.readiness.ReadinessT21Test" time="0.001"/>
+  <testcase name="testTheHS2TravelsToItsOwnRelationAloneAndBearsTheImmutableHint" classname="io.godstone.mesh.readiness.ReadinessT21Test" time="0.018"/>
+  <testcase name="testTheBeginIsRefusedWhenTheHintsDescendOrMeet" classname="io.godstone.mesh.readiness.ReadinessT21Test" time="0.001"/>
+  <testcase name="testTheCanonicalAdvertisementWithoutServiceDataStillReachethTheTrustedReady" classname="io.godstone.mesh.readiness.ReadinessT21Test" time="0.016"/>
+  <testcase name="testTheStorageFailureKeepsThePriorTruthUnmutated" classname="io.godstone.mesh.readiness.ReadinessT21Test" time="0.015"/>
+  <system-out><![CDATA[CENSUS flooding-verdict init-state=gone(IllegalStateException) resp-state=HANDSHAKE_IN_PROGRESS init-writes=1 kinds=[20] resp-notes=0 ring-init=hs.write.initiator|queue full; hs.read.initiator|hs3 reservation refused ring-resp=
+CENSUS late-record-after-push init-state=gone(IllegalStateException) resp-state=READY init-writes=1 kinds=[20] resp-notes=0 ring-init=ingest.notify|unexpected stage ring-resp=
+CENSUS sendsite-Admitted init-state=READY resp-state=READY init-writes=2 kinds=[20, 24] resp-notes=0 ring-init= ring-resp=
+CENSUS villainy-binding-after-push init-state=gone(IllegalStateException) resp-state=HANDSHAKE_IN_PROGRESS init-writes=0 kinds=[] resp-notes=0 ring-init=hs.read.initiator|hs2 rejected ring-resp=
+CENSUS villainy-static-after-push init-state=gone(IllegalStateException) resp-state=HANDSHAKE_IN_PROGRESS init-writes=0 kinds=[] resp-notes=0 ring-init=hs.read.initiator|hs2 rejected ring-resp=
+CENSUS villainy-hint-after-push init-state=gone(IllegalStateException) resp-state=HANDSHAKE_IN_PROGRESS init-writes=0 kinds=[] resp-notes=0 ring-init=hs.read.initiator|hs2 rejected ring-resp=
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

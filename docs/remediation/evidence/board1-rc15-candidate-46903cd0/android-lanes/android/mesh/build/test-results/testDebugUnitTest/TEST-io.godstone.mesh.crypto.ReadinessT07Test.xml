@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.godstone.mesh.crypto.ReadinessT07Test" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-10-04T22:15:55" hostname="Naraharikripas-Mac-mini.local" time="0.015">
+  <properties/>
+  <testcase name="testReceiveBudgetExhaustion_ReturnsExpiredAndRetires" classname="io.godstone.mesh.crypto.ReadinessT07Test" time="0.004"/>
+  <testcase name="testPeerNonceBeyondBudgetRejected" classname="io.godstone.mesh.crypto.ReadinessT07Test" time="0.002"/>
+  <testcase name="testSendBudgetExhaustion_RetiresTerminal" classname="io.godstone.mesh.crypto.ReadinessT07Test" time="0.003"/>
+  <testcase name="testTimeBudgetExpiry_RetiresSession" classname="io.godstone.mesh.crypto.ReadinessT07Test" time="0.002"/>
+  <testcase name="testNoCounterResetUnderExistingKey" classname="io.godstone.mesh.crypto.ReadinessT07Test" time="0.002"/>
+  <testcase name="testRekeyInPlaceApiRemoved" classname="io.godstone.mesh.crypto.ReadinessT07Test" time="0.002"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

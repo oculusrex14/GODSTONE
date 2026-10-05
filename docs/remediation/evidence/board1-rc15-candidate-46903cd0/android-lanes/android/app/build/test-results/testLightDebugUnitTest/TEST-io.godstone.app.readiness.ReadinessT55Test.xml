@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.godstone.app.readiness.ReadinessT55Test" tests="15" skipped="0" failures="0" errors="0" timestamp="2026-10-04T22:13:59" hostname="Naraharikripas-Mac-mini.local" time="0.015">
+  <properties/>
+  <testcase name="test_w01_one_contact_is_verified_only_after_the_compare" classname="io.godstone.app.readiness.ReadinessT55Test" time="0.003"/>
+  <testcase name="test_w08_an_oversized_payload_is_refused_before_decoding" classname="io.godstone.app.readiness.ReadinessT55Test" time="0.001"/>
+  <testcase name="test_w03_a_stale_ref_leaveth_the_estate_unchanged" classname="io.godstone.app.readiness.ReadinessT55Test" time="0.0"/>
+  <testcase name="test_w09_no_private_material_is_exported_or_leaked" classname="io.godstone.app.readiness.ReadinessT55Test" time="0.007"/>
+  <testcase name="test_w11_a_mismatching_fingerprint_is_refused" classname="io.godstone.app.readiness.ReadinessT55Test" time="0.0"/>
+  <testcase name="test_w13_the_ref_matcheth_the_durable_cas_signature" classname="io.godstone.app.readiness.ReadinessT55Test" time="0.0"/>
+  <testcase name="test_ux042_the_confirm_carries_the_displayed_fingerprint" classname="io.godstone.app.readiness.ReadinessT55Test" time="0.001"/>
+  <testcase name="test_w07_a_malformed_payload_is_refused" classname="io.godstone.app.readiness.ReadinessT55Test" time="0.0"/>
+  <testcase name="test_w10_the_screenshot_policy_followeth_the_material" classname="io.godstone.app.readiness.ReadinessT55Test" time="0.001"/>
+  <testcase name="test_w12_a_refused_command_never_mutates_the_estate" classname="io.godstone.app.readiness.ReadinessT55Test" time="0.0"/>
+  <testcase name="test_w06_a_failed_wipe_surviveth_a_relaunch" classname="io.godstone.app.readiness.ReadinessT55Test" time="0.0"/>
+  <testcase name="test_w02_the_displayed_candidate_is_the_one_approved" classname="io.godstone.app.readiness.ReadinessT55Test" time="0.001"/>
+  <testcase name="test_ux043_the_rotation_and_revoke_controls_dispatch_their_existing_commands" classname="io.godstone.app.readiness.ReadinessT55Test" time="0.0"/>
+  <testcase name="test_w04_revocation_during_an_active_session" classname="io.godstone.app.readiness.ReadinessT55Test" time="0.001"/>
+  <testcase name="test_w05_a_corrupt_trust_store_claimeth_nothing" classname="io.godstone.app.readiness.ReadinessT55Test" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

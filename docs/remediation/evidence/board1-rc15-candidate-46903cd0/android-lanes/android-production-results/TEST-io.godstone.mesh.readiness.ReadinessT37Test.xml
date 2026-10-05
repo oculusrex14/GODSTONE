@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.godstone.mesh.readiness.ReadinessT37Test" tests="11" skipped="0" failures="0" errors="0" timestamp="2026-10-04T22:16:25" hostname="Naraharikripas-Mac-mini.local" time="0.015">
+  <properties/>
+  <testcase name="testCanonicalAckBytesEndToEndThroughTheProductionEntry" classname="io.godstone.mesh.readiness.ReadinessT37Test" time="0.004"/>
+  <testcase name="testProcessKillAfterCommitBeforeAckRegeneratesExactlyOnce" classname="io.godstone.mesh.readiness.ReadinessT37Test" time="0.001"/>
+  <testcase name="testActualDirectedSendThroughBothAdaptersToDurableInboxAndSignedAck" classname="io.godstone.mesh.readiness.ReadinessT37Test" time="0.002"/>
+  <testcase name="testWrongEmbeddedRecipientRefusedByBindingLaw" classname="io.godstone.mesh.readiness.ReadinessT37Test" time="0.001"/>
+  <testcase name="testDiskFailureYieldsNeitherAckNorClaimedAcceptance" classname="io.godstone.mesh.readiness.ReadinessT37Test" time="0.001"/>
+  <testcase name="testStaleTagStillDeliversAndMatchedTagAdmitsNothingAlone" classname="io.godstone.mesh.readiness.ReadinessT37Test" time="0.001"/>
+  <testcase name="testBadSignatureRefusedBeforeAnyAdmission" classname="io.godstone.mesh.readiness.ReadinessT37Test" time="0.001"/>
+  <testcase name="testImmediateHopIsNotTheSenderAndReceiptStands" classname="io.godstone.mesh.readiness.ReadinessT37Test" time="0.002"/>
+  <testcase name="testDuplicateValidDeliveryRegeneratesSameAckWithoutDuplicateInbox" classname="io.godstone.mesh.readiness.ReadinessT37Test" time="0.001"/>
+  <testcase name="testBadMsgIdRefusedByTheClosedLadder" classname="io.godstone.mesh.readiness.ReadinessT37Test" time="0.0"/>
+  <testcase name="testRevokedSenderPolicyRefusesWithoutTouchingTables" classname="io.godstone.mesh.readiness.ReadinessT37Test" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

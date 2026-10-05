@@ -1,0 +1,134 @@
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.9/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+Calculating task graph as configuration cache cannot be reused because system property 'godstone.integration.root' has changed.
+
+> Configure project :app
+WARNING: The option setting 'android.experimental.enableTestFixturesKotlinSupport=true' is experimental.
+The current default is 'false'.
+
+> Task :core:preBuild UP-TO-DATE
+> Task :mesh:preBuild UP-TO-DATE
+> Task :core:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :mesh:generateDebugUnitTestAssets UP-TO-DATE
+> Task :mesh:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :mesh:generateDebugTestFixturesAssets UP-TO-DATE
+> Task :mesh:preDebugTestFixturesBuild UP-TO-DATE
+> Task :core:preDebugBuild UP-TO-DATE
+> Task :mesh:preDebugUnitTestBuild UP-TO-DATE
+> Task :mesh:preDebugBuild UP-TO-DATE
+> Task :core:javaPreCompileDebug
+> Task :core:generateDebugResValues
+> Task :mesh:generateDebugResValues
+> Task :mesh:javaPreCompileDebugTestFixtures
+> Task :mesh:javaPreCompileDebug
+> Task :core:mergeDebugShaders
+> Task :mesh:packageDebugTestFixturesAssets
+> Task :mesh:mergeDebugShaders
+> Task :core:writeDebugAarMetadata
+> Task :mesh:writeDebugTestFixturesAarMetadata
+> Task :core:generateDebugResources
+> Task :mesh:writeDebugAarMetadata
+> Task :mesh:generateDebugUnitTestResValues
+> Task :mesh:generateDebugResources
+> Task :mesh:generateDebugTestFixturesEmptyResourceFiles
+> Task :mesh:extractDeepLinksDebug
+> Task :core:extractDeepLinksDebug
+> Task :mesh:generateDebugUnitTestResources
+> Task :mesh:compileDebugShaders NO-SOURCE
+> Task :core:compileDebugShaders NO-SOURCE
+> Task :core:generateDebugAssets UP-TO-DATE
+> Task :mesh:processDebugTestFixturesJavaRes NO-SOURCE
+> Task :mesh:generateDebugAssets UP-TO-DATE
+> Task :core:packageDebugResources
+> Task :mesh:packageDebugAssets
+> Task :mesh:processDebugManifest
+> Task :mesh:processDebugTestFixturesManifest
+> Task :mesh:packageDebugResources
+> Task :mesh:javaPreCompileDebugUnitTest
+> Task :core:processDebugManifest
+> Task :core:compileDebugLibraryResources
+> Task :mesh:mapDebugUnitTestSourceSetPaths
+> Task :core:packageDebugAssets
+> Task :mesh:checkDebugUnitTestAarMetadata
+> Task :mesh:mergeDebugUnitTestAssets
+> Task :mesh:mergeDebugAssets
+> Task :core:parseDebugLocalResources
+> Task :mesh:parseDebugLocalResources
+> Task :mesh:compileDebugLibraryResources
+> Task :core:generateDebugRFile
+> Task :mesh:generateDebugRFile
+> Task :mesh:processDebugUnitTestManifest
+> Task :mesh:mergeDebugUnitTestResources
+> Task :mesh:processDebugUnitTestResources
+> Task :mesh:packageDebugUnitTestForUnitTest
+> Task :mesh:generateDebugUnitTestConfig
+
+> Task :core:compileDebugKotlin
+w: file:///private/tmp/board1-rc15-preparatory-46903cd0-xke1sctz/judge/android/core/src/main/java/io/godstone/core/archive/ArchiveDatabase.kt:51:21 Condition is always 'true'.
+w: file:///private/tmp/board1-rc15-preparatory-46903cd0-xke1sctz/judge/android/core/src/main/java/io/godstone/core/archive/ArchiveInstaller.kt:161:18 Only safe (?.) or non-null asserted (!!.) calls are allowed on a nullable receiver of type 'java.io.File?'.
+w: file:///private/tmp/board1-rc15-preparatory-46903cd0-xke1sctz/judge/android/core/src/main/java/io/godstone/core/archive/ArchiveInstaller.kt:161:41 Only safe (?.) or non-null asserted (!!.) calls are allowed on a nullable receiver of type 'java.io.File?'.
+w: file:///private/tmp/board1-rc15-preparatory-46903cd0-xke1sctz/judge/android/core/src/main/java/io/godstone/core/archive/ArchiveInstaller.kt:161:61 Only safe (?.) or non-null asserted (!!.) calls are allowed on a nullable receiver of type 'java.io.File?'.
+
+> Task :core:compileDebugJavaWithJavac NO-SOURCE
+> Task :core:processDebugJavaRes
+> Task :core:bundleLibRuntimeToJarDebug
+> Task :core:bundleLibCompileToJarDebug
+> Task :mesh:kspDebugKotlin
+
+> Task :mesh:compileDebugKotlin
+w: file:///private/tmp/board1-rc15-preparatory-46903cd0-xke1sctz/judge/android/mesh/src/main/java/io/godstone/mesh/delivery/RecipientInboxRepository.kt:370:13 Check for instance is always 'false'.
+w: file:///private/tmp/board1-rc15-preparatory-46903cd0-xke1sctz/judge/android/mesh/src/main/java/io/godstone/mesh/transport/GattClient.kt:316:80 'var value: ByteArray!' is deprecated. Deprecated in Java.
+w: file:///private/tmp/board1-rc15-preparatory-46903cd0-xke1sctz/judge/android/mesh/src/main/java/io/godstone/mesh/transport/GattClient.kt:338:48 'var value: ByteArray!' is deprecated. Deprecated in Java.
+w: file:///private/tmp/board1-rc15-preparatory-46903cd0-xke1sctz/judge/android/mesh/src/main/java/io/godstone/mesh/transport/GattClient.kt:427:18 'var value: ByteArray!' is deprecated. Deprecated in Java.
+w: file:///private/tmp/board1-rc15-preparatory-46903cd0-xke1sctz/judge/android/mesh/src/main/java/io/godstone/mesh/transport/GattClient.kt:438:11 'fun writeCharacteristic(p0: BluetoothGattCharacteristic!): Boolean' is deprecated. Deprecated in Java.
+w: file:///private/tmp/board1-rc15-preparatory-46903cd0-xke1sctz/judge/android/mesh/src/main/java/io/godstone/mesh/transport/GattClient.kt:446:14 'var value: ByteArray!' is deprecated. Deprecated in Java.
+w: file:///private/tmp/board1-rc15-preparatory-46903cd0-xke1sctz/judge/android/mesh/src/main/java/io/godstone/mesh/transport/GattClient.kt:457:11 'fun writeDescriptor(p0: BluetoothGattDescriptor!): Boolean' is deprecated. Deprecated in Java.
+w: file:///private/tmp/board1-rc15-preparatory-46903cd0-xke1sctz/judge/android/mesh/src/main/java/io/godstone/mesh/transport/GattClient.kt:498:12 'var value: ByteArray!' is deprecated. Deprecated in Java.
+w: file:///private/tmp/board1-rc15-preparatory-46903cd0-xke1sctz/judge/android/mesh/src/main/java/io/godstone/mesh/transport/GattClient.kt:500:27 'fun writeCharacteristic(p0: BluetoothGattCharacteristic!): Boolean' is deprecated. Deprecated in Java.
+w: file:///private/tmp/board1-rc15-preparatory-46903cd0-xke1sctz/judge/android/mesh/src/main/java/io/godstone/mesh/transport/GattServer.kt:635:12 'var value: ByteArray!' is deprecated. Deprecated in Java.
+w: file:///private/tmp/board1-rc15-preparatory-46903cd0-xke1sctz/judge/android/mesh/src/main/java/io/godstone/mesh/transport/GattServer.kt:636:27 'fun notifyCharacteristicChanged(p0: BluetoothDevice!, p1: BluetoothGattCharacteristic!, p2: Boolean): Boolean' is deprecated. Deprecated in Java.
+
+> Task :mesh:processDebugJavaRes
+> Task :mesh:compileDebugJavaWithJavac
+> Task :mesh:transformDebugClassesWithAsm
+> Task :mesh:bundleLibCompileToJarDebug
+> Task :mesh:bundleLibRuntimeToJarDebug
+> Task :mesh:compileDebugTestFixturesKotlin
+> Task :mesh:compileDebugTestFixturesJavaWithJavac NO-SOURCE
+> Task :mesh:bundleLibRuntimeToJarDebugTestFixtures
+> Task :mesh:createFullJarDebugTestFixtures
+> Task :mesh:kspDebugUnitTestKotlin
+
+> Task :mesh:compileDebugUnitTestKotlin
+w: file:///private/tmp/board1-rc15-preparatory-46903cd0-xke1sctz/judge/android/mesh/src/test/java/io/godstone/mesh/RouterTest.kt:260:17 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///private/tmp/board1-rc15-preparatory-46903cd0-xke1sctz/judge/android/mesh/src/test/java/io/godstone/mesh/RouterTest.kt:326:17 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///private/tmp/board1-rc15-preparatory-46903cd0-xke1sctz/judge/android/mesh/src/test/java/io/godstone/mesh/crypto/ReadinessT06Test.kt:70:24 Java type mismatch: inferred type is 'kotlin.String?', but 'kotlin.String' was expected.
+w: file:///private/tmp/board1-rc15-preparatory-46903cd0-xke1sctz/judge/android/mesh/src/test/java/io/godstone/mesh/crypto/ReadinessT07Test.kt:164:32 Java type mismatch: inferred type is 'kotlin.String?', but 'kotlin.String' was expected.
+w: file:///private/tmp/board1-rc15-preparatory-46903cd0-xke1sctz/judge/android/mesh/src/test/java/io/godstone/mesh/lab/crash/RealLateLifecycleScenarioTest.kt:136:88 Condition is always 'true'.
+w: file:///private/tmp/board1-rc15-preparatory-46903cd0-xke1sctz/judge/android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessStore001Test.kt:91:26 Java type mismatch: inferred type is 'kotlin.String?', but 'kotlin.String' was expected.
+w: file:///private/tmp/board1-rc15-preparatory-46903cd0-xke1sctz/judge/android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessStore001Test.kt:94:21 Java type mismatch: inferred type is 'java.io.File?', but 'java.io.File' was expected.
+w: file:///private/tmp/board1-rc15-preparatory-46903cd0-xke1sctz/judge/android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT24PublicationTest.kt:48:13 Expected performance impact from inlining is insignificant. Inlining works best for functions with parameters of function types.
+w: file:///private/tmp/board1-rc15-preparatory-46903cd0-xke1sctz/judge/android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT24PublicationTest.kt:49:13 Expected performance impact from inlining is insignificant. Inlining works best for functions with parameters of function types.
+w: file:///private/tmp/board1-rc15-preparatory-46903cd0-xke1sctz/judge/android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT24Test.kt:49:13 Expected performance impact from inlining is insignificant. Inlining works best for functions with parameters of function types.
+w: file:///private/tmp/board1-rc15-preparatory-46903cd0-xke1sctz/judge/android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT24Test.kt:50:13 Expected performance impact from inlining is insignificant. Inlining works best for functions with parameters of function types.
+w: file:///private/tmp/board1-rc15-preparatory-46903cd0-xke1sctz/judge/android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT38Test.kt:98:32 Java type mismatch: inferred type is 'kotlin.String?', but 'kotlin.String' was expected.
+w: file:///private/tmp/board1-rc15-preparatory-46903cd0-xke1sctz/judge/android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT40Test.kt:64:36 Java type mismatch: inferred type is 'kotlin.String?', but 'kotlin.String' was expected.
+w: file:///private/tmp/board1-rc15-preparatory-46903cd0-xke1sctz/judge/android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT44Test.kt:364:33 Java type mismatch: inferred type is 'kotlin.String?', but 'kotlin.String' was expected.
+w: file:///private/tmp/board1-rc15-preparatory-46903cd0-xke1sctz/judge/android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT83Test.kt:858:47 Java type mismatch: inferred type is 'kotlin.String?', but 'kotlin.String' was expected.
+w: file:///private/tmp/board1-rc15-preparatory-46903cd0-xke1sctz/judge/android/mesh/src/test/java/io/godstone/mesh/store/ReadinessStore003Test.kt:208:31 Java type mismatch: inferred type is 'kotlin.String?', but 'kotlin.String' was expected.
+
+> Task :mesh:compileDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :mesh:hiltAggregateDepsDebugUnitTest
+> Task :mesh:hiltJavaCompileDebugUnitTest NO-SOURCE
+> Task :mesh:processDebugUnitTestJavaRes
+> Task :mesh:transformDebugUnitTestClassesWithAsm
+
+> Task :mesh:board1IntegrationWorker
+
+RealTransportHostRigWorkerTest > testTheWorkerFramingSurvivesHostileOctetsAndAnIncompleteLaunchIsRefused PASSED
+
+RealTransportHostRigWorkerTest > testGSINT001CrossPlatformWorker PASSED
+
+BUILD SUCCESSFUL in 28s
+61 actionable tasks: 61 executed
+Configuration cache entry stored.

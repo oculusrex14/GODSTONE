@@ -1,0 +1,6 @@
+test_an_internal_failure_misclassified_as_external_is_refused (test_audit_supplychain_harness.ReleaseProofCourt.test_an_internal_failure_misclassified_as_external_is_refused) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK

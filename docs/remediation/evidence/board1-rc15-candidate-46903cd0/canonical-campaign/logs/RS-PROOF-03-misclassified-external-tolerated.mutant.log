@@ -1,0 +1,17 @@
+test_an_internal_failure_misclassified_as_external_is_refused (test_audit_supplychain_harness.ReleaseProofCourt.test_an_internal_failure_misclassified_as_external_is_refused) ... FAIL
+
+======================================================================
+FAIL: test_an_internal_failure_misclassified_as_external_is_refused (test_audit_supplychain_harness.ReleaseProofCourt.test_an_internal_failure_misclassified_as_external_is_refused)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/board1-rc15-preparatory-46903cd0-xke1sctz/rod-worktrees/wt_RS-PROOF-03-misclassified-external-tolerated/tools/readiness/tests/test_audit_supplychain_harness.py", line 167, in test_an_internal_failure_misclassified_as_external_is_refused
+    self.assertTrue(any("NOT an external boundary" in item
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        for item in RP.verify_release_proof(document)))
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: False is not true
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+FAILED (failures=1)

@@ -1,0 +1,125 @@
+== android:simulator ==
+pre_source_digest=3ac94888b1d87f72f2a48fddf48a183eb5bdbd730ba0f397d5f6784619b1ddef
+
+
+----- step: gradle-0 -----
+$ /private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/gradlew -p /private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android :labmesh:testDebugUnitTest --rerun-tasks --no-daemon --console=plain
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.9/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+Reusing configuration cache.
+> Task :core:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :labmesh:preBuild UP-TO-DATE
+> Task :mesh:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :core:preBuild UP-TO-DATE
+> Task :labmesh:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :mesh:preBuild UP-TO-DATE
+> Task :labmesh:preDebugBuild UP-TO-DATE
+> Task :mesh:preDebugBuild UP-TO-DATE
+> Task :labmesh:preDebugUnitTestBuild UP-TO-DATE
+> Task :core:preDebugBuild UP-TO-DATE
+> Task :mesh:preDebugTestFixturesBuild UP-TO-DATE
+> Task :labmesh:createDebugCompatibleScreenManifests
+> Task :mesh:generateDebugResValues
+> Task :labmesh:generateDebugBuildConfig
+> Task :core:generateDebugResValues
+> Task :labmesh:generateDebugResValues
+> Task :core:writeDebugAarMetadata
+> Task :mesh:writeDebugAarMetadata
+> Task :core:generateDebugResources
+> Task :labmesh:generateDebugResources
+> Task :mesh:generateDebugResources
+> Task :core:javaPreCompileDebug
+> Task :mesh:javaPreCompileDebug
+> Task :labmesh:extractDeepLinksDebug
+> Task :core:extractDeepLinksDebug
+> Task :mesh:extractDeepLinksDebug
+> Task :mesh:processDebugTestFixturesJavaRes NO-SOURCE
+> Task :mesh:javaPreCompileDebugTestFixtures
+> Task :labmesh:packageDebugResources
+> Task :core:packageDebugResources
+> Task :labmesh:javaPreCompileDebugUnitTest
+> Task :core:processDebugManifest
+> Task :labmesh:mergeDebugShaders
+> Task :labmesh:compileDebugShaders NO-SOURCE
+> Task :labmesh:generateDebugAssets UP-TO-DATE
+> Task :mesh:processDebugManifest
+> Task :mesh:packageDebugResources
+> Task :labmesh:javaPreCompileDebug
+> Task :core:compileDebugLibraryResources
+> Task :core:mergeDebugShaders
+> Task :core:compileDebugShaders NO-SOURCE
+> Task :core:generateDebugAssets UP-TO-DATE
+> Task :core:packageDebugAssets
+> Task :core:parseDebugLocalResources
+> Task :labmesh:parseDebugLocalResources
+> Task :mesh:parseDebugLocalResources
+> Task :mesh:mergeDebugShaders
+> Task :mesh:compileDebugShaders NO-SOURCE
+> Task :mesh:generateDebugAssets UP-TO-DATE
+> Task :labmesh:mapDebugSourceSetPaths
+> Task :mesh:packageDebugAssets
+> Task :labmesh:checkDebugAarMetadata
+> Task :labmesh:mergeDebugAssets
+> Task :mesh:compileDebugLibraryResources
+> Task :mesh:generateDebugRFile
+> Task :core:generateDebugRFile
+
+> Task :labmesh:processDebugMainManifest
+/private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/labmesh/src/main/AndroidManifest.xml:16:5-87 Warning:
+	uses-permission#android.permission.INTERNET was tagged at AndroidManifest.xml:16 to remove other declarations but no other declaration present
+
+> Task :labmesh:processDebugManifest
+> Task :labmesh:processDebugManifestForPackage
+> Task :labmesh:mergeDebugResources
+> Task :labmesh:processDebugResources
+> Task :labmesh:packageDebugUnitTestForUnitTest
+> Task :labmesh:generateDebugUnitTestConfig
+
+> Task :core:compileDebugKotlin
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/core/src/main/java/io/godstone/core/archive/ArchiveDatabase.kt:51:21 Condition is always 'true'.
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/core/src/main/java/io/godstone/core/archive/ArchiveInstaller.kt:161:18 Only safe (?.) or non-null asserted (!!.) calls are allowed on a nullable receiver of type 'java.io.File?'.
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/core/src/main/java/io/godstone/core/archive/ArchiveInstaller.kt:161:41 Only safe (?.) or non-null asserted (!!.) calls are allowed on a nullable receiver of type 'java.io.File?'.
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/core/src/main/java/io/godstone/core/archive/ArchiveInstaller.kt:161:61 Only safe (?.) or non-null asserted (!!.) calls are allowed on a nullable receiver of type 'java.io.File?'.
+
+> Task :core:compileDebugJavaWithJavac NO-SOURCE
+> Task :core:processDebugJavaRes
+> Task :core:bundleLibRuntimeToJarDebug
+> Task :core:bundleLibCompileToJarDebug
+> Task :mesh:kspDebugKotlin
+
+> Task :mesh:compileDebugKotlin
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/mesh/src/main/java/io/godstone/mesh/delivery/RecipientInboxRepository.kt:370:13 Check for instance is always 'false'.
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/mesh/src/main/java/io/godstone/mesh/transport/GattClient.kt:316:80 'var value: ByteArray!' is deprecated. Deprecated in Java.
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/mesh/src/main/java/io/godstone/mesh/transport/GattClient.kt:338:48 'var value: ByteArray!' is deprecated. Deprecated in Java.
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/mesh/src/main/java/io/godstone/mesh/transport/GattClient.kt:427:18 'var value: ByteArray!' is deprecated. Deprecated in Java.
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/mesh/src/main/java/io/godstone/mesh/transport/GattClient.kt:438:11 'fun writeCharacteristic(p0: BluetoothGattCharacteristic!): Boolean' is deprecated. Deprecated in Java.
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/mesh/src/main/java/io/godstone/mesh/transport/GattClient.kt:446:14 'var value: ByteArray!' is deprecated. Deprecated in Java.
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/mesh/src/main/java/io/godstone/mesh/transport/GattClient.kt:457:11 'fun writeDescriptor(p0: BluetoothGattDescriptor!): Boolean' is deprecated. Deprecated in Java.
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/mesh/src/main/java/io/godstone/mesh/transport/GattClient.kt:498:12 'var value: ByteArray!' is deprecated. Deprecated in Java.
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/mesh/src/main/java/io/godstone/mesh/transport/GattClient.kt:500:27 'fun writeCharacteristic(p0: BluetoothGattCharacteristic!): Boolean' is deprecated. Deprecated in Java.
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/mesh/src/main/java/io/godstone/mesh/transport/GattServer.kt:635:12 'var value: ByteArray!' is deprecated. Deprecated in Java.
+w: file:///private/tmp/board1-rc15-final-inputs-zdu1lyse/android-court/android/mesh/src/main/java/io/godstone/mesh/transport/GattServer.kt:636:27 'fun notifyCharacteristicChanged(p0: BluetoothDevice!, p1: BluetoothGattCharacteristic!, p2: Boolean): Boolean' is deprecated. Deprecated in Java.
+
+> Task :mesh:processDebugJavaRes
+> Task :mesh:compileDebugJavaWithJavac
+> Task :mesh:transformDebugClassesWithAsm
+> Task :mesh:bundleLibRuntimeToJarDebug
+> Task :mesh:bundleLibCompileToJarDebug
+> Task :mesh:compileDebugTestFixturesKotlin
+> Task :mesh:compileDebugTestFixturesJavaWithJavac NO-SOURCE
+> Task :mesh:bundleLibRuntimeToJarDebugTestFixtures
+> Task :mesh:createFullJarDebugTestFixtures
+> Task :labmesh:compileDebugKotlin
+> Task :labmesh:processDebugJavaRes
+> Task :labmesh:compileDebugJavaWithJavac
+> Task :labmesh:bundleDebugClassesToRuntimeJar
+> Task :labmesh:bundleDebugClassesToCompileJar
+> Task :labmesh:compileDebugUnitTestKotlin
+> Task :labmesh:compileDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :labmesh:processDebugUnitTestJavaRes
+> Task :labmesh:testDebugUnitTest
+
+BUILD SUCCESSFUL in 28s
+67 actionable tasks: 67 executed
+Configuration cache entry reused.
+----- step gradle-0: rc=0 -----

@@ -1,15 +1,16 @@
 # Candidate status — AUDIT-003-R1, COMPUTED at round 122 (every figure re-derived from the ledger)
 
-> **CURRENT STATE (2026-10-04) — DERIVED, NOT CARRIED.** *Everything below this banner is HISTORICAL
+> **CURRENT STATE (2026-10-05) — DERIVED, NOT CARRIED.** *Everything below this banner is HISTORICAL
 > candidate narrative from the round-122 era and is preserved verbatim; its SHAs, lane counts and class
 > membership are NOT the current state.* **The current canonical state is DERIVED by
 > `scripts/build_structured_closure.py`: builder status `REMEDIATION_IN_PROGRESS`, **35 internal obligations
 > DISCHARGED and 0 OPEN** (no finding remains internally OPEN: `findings_with_internal_status_open = 0`). The FOUR
 > `AUDIT-B1-CTRL-001` closure-control discharges are now earned by their OWN scope-specific generator-semantic
-> mutation evidence -- five standalone strikes on the UNCHANGED C0 guard (`CLOS-PARTIAL-BLIND`, `CLOS-DRIFT-BLIND`,
-> `CLOS-SCHEMA-BYPASS`, `CLOS-FINDING-CONSISTENCY-BLIND`, each baseline 2 PASS / mutant 1 NAMED FAIL / restored 2 PASS
-> byte-identical to C0, and `CLOS-STATUS-POPULATION-BLIND` the same shape) plus the separate 13-case negative-input
-> court -- NOT fake-closed, and NEVER booked as registry rows or a canonical 181 score. Each of the
+> mutation evidence -- five standalone strikes at preparatory B `46903cd0` over the unchanged guard logic
+> (`CLOS-PARTIAL-BLIND`, `CLOS-DRIFT-BLIND`, `CLOS-SCHEMA-BYPASS`, `CLOS-FINDING-CONSISTENCY-BLIND`,
+> `CLOS-STATUS-POPULATION-BLIND`): each baseline 2 PASS / mutant 1 NAMED FAIL / restored 2 PASS,
+> byte-identical restored B source. The separate 13-case negative-input court remains C0 history;
+> neither population is booked as registry rows or aggregated with the canonical controls. Each of the
 > 35 discharged obligations carries an authored, production-reachable `structured_discharge` (the seven fields + an
 > external `candidate_binding` that names ONLY the prospective rc15 candidate ref (`production-readiness-board1-rc15`),
 > the external evidence bundle (manifest `docs/remediation/evidence/board1-evidence-bundle.json`) and the future
@@ -28,7 +29,7 @@
 > half is asserted in-process and the current UI run passed 43 tests / 0 failures -- LabMesh 29 accessibility 11 +
 > functional 18, LIGHT 14 -- with human acceptance remaining the existing external obligation). A `REPAIRED_STALE` status
 > settles ONLY the source half of a review's claim and does NOT discharge any obligation.
-> **FINAL campaign (2026-10-04):** the background full board1 campaign on baseline `c5a565fcb83e3e636ebe3ac253bd0f6351d41da3`
+> **Historical campaign (2026-10-04):** the full board1 campaign on baseline `c5a565fcb83e3e636ebe3ac253bd0f6351d41da3`
 > (tested tree `f67d8dd18be11928c39a3932296217a7dc5b8604`, canonical manifest `docs/remediation/evidence/board1-rc15-rods`)
 > KILLED **181/181** required rods -- **179 SEMANTIC + 2 STRUCTURAL rows, separately classified and NEVER quoted as one
 > aggregate** (`LANE-ROD-6-android-runner-aborts-before-digests` tests_run 1/restored 1; `ARCHIVE-PROV-007` tests_run
@@ -38,11 +39,11 @@
 > `IOS-RECOVERY-006` strikes the source-bound TYPE-ENFORCEMENT invariant: compile-time refusal is its intended
 > kill, NOT a build-invalid row. Every row carries a green restored phase and its own
 > phase-log digests; `python3 -B ci/mutations.py --selftest-manifest --group board1 --manifest-dir
-> docs/remediation/evidence/board1-rc15-rods` PASSES. The earlier `4f84d0b6` run (179 KILLED + 2 EXEC_INVALID: IOS-RECOVERY-005,
+> docs/remediation/evidence/board1-rc15-rods` PASSED at that checkpoint, not on the corrected source. The earlier `4f84d0b6` run (179 KILLED + 2 EXEC_INVALID: IOS-RECOVERY-005,
 > SH-R13 -- each retained the original find needle inside its replacement, so the strict installation postcondition
 > correctly refused; the two registry needles were then completed to WHOLE-LINE needles so post-find=0, with NO harness
 > weakening) and the selected two-rod qualification on `f66a1b41` are **DISTINCT earlier runs**, not folded into the 181.
-> **Integration stage proof (2026-10-04):** the full `--mode all` integration now **PASSES** on clean full SHA
+> **Historical integration stage proof (2026-10-04):** the full `--mode all` integration **PASSED** on clean full SHA
 > `b7bac67f018b015b0038ec11b3228bba9de59545` -- checker `python3 -B ci/check_integration_evidence.py --report
 > /tmp/board1-rc15-integration-b7bac67f/integration-report.json --require-mode all` = **PASS** (rows 10, cross 8, crash 2,
 > digests+inputs bound; 533.00s). BOTH honest directions ACCEPTED/DELIVERED the correct AUTHORED msg_id after a separate
@@ -50,16 +51,16 @@
 > the macOS SIGKILL campaign rc 0 with two fresh recoveries on the actual Android TestExecutor; natural `bye` on BOTH
 > workers with command EOF (the 120s oracle unchanged). The coordinator fix `b7` centralizes `Worker.send('bye')` to close
 > the command FIFO ONCE (idempotent `Fifo.close`), reply pipe unchanged, with NO new APIs and NO source-worker change.
-> Source pre/post `ad11a88866de38fc47284a6e71d2719b56addd3ae50fcf0e95768f8808146419`. **The source families are ALREADY
-> resealed and are UNCHANGED by the builder/docs-only closure edits (no new lane producer, no rewritten hash is needed);
-> only the FINAL-C strict integration is re-run AFTER the tracked writes. All 35 internal obligations are
+> Source pre/post `ad11a88866de38fc47284a6e71d2719b56addd3ae50fcf0e95768f8808146419`. Those historical
+> outputs do not bind the corrected source family. All ten lanes and the full canonical campaign are now
+> measured green at preparatory B `46903cd0`; strict campaign and integration proof must still bind final immutable C after its tracked writes. All 35 internal obligations are
 > DISCHARGED on earned proof and NONE remain OPEN: the CLOSURE-CONTROL block (the four `AUDIT-B1-CTRL-001`
 > obligations) is now earned by its OWN generator-semantic strike evidence, and
-> `gs-final-006.mutation` is DISCHARGED on its OWN separate four-rod restoration campaign (baseline `8e49631b…`,
-> tested tree `95952ec3…`, 4/4 SEMANTIC KILLED, never aggregated with the canonical 181); the five external gates stay
+> `gs-final-006.mutation` is DISCHARGED on its OWN separate four-rod restoration campaign at B `46903cd0`
+> (tree `d74dc5e2…`, all four SEMANTIC controls KILLED with restored-green, never aggregated with the canonical controls); the five external gates stay
 > OPEN, so NO READY claim is made, and the guard LOGIC is UNCHANGED by this DATA-only authoring -- the parent runs the
 > FINAL-C re-integration/attestation/freeze.**
-> **Closure-control strikes (2026-10-04):** the four closure-control discharges rest on
+> **Historical closure-control strikes (2026-10-04):** the four closure-control discharges initially rested on
 > `docs/remediation/evidence/board1-rc15-closure-controls/generator-strikes/` (18 files: manifest + 15 phase logs +
 > `CONSUMER-POSITIVE-real-ledger.baseline.log` + `NEGATIVE-INPUT-COURT-13cases.log`), each baseline/mutant/restored
 > phase carrying its own digest and each restored run byte-identical to C0. The **56-test** closure-law court
@@ -118,8 +119,8 @@
 > including foreign-key refusal, unchanged private state and legitimate full-key crash adoption. No RNG defect was established.
 > The stress reopen now installs the campaign's manager factory on each new owner before `lifecycle.start()`;
 > its independent **10k (157.715s)** and **30k (1092.162s)** schedules passed with unchanged seed, lengths,
-> census and bounds, under stable new-source digest `15d71a3d…`. The complete host lane passed **1533 arms /
-> 0 failures / 0 skips** (1509.48s, `/tmp/board1-rc15-final-inputs-zdu1lyse/ios-lane.log`).
+> census and bounds, under stable **main-checkout** source digest `15d71a3d…`. That complete host lane passed **1533 arms /
+> 0 failures / 0 skips** (1509.48s, `/tmp/board1-rc15-main-source-15d71a3d-evidence/ios-lane.log`), separate from the clean-B proof below.
 > The preceding `1ebc27ac…` host run's five startup refusals were separate failures, not a swallowed suite.
 > Source tracing located them at a pre-issuance ownership mismatch: the bootstrap captured an unbound estate
 > registry, then construction joined the real shared identity/DEK root with a different revision.
@@ -130,18 +131,65 @@
 > startup/topology/store court (16.65s including compile): all five original failures now pass, as do the new
 > nonzero-shared-root admission, post-issuance revocation, and preparation-error/spent-drive transitions.
 > The new Lab error-boundary arm also passed: a thrown wipe drive remains non-complete, blocks ordinary use
-> and carries its actual error. The native family is still being re-sealed; earlier native logs are not new-source proof.
+> and carries its actual error. The clean-B native family is now re-sealed below; earlier native logs are history.
 > The UI court retains the 44pt floor and absorbs only a two-ULP-per-endpoint coordinate-roundoff bound,
 > identically for both axes and all four scale/direction rosters. A numerical control refused 0.001pt, 0.25pt and 1pt
 > undersize at four coordinate scales. Both actual simulator schemes passed **43 required arms / 0 failures / 0 skips**
 > with stable new-source digest `15d71a3d…` (778.93s,
-> `/tmp/board1-rc15-final-inputs-zdu1lyse/ios-ui-lane.log`); the rebuilt app's live Conversation surface was
+> `/tmp/board1-rc15-main-source-15d71a3d-evidence/ios-ui-lane.log`); the rebuilt app's live Conversation surface was
 > also launched and visually observed. Human/device accessibility acceptance remains external.
 > The earlier conditional native court passed **1403 arms / 0 failures / 0 skips / 0 unfinished** at
-> source `1ebc27ac…`; the new-source native re-seal is running and is not yet credited.
+> source `1ebc27ac…`; the later clean-B court below supersedes it with **1406 arms / 0 failures / 0 skips**.
 > A separate clean Android court passed all **seven** families (267.835s): app 128, core 22, mesh 1479,
 > labmesh 40, UI 168, simulator 40 and production 1479, each with zero failures, errors and skips.
 > Its packaged-byte inspector passed against the actual staged Archive; counts remain lane-specific, not aggregated.
+> The source-aware ten-lane verifier independently accepted all seven Android families and the three iOS families
+> from the clean-B source family; lane counts are never summed. The complete 298-file Android lane/result/sidecar
+> population was retained under `docs/remediation/evidence/board1-rc15-candidate-46903cd0/android-lanes/`
+> and then re-read by the checker, including all three report-lane manifests and packaged Archive inspection.
+> **Cold candidate source isolation:** preparatory commit `46903cd040ffae9f2cd20529aad54ac6166bd6ad`
+> (tree `d74dc5e2679b69358663402e8c4711bea0d519db`) is untagged and is not final C.
+> Its clean detached checkout built and verified the real pinned macOS image, then reconstructed source family
+> `6428ac1e…` (30.89s). The main checkout's `15d71a3d…` family includes one pre-existing ignored fault database
+> under Archive fixtures (created 2026-09-25, modified 2026-10-02); that user-owned file remains untouched.
+> Main-family host/UI results are retained separately at `/tmp/board1-rc15-main-source-15d71a3d-evidence`.
+> The clean checkout's two actual UI schemes passed **43 required arms / 0 failures / 0 skips** (835.31s);
+> the real source-aware reader accepted digest `6428ac1e…`, and the rebuilt LabMesh Conversation surface was
+> launched and visually observed. The clean Foundation lane passed **98 suites / 1533 arms / 0 failures / 0 skips**
+> (2517.70s; Core 111 / Mesh 1413 / Lab 9), accepted by the real source-aware reader.
+> Both unchanged full stress schedules passed: **10,000 cycles in 390.594s** and **30,000 in 1710.378s**,
+> including the real reopen checkpoints and fixed owner bounds. The actual thrown-wipe UI boundary passed too.
+> Raw host/UI logs and original digest sidecars are retained at `docs/remediation/evidence/board1-rc15-candidate-46903cd0/`.
+> The clean native court passed **85 suites / 1406 arms / 0 failures / 0 skips / 0 unfinished** (2440.44s),
+> with raw `xcodebuild` status zero and stable pre/post source family `6428ac1e…`; its real bundle, raw logs and
+> sidecars are retained under `docs/remediation/evidence/board1-rc15-candidate-46903cd0/`.
+> The full `--mode all` preparatory integration also passed (1551.00s): all **10 rows = 8 cross-platform + 2 crash**,
+> candidate/tree and 26 tested-input digests bound, with the real evidence checker green. Because tracked proof data
+> still changes after this B, final immutable C must rerun both campaign and integration; none is credited to C yet.
+> A separate isolated LIGHT device package built and passed the actual packaged-byte inspector (33.07s,
+> arm64, source-only-exclusion, no Archive expected); its real report is retained in the same B evidence namespace.
+> Shipping/content/device approval remains external; this unsigned source-only package does not discharge it.
+> The separate four-restoration campaign passed **4 SEMANTIC KILLED / 0 other outcomes** (611.10s),
+> with green restored rosters (21 Android / 28 iOS), source-currency acceptance, and all 12 raw phase hashes checked.
+> Proof is retained in its own `docs/remediation/evidence/board1-rc15-restoration-rods-46903cd0/` namespace,
+> never aggregated with the canonical controls. A first 181-control run terminated after 71 complete triads without a
+> manifest and is not credited. The original subsequent full `--group board1` campaign has now completed
+> (17374.71s): **179 SEMANTIC controls KILLED and 2 STRUCTURAL controls KILLED, reported separately**;
+> every required control has its actual restored-green companion, with no escapes, invalids, skips or timeouts.
+> Manifest self-validation passed on the clean B judge before and after DGX offload. Its byte-identical
+> manifest and all 543 raw phase logs are clone-carried under
+> `docs/remediation/evidence/board1-rc15-candidate-46903cd0/canonical-campaign/`; every phase digest was checked.
+> These are preparatory B results, not final-C campaign, hosted convergence, tag or attestation proof.
+> The clean-B readiness court passed its complete exact-identity roster (1171.09s): **1049 collected,
+> 1019 internal required passed, 30 historical excluded**, no internal skips/nonpassing outcomes.
+> Its raw log, recorded identities and roster are retained at `docs/remediation/evidence/board1-rc15-candidate-46903cd0/`.
+> The actual resolver selftest and 45 behavioral controls also passed; repository parity passed **all seven**
+> internal invariants, scanning 301 Kotlin files with zero unresolved members, after the real MEDIUM Archive
+> prerequisite was built. Noise conformance stays explicitly external and OPEN.
+> The separate **five unregistered generator strikes passed** (113.75s):
+> each actual baseline/restored phase ran two green arms, each mutant failed exactly its named witness, and all
+> 15 raw-log SHA-256 values and byte-identical source restorations were checked. New proof lives at
+> `docs/remediation/evidence/board1-rc15-closure-controls/generator-strikes-46903cd0/`; C0 history is unchanged.
 > **Cold terminal source reconstruction:** the terminal now verifies its pinned macOS SQLCipher image, emits
 > the existing mode-independent trusted expectation and syncs the mirror before campaign/source readers.
 > In a cold isolated source tree, missing generated constants mismatched the producer digest; actual verified
@@ -162,7 +210,7 @@
 > SQLCipher expectation generation now produces one source for both approved host/simulator modes,
 > selected at compile time, so preparing one lane does not invalidate its sibling's source digest.
 > Staging and the real host-image verifier were exercised successfully; the strengthened replacement-image
-> refusal witness passed. Full simulator re-sealing, campaign remediation, and release freeze remain pending.
+> refusal witness passed. Preparatory B simulator and campaign re-sealing are complete; exact-C verification and release freeze remain pending.
 
 
 **BOTH CANDIDATES REMAIN NO-GO.** The readiness flags are FALSE and enforced false by a passing canonical

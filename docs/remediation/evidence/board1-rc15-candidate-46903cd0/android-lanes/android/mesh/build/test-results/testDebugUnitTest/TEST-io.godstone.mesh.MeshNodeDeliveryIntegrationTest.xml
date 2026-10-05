@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.godstone.mesh.MeshNodeDeliveryIntegrationTest" tests="16" skipped="0" failures="0" errors="0" timestamp="2026-10-04T22:15:52" hostname="Naraharikripas-Mac-mini.local" time="0.168">
+  <properties/>
+  <testcase name="C6 dispatchSos persist failure leaves the tracker untouched" classname="io.godstone.mesh.MeshNodeDeliveryIntegrationTest" time="0.126"/>
+  <testcase name="C6_6_1 dispatchDirect transmits store-returned canonical frame and not caller modified frame" classname="io.godstone.mesh.MeshNodeDeliveryIntegrationTest" time="0.002"/>
+  <testcase name="C6 dispatchSos with a successful send stays QUEUED_DURABLY as NONE with a link offer" classname="io.godstone.mesh.MeshNodeDeliveryIntegrationTest" time="0.004"/>
+  <testcase name="C7 production ingestInbound ack is fail-closed under the unresolved resolver" classname="io.godstone.mesh.MeshNodeDeliveryIntegrationTest" time="0.002"/>
+  <testcase name="C7 ingestInbound non-ack frame does not touch the delivery tracker" classname="io.godstone.mesh.MeshNodeDeliveryIntegrationTest" time="0.006"/>
+  <testcase name="C6_6_1 dispatchDirect on canonical frame mismatch attempts 0 sends and returns Rejected" classname="io.godstone.mesh.MeshNodeDeliveryIntegrationTest" time="0.015"/>
+  <testcase name="C7 ingestInbound ack from wrong recipient is rejected" classname="io.godstone.mesh.MeshNodeDeliveryIntegrationTest" time="0.001"/>
+  <testcase name="C6_6 dispatchDirect on successful enqueue with zero connected peers yields QueuedLocally and state remains QUEUED_DURABLY" classname="io.godstone.mesh.MeshNodeDeliveryIntegrationTest" time="0.002"/>
+  <testcase name="C6_6_1 dispatchDirect exact retry transmits persisted canonical frame" classname="io.godstone.mesh.MeshNodeDeliveryIntegrationTest" time="0.002"/>
+  <testcase name="C6_6 dispatchDirect transport failure leaves state in QUEUED_DURABLY" classname="io.godstone.mesh.MeshNodeDeliveryIntegrationTest" time="0.001"/>
+  <testcase name="C6_6 dispatchDirect on atomic enqueue failure attempts 0 sends and yields Rejected" classname="io.godstone.mesh.MeshNodeDeliveryIntegrationTest" time="0.001"/>
+  <testcase name="C6 dispatchSos with zero peers stays QUEUED_DURABLY" classname="io.godstone.mesh.MeshNodeDeliveryIntegrationTest" time="0.001"/>
+  <testcase name="C7 ingestInbound ack for a NONE-mode broadcast is NotAckEligible" classname="io.godstone.mesh.MeshNodeDeliveryIntegrationTest" time="0.001"/>
+  <testcase name="R19 canStart requires both link readiness and active session runtime" classname="io.godstone.mesh.MeshNodeDeliveryIntegrationTest" time="0.0"/>
+  <testcase name="C6_6 dispatchDirect on success with active peers hands to relays and transitions state" classname="io.godstone.mesh.MeshNodeDeliveryIntegrationTest" time="0.002"/>
+  <testcase name="C7 ingestInbound ack from bound recipient reaches ACKNOWLEDGED" classname="io.godstone.mesh.MeshNodeDeliveryIntegrationTest" time="0.002"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

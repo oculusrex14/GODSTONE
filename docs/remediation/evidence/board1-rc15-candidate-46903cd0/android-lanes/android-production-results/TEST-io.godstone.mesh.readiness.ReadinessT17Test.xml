@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.godstone.mesh.readiness.ReadinessT17Test" tests="11" skipped="0" failures="0" errors="0" timestamp="2026-10-04T22:16:23" hostname="Naraharikripas-Mac-mini.local" time="0.084">
+  <properties/>
+  <testcase name="testBackpressureIsReportedNotSilentlyDropped" classname="io.godstone.mesh.readiness.ReadinessT17Test" time="0.013"/>
+  <testcase name="testBeginTrustedHandshakeNeedsAStandingRelation" classname="io.godstone.mesh.readiness.ReadinessT17Test" time="0.001"/>
+  <testcase name="testTheWholeChainRunsThroughRealEntries" classname="io.godstone.mesh.readiness.ReadinessT17Test" time="0.02"/>
+  <testcase name="testPretrustDataFrameIsRejectedAndTheCollectorSurvives" classname="io.godstone.mesh.readiness.ReadinessT17Test" time="0.019"/>
+  <testcase name="testTransportWithoutRegistryRefusesToShipAnything" classname="io.godstone.mesh.readiness.ReadinessT17Test" time="0.002"/>
+  <testcase name="testUnexpectedStageIsTypedAndBounded" classname="io.godstone.mesh.readiness.ReadinessT17Test" time="0.002"/>
+  <testcase name="testFailClosedRegistryShipsNothingEither" classname="io.godstone.mesh.readiness.ReadinessT17Test" time="0.002"/>
+  <testcase name="testTheAuthenticatedNodeIdIsThePeersFullIdentityAndOnlyAfterTrust" classname="io.godstone.mesh.readiness.ReadinessT17Test" time="0.003"/>
+  <testcase name="testReleaseSymbolsCarryNoTestFactories" classname="io.godstone.mesh.readiness.ReadinessT17Test" time="0.003"/>
+  <testcase name="testAuthenticationFailureThenValidInputSucceeds" classname="io.godstone.mesh.readiness.ReadinessT17Test" time="0.018"/>
+  <testcase name="testSealedReadyRequiresTrustedHandle" classname="io.godstone.mesh.readiness.ReadinessT17Test" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

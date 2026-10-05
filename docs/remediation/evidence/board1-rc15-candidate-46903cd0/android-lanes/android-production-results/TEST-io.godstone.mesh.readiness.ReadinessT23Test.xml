@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.godstone.mesh.readiness.ReadinessT23Test" tests="18" skipped="0" failures="0" errors="0" timestamp="2026-10-04T22:16:24" hostname="Naraharikripas-Mac-mini.local" time="0.619">
+  <properties/>
+  <testcase name="testTheSealedRoundCarriethToApplicationReadinessOnce" classname="io.godstone.mesh.readiness.ReadinessT23Test" time="0.041"/>
+  <testcase name="testOneSidedReadinessPublishethNoMatter" classname="io.godstone.mesh.readiness.ReadinessT23Test" time="0.01"/>
+  <testcase name="testAndroid01_theApplicationIssuethTheKeyConfirmationAtTheTrustedHour" classname="io.godstone.mesh.readiness.ReadinessT23Test" time="0.014"/>
+  <testcase name="testAReflectedChallengeIsNotEchoedAgain" classname="io.godstone.mesh.readiness.ReadinessT23Test" time="0.085"/>
+  <testcase name="testAWaywardCounselAtTheGateIsObservedAndClosed" classname="io.godstone.mesh.readiness.ReadinessT23Test" time="0.02"/>
+  <testcase name="testTheDuplicateSecondTaleRunnethNotTheControllerTwice" classname="io.godstone.mesh.readiness.ReadinessT23Test" time="0.019"/>
+  <testcase name="testTheExactDuplicateIsSparedTheFreshSequencePerisheth" classname="io.godstone.mesh.readiness.ReadinessT23Test" time="0.009"/>
+  <testcase name="testAndroid01_theWholeConfirmationRoundRunnethItself" classname="io.godstone.mesh.readiness.ReadinessT23Test" time="0.037"/>
+  <testcase name="testAForgedEchoIsRefusedAndPublishethNothing" classname="io.godstone.mesh.readiness.ReadinessT23Test" time="0.083"/>
+  <testcase name="testAndroid03_theFallCarriethTheSameImmutablePeerTheRiseDid" classname="io.godstone.mesh.readiness.ReadinessT23Test" time="0.084"/>
+  <testcase name="testTheConfirmingHourUnansweredFellethTheRelation" classname="io.godstone.mesh.readiness.ReadinessT23Test" time="0.019"/>
+  <testcase name="testTheHalfSpokenExchangeFallethAtTheTenSecondHour" classname="io.godstone.mesh.readiness.ReadinessT23Test" time="0.009"/>
+  <testcase name="testTheTrustedHourAlonePublishethNoApplicationReadiness" classname="io.godstone.mesh.readiness.ReadinessT23Test" time="0.017"/>
+  <testcase name="testThePublicationIsIdempotentAndTheEchoSingleShotten" classname="io.godstone.mesh.readiness.ReadinessT23Test" time="0.086"/>
+  <testcase name="testATravellingReassemblyIsLeftUntoTheLeaseNotReapedByTheHour" classname="io.godstone.mesh.readiness.ReadinessT23Test" time="0.013"/>
+  <testcase name="testAMisshapenControlIsTakenForOrdinaryMatter" classname="io.godstone.mesh.readiness.ReadinessT23Test" time="0.043"/>
+  <testcase name="testAnUnspokenSeatAbidethTheHourUnmoved" classname="io.godstone.mesh.readiness.ReadinessT23Test" time="0.003"/>
+  <testcase name="testAFreshCourseWithFreshKeysReestablishethTrust" classname="io.godstone.mesh.readiness.ReadinessT23Test" time="0.027"/>
+  <system-out><![CDATA[ANDROID-03 CENSUS published=[RelationKey(direction=OUTBOUND, peerAddress=C9:2C:B1:67:94:95, generation=1)] towardBob=[RelationKey(direction=OUTBOUND, peerAddress=C9:2C:B1:67:94:95, generation=1)] capturedRelation=RelationKey(direction=OUTBOUND, peerAddress=C9:2C:B1:67:94:95, generation=1) events=[LinkReady]
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

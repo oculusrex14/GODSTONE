@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.godstone.mesh.readiness.ReadinessT84Test" tests="18" skipped="0" failures="0" errors="0" timestamp="2026-10-04T22:16:26" hostname="Naraharikripas-Mac-mini.local" time="0.014">
+  <properties/>
+  <testcase name="theTeardownResultIsMeasuredOrDefaultToNothing" classname="io.godstone.mesh.readiness.ReadinessT84Test" time="0.0"/>
+  <testcase name="aProductionSignerOverThePinnedIdentityReleasethNoSeed" classname="io.godstone.mesh.readiness.ReadinessT84Test" time="0.001"/>
+  <testcase name="test_w11_an_expired_or_cancelled_origin_and_ttl_exhaustion" classname="io.godstone.mesh.readiness.ReadinessT84Test" time="0.001"/>
+  <testcase name="theSignatureRoadIsTakenWithoutReleasingASeed" classname="io.godstone.mesh.readiness.ReadinessT84Test" time="0.0"/>
+  <testcase name="test_w14_meshnode_dispatcheth_the_ack_and_never_discardeth_relay_traffic" classname="io.godstone.mesh.readiness.ReadinessT84Test" time="0.002"/>
+  <testcase name="test_w03_relay_custody_never_entereth_the_message_namespace" classname="io.godstone.mesh.readiness.ReadinessT84Test" time="0.0"/>
+  <testcase name="test_w12_candidate_capacity_is_refused_explicitly" classname="io.godstone.mesh.readiness.ReadinessT84Test" time="0.001"/>
+  <testcase name="test_w02_the_three_node_receipt_returneth_home_without_a_direct_link" classname="io.godstone.mesh.readiness.ReadinessT84Test" time="0.001"/>
+  <testcase name="test_w08_an_ack_preceding_its_message_is_carried_not_discarded" classname="io.godstone.mesh.readiness.ReadinessT84Test" time="0.0"/>
+  <testcase name="test_w09_a_forged_candidate_cannot_suppress_a_later_valid_signature" classname="io.godstone.mesh.readiness.ReadinessT84Test" time="0.0"/>
+  <testcase name="test_w04_a_candidate_is_never_echoed_to_receivedFrom" classname="io.godstone.mesh.readiness.ReadinessT84Test" time="0.001"/>
+  <testcase name="test_w05_the_forward_copy_taketh_ttl_and_hop_exactly_once" classname="io.godstone.mesh.readiness.ReadinessT84Test" time="0.001"/>
+  <testcase name="test_w07_a_local_att_acceptance_never_retireth_custody" classname="io.godstone.mesh.readiness.ReadinessT84Test" time="0.0"/>
+  <testcase name="test_w13_malformed_frames_and_a_failed_lookup_are_refused_by_name" classname="io.godstone.mesh.readiness.ReadinessT84Test" time="0.0"/>
+  <testcase name="gsRuntime001_theNodesTurnHandethTheAdmittedCandidateToTheTransport" classname="io.godstone.mesh.readiness.ReadinessT84Test" time="0.002"/>
+  <testcase name="test_w06_the_pump_is_scheduled_bounded_and_rate_limited" classname="io.godstone.mesh.readiness.ReadinessT84Test" time="0.002"/>
+  <testcase name="test_w10_relay_process_death_and_reconnect_still_returneth_the_receipt" classname="io.godstone.mesh.readiness.ReadinessT84Test" time="0.001"/>
+  <testcase name="test_w01_an_ack_with_a_durable_row_is_origin_verification" classname="io.godstone.mesh.readiness.ReadinessT84Test" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

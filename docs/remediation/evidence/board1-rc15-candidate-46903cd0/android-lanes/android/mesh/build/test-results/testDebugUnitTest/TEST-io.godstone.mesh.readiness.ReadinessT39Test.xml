@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.godstone.mesh.readiness.ReadinessT39Test" tests="19" skipped="0" failures="0" errors="0" timestamp="2026-10-04T22:16:25" hostname="Naraharikripas-Mac-mini.local" time="0.034">
+  <properties/>
+  <testcase name="testGF003AnOpenGateLetsTheSosReadRoadsThrough" classname="io.godstone.mesh.readiness.ReadinessT39Test" time="0.002"/>
+  <testcase name="testGF003APendingWipeRefusethTheCancelArm" classname="io.godstone.mesh.readiness.ReadinessT39Test" time="0.003"/>
+  <testcase name="testTheBroadcastPairIsCommittedByOneAuthorityCall" classname="io.godstone.mesh.readiness.ReadinessT39Test" time="0.002"/>
+  <testcase name="testCancelVersusQueuedWriterNeverResurrects" classname="io.godstone.mesh.readiness.ReadinessT39Test" time="0.002"/>
+  <testcase name="testCancellationCommittedOutsideTheCommandDoorSuppressethTheLaterOffer" classname="io.godstone.mesh.readiness.ReadinessT39Test" time="0.001"/>
+  <testcase name="testGF003APendingWipeRefusethTheAuthorArm" classname="io.godstone.mesh.readiness.ReadinessT39Test" time="0.003"/>
+  <testcase name="testTheFlagOnlyEverSaysWhatTheDurableRowSays" classname="io.godstone.mesh.readiness.ReadinessT39Test" time="0.001"/>
+  <testcase name="testNoneModeAckIsRejectedBeforeCryptography" classname="io.godstone.mesh.readiness.ReadinessT39Test" time="0.001"/>
+  <testcase name="testGF003APendingWipeClaimethNoActiveSos" classname="io.godstone.mesh.readiness.ReadinessT39Test" time="0.0"/>
+  <testcase name="testCommandSurfaceRoutesEveryArmToTheDurableTruth" classname="io.godstone.mesh.readiness.ReadinessT39Test" time="0.003"/>
+  <testcase name="testRestartRevealsTheActiveSosFromTheDurableRow" classname="io.godstone.mesh.readiness.ReadinessT39Test" time="0.001"/>
+  <testcase name="testCancelOfARelayedCallTellsTheRelayedTruth" classname="io.godstone.mesh.readiness.ReadinessT39Test" time="0.001"/>
+  <testcase name="testDuplicateCancellationIsIdempotentNotAnError" classname="io.godstone.mesh.readiness.ReadinessT39Test" time="0.002"/>
+  <testcase name="testNoTornPairEverAcrossTheInterleavedCampaign" classname="io.godstone.mesh.readiness.ReadinessT39Test" time="0.004"/>
+  <testcase name="testACancelledDispatchLeavethNoActiveProjection" classname="io.godstone.mesh.readiness.ReadinessT39Test" time="0.001"/>
+  <testcase name="testCancellationSuppressethTheLaterOffersAlreadyCaptured" classname="io.godstone.mesh.readiness.ReadinessT39Test" time="0.001"/>
+  <testcase name="testRetryResumesTheSameAuthoredBytesAndFailsTyped" classname="io.godstone.mesh.readiness.ReadinessT39Test" time="0.002"/>
+  <testcase name="testGF003APendingWipeRefusesTheSosResumeRead" classname="io.godstone.mesh.readiness.ReadinessT39Test" time="0.002"/>
+  <testcase name="testEnqueueSecondWriteFailureRollsTheWholePairBack" classname="io.godstone.mesh.readiness.ReadinessT39Test" time="0.002"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

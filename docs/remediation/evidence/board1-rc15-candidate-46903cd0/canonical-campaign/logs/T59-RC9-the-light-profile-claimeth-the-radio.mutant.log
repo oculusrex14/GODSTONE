@@ -1,0 +1,15 @@
+test_w10_the_light_profile_carrieth_no_radio_capability (test_t59.T59PlatformAndProfileTest.test_w10_the_light_profile_carrieth_no_radio_capability) ... FAIL
+
+======================================================================
+FAIL: test_w10_the_light_profile_carrieth_no_radio_capability (test_t59.T59PlatformAndProfileTest.test_w10_the_light_profile_carrieth_no_radio_capability)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/board1-rc15-preparatory-46903cd0-xke1sctz/rod-worktrees/wt_T59-RC9-the-light-profile-claimeth-the-radio/tools/readiness/tests/test_t59.py", line 265, in test_w10_the_light_profile_carrieth_no_radio_capability
+    self.assertFalse(light.radio_available)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: True is not false
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+FAILED (failures=1)

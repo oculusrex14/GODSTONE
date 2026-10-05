@@ -1,0 +1,6 @@
+test_a_pinned_revision_with_absent_source_is_a_measured_absence (test_audit_supplychain_harness.ExternalRegisterCourt.test_a_pinned_revision_with_absent_source_is_a_measured_absence) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.002s
+
+OK

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.godstone.mesh.crypto.ReadinessT08Test" tests="11" skipped="0" failures="0" errors="0" timestamp="2026-10-04T22:15:55" hostname="Naraharikripas-Mac-mini.local" time="17.248">
+  <properties/>
+  <testcase name="testSameSlotOperationsNeverInterleaveCorruptingly" classname="io.godstone.mesh.crypto.ReadinessT08Test" time="0.011"/>
+  <testcase name="testConcurrentSealAndDrop_TypedFailureNeverCrash" classname="io.godstone.mesh.crypto.ReadinessT08Test" time="0.125"/>
+  <testcase name="testDestroyedRetainedPrimitivesReportTerminalNotReady" classname="io.godstone.mesh.crypto.ReadinessT08Test" time="0.004"/>
+  <testcase name="testRetiredSlotsAndLockEntriesAreReclaimed" classname="io.godstone.mesh.crypto.ReadinessT08Test" time="0.004"/>
+  <testcase name="testLifecycleGateRetainsExclusiveBarrierOrder" classname="io.godstone.mesh.crypto.ReadinessT08Test" time="0.002"/>
+  <testcase name="testBoundedSlotMapOverTenThousandReconnects" classname="io.godstone.mesh.crypto.ReadinessT08Test" time="17.091"/>
+  <testcase name="testSealOpenDropAllSerializeOnTheSlot" classname="io.godstone.mesh.crypto.ReadinessT08Test" time="0.002"/>
+  <testcase name="testCrypto001_theSecondDirectionOfOneHandleIsADifferentRelation" classname="io.godstone.mesh.crypto.ReadinessT08Test" time="0.001"/>
+  <testcase name="testRelationKeyCarriethTheWholeRelation" classname="io.godstone.mesh.crypto.ReadinessT08Test" time="0.0"/>
+  <testcase name="testCrypto001_aTeardownAddressedToAReplacedRelationMustNotSlayItsReplacement" classname="io.godstone.mesh.crypto.ReadinessT08Test" time="0.004"/>
+  <testcase name="testDestroyedReferencesRemainTerminal" classname="io.godstone.mesh.crypto.ReadinessT08Test" time="0.004"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

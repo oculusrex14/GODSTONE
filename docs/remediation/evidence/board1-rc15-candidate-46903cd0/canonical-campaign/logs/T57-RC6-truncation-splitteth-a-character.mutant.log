@@ -1,0 +1,30 @@
+
+15 tests completed, 1 failed
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:testLightDebugUnitTest'.
+> There were failing tests. See the report at: file:///private/tmp/board1-rc15-preparatory-46903cd0-xke1sctz/rod-worktrees/wt_T57-RC6-truncation-splitteth-a-character/android/app/build/reports/tests/testLightDebugUnitTest/index.html
+
+* Try:
+> Run with --scan to get full insights.
+
+BUILD FAILED in 23s
+
+TEST-SUITE TEST-io.godstone.app.readiness.ReadinessT57Test.xml tests=15 skipped=0 failures=1 errors=0
+TEST-CASE PASS test_w01_offline_then_a_peer_then_the_ack
+TEST-CASE PASS test_w13_the_app_never_writeth_a_status_of_its_own
+TEST-CASE PASS test_w12_nothing_is_secure_before_the_key_is_confirmed
+TEST-CASE PASS test_w04_duplicate_taps_create_one_row
+TEST-CASE PASS test_w08_cancel_nameth_the_relayed_copy_limitation
+TEST-CASE PASS test_w05_revoke_blocketh_the_conversation
+TEST-CASE PASS test_w10_a_denied_permission_is_explained
+TEST-CASE PASS test_w07_the_sos_control_requireth_an_arm
+TEST-CASE PASS test_w09_a_relaunch_restoreth_the_active_call
+TEST-CASE PASS test_w02_a_transport_boolean_never_projecteth_delivered
+TEST-CASE PASS test_w11_an_unsupported_direction_is_explained_distinctly
+TEST-CASE PASS test_ux041_the_recipient_selector_dispatches_and_the_send_follows_it
+TEST-CASE PASS test_ux044_the_platform_state_reaches_the_projection_and_is_consulted
+TEST-CASE PASS test_w03_failed_storage_leaveth_the_estate_and_the_draft
+TEST-CASE FAIL test_w06_the_compose_bound_is_bytes_not_characters

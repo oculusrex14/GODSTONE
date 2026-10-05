@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.godstone.mesh.readiness.ReadinessT12Test" tests="13" skipped="0" failures="0" errors="0" timestamp="2026-10-04T22:16:23" hostname="Naraharikripas-Mac-mini.local" time="0.005">
+  <properties/>
+  <testcase name="testStaleGenerationCloseIntentClosesNothing" classname="io.godstone.mesh.readiness.ReadinessT12Test" time="0.001"/>
+  <testcase name="testTimeoutThenLateConnectIsRefused" classname="io.godstone.mesh.readiness.ReadinessT12Test" time="0.001"/>
+  <testcase name="testForeignGenerationTerminalIsRefusedEntirely" classname="io.godstone.mesh.readiness.ReadinessT12Test" time="0.0"/>
+  <testcase name="testMalformedWriteTeardownIsTerminalItself" classname="io.godstone.mesh.readiness.ReadinessT12Test" time="0.0"/>
+  <testcase name="testCapturedHandleClosesOnceAndNeverAgain" classname="io.godstone.mesh.readiness.ReadinessT12Test" time="0.0"/>
+  <testcase name="testReplacementRelationSurvivesOldCallback" classname="io.godstone.mesh.readiness.ReadinessT12Test" time="0.0"/>
+  <testcase name="testServerHandlerRequiresExactRegistration" classname="io.godstone.mesh.readiness.ReadinessT12Test" time="0.001"/>
+  <testcase name="testAbsentTokenIsNeverCorrelatedToCurrentSlot" classname="io.godstone.mesh.readiness.ReadinessT12Test" time="0.0"/>
+  <testcase name="testLatePlatformTerminalAfterTimeoutIsIdempotent" classname="io.godstone.mesh.readiness.ReadinessT12Test" time="0.0"/>
+  <testcase name="testDuplicateFailureDisconnectChangesNothingTwice" classname="io.godstone.mesh.readiness.ReadinessT12Test" time="0.001"/>
+  <testcase name="testExactLeaseCountReturnsToZeroBothDirections" classname="io.godstone.mesh.readiness.ReadinessT12Test" time="0.0"/>
+  <testcase name="testStopReleasesEveryLeaseOfTheRun" classname="io.godstone.mesh.readiness.ReadinessT12Test" time="0.0"/>
+  <testcase name="testTimeoutTerminatesWithoutAnyCallback" classname="io.godstone.mesh.readiness.ReadinessT12Test" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

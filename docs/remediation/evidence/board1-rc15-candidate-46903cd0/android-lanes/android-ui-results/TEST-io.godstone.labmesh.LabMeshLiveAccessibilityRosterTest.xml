@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.godstone.labmesh.LabMeshLiveAccessibilityRosterTest" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-10-04T22:14:31" hostname="Naraharikripas-Mac-mini.local" time="0.289">
+  <properties/>
+  <testcase name="test_the_roster_follows_the_runtime_transformation_not_the_initial_render" classname="io.godstone.labmesh.LabMeshLiveAccessibilityRosterTest" time="0.047"/>
+  <testcase name="test_the_roster_sees_the_enablement_the_typed_estate_really_set" classname="io.godstone.labmesh.LabMeshLiveAccessibilityRosterTest" time="0.037"/>
+  <testcase name="test_the_live_roster_refuses_the_defect_classes_the_plan_names" classname="io.godstone.labmesh.LabMeshLiveAccessibilityRosterTest" time="0.036"/>
+  <testcase name="test_every_enlarged_mode_really_enlarges_the_layout" classname="io.godstone.labmesh.LabMeshLiveAccessibilityRosterTest" time="0.037"/>
+  <testcase name="test_the_live_roster_is_decided_in_all_four_modes_in_both_directions" classname="io.godstone.labmesh.LabMeshLiveAccessibilityRosterTest" time="0.132"/>
+  <system-out><![CDATA[mode=default LTR PASS
+    recipient_select [default] reachable 18.0x35.0
+    compose_body [default] reachable 232.0x176.0
+    compose_octets [default] reachable 12.0x35.0
+    compose_send [default] DISABLED 160.0x132.0
+    delivery_outcome [default] reachable 16.0x35.0 state="Queued on this phone"
+    delivery_announced [default] reachable 31.0x35.0 state="Queued on this phone"
+    durable_message_state [default] reachable 27.0x35.0
+    wipe_state [default] reachable 24.0x35.0
+    wipe_begin [default] reachable 160.0x132.0
+    wipe_resume [default] DISABLED 160.0x132.0
+    wipe_resolve_corrupt [default] DISABLED 160.0x132.0
+    sos_arm [default] reachable 160.0x132.0
+    sos_cancel [default] DISABLED 160.0x132.0
+    retry [default] DISABLED 160.0x132.0
+mode=default RTL PASS
+    recipient_select [default] reachable 18.0x35.0
+    compose_body [default] reachable 232.0x176.0
+    compose_octets [default] reachable 12.0x35.0
+    compose_send [default] DISABLED 160.0x132.0
+    delivery_outcome [default] reachable 16.0x35.0 state="Queued on this phone"
+    delivery_announced [default] reachable 31.0x35.0 state="Queued on this phone"
+    durable_message_state [default] reachable 27.0x35.0
+    wipe_state [default] reachable 24.0x35.0
+    wipe_begin [default] reachable 160.0x132.0
+    wipe_resume [default] DISABLED 160.0x132.0
+    wipe_resolve_corrupt [default] DISABLED 160.0x132.0
+    sos_arm [default] reachable 160.0x132.0
+    sos_cancel [default] DISABLED 160.0x132.0
+    retry [default] DISABLED 160.0x132.0
+mode=large LTR PASS
+    recipient_select [large] reachable 18.0x35.0
+    compose_body [large] reachable 232.0x216.0
+    compose_octets [large] reachable 12.0x35.0
+    compose_send [large] DISABLED 160.0x132.0
+    delivery_outcome [large] reachable 16.0x35.0 state="Queued on this phone"
+    delivery_announced [large] reachable 31.0x35.0 state="Queued on this phone"
+    durable_message_state [large] reachable 27.0x35.0
+    wipe_state [large] reachable 24.0x35.0
+    wipe_begin [large] reachable 160.0x132.0
+    wipe_resume [large] DISABLED 160.0x132.0
+    wipe_resolve_corrupt [large] DISABLED 160.0x132.0
+    sos_arm [large] reachable 160.0x132.0
+    sos_cancel [large] DISABLED 160.0x132.0
+    retry [large] DISABLED 160.0x132.0
+mode=large RTL PASS
+    recipient_select [large] reachable 18.0x35.0
+    compose_body [large] reachable 232.0x216.0
+    compose_octets [large] reachable 12.0x35.0
+    compose_send [large] DISABLED 160.0x132.0
+    delivery_outcome [large] reachable 16.0x35.0 state="Queued on this phone"
+    delivery_announced [large] reachable 31.0x35.0 state="Queued on this phone"
+    durable_message_state [large] reachable 27.0x35.0
+    wipe_state [large] reachable 24.0x35.0
+    wipe_begin [large] reachable 160.0x132.0
+    wipe_resume [large] DISABLED 160.0x132.0
+    wipe_resolve_corrupt [large] DISABLED 160.0x132.0
+    sos_arm [large] reachable 160.0x132.0
+    sos_cancel [large] DISABLED 160.0x132.0
+    retry [large] DISABLED 160.0x132.0
+mode=largest LTR PASS
+    recipient_select [largest] reachable 18.0x35.0
+    compose_body [largest] reachable 232.0x248.0
+    compose_octets [largest] reachable 12.0x35.0
+    compose_send [largest] DISABLED 160.0x147.0
+    delivery_outcome [largest] reachable 16.0x35.0 state="Queued on this phone"
+    delivery_announced [largest] reachable 31.0x35.0 state="Queued on this phone"
+    durable_message_state [largest] reachable 27.0x35.0
+    wipe_state [largest] reachable 24.0x35.0
+    wipe_begin [largest] reachable 160.0x147.0
+    wipe_resume [largest] DISABLED 160.0x147.0
+    wipe_resolve_corrupt [largest] DISABLED 160.0x147.0
+    sos_arm [largest] reachable 160.0x147.0
+    sos_cancel [largest] DISABLED 160.0x147.0
+    retry [largest] DISABLED 160.0x147.0
+mode=largest RTL PASS
+    recipient_select [largest] reachable 18.0x35.0
+    compose_body [largest] reachable 232.0x248.0
+    compose_octets [largest] reachable 12.0x35.0
+    compose_send [largest] DISABLED 160.0x147.0
+    delivery_outcome [largest] reachable 16.0x35.0 state="Queued on this phone"
+    delivery_announced [largest] reachable 31.0x35.0 state="Queued on this phone"
+    durable_message_state [largest] reachable 27.0x35.0
+    wipe_state [largest] reachable 24.0x35.0
+    wipe_begin [largest] reachable 160.0x147.0
+    wipe_resume [largest] DISABLED 160.0x147.0
+    wipe_resolve_corrupt [largest] DISABLED 160.0x147.0
+    sos_arm [largest] reachable 160.0x147.0
+    sos_cancel [largest] DISABLED 160.0x147.0
+    retry [largest] DISABLED 160.0x147.0
+mode=largest_accessibility LTR PASS
+    recipient_select [largest_accessibility] reachable 18.0x35.0
+    compose_body [largest_accessibility] reachable 232.0x248.0
+    compose_octets [largest_accessibility] reachable 12.0x35.0
+    compose_send [largest_accessibility] DISABLED 160.0x147.0
+    delivery_outcome [largest_accessibility] reachable 16.0x35.0 state="Queued on this phone"
+    delivery_announced [largest_accessibility] reachable 31.0x35.0 state="Queued on this phone"
+    durable_message_state [largest_accessibility] reachable 27.0x35.0
+    wipe_state [largest_accessibility] reachable 24.0x35.0
+    wipe_begin [largest_accessibility] reachable 160.0x147.0
+    wipe_resume [largest_accessibility] DISABLED 160.0x147.0
+    wipe_resolve_corrupt [largest_accessibility] DISABLED 160.0x147.0
+    sos_arm [largest_accessibility] reachable 160.0x147.0
+    sos_cancel [largest_accessibility] DISABLED 160.0x147.0
+    retry [largest_accessibility] DISABLED 160.0x147.0
+mode=largest_accessibility RTL PASS
+    recipient_select [largest_accessibility] reachable 18.0x35.0
+    compose_body [largest_accessibility] reachable 232.0x248.0
+    compose_octets [largest_accessibility] reachable 12.0x35.0
+    compose_send [largest_accessibility] DISABLED 160.0x147.0
+    delivery_outcome [largest_accessibility] reachable 16.0x35.0 state="Queued on this phone"
+    delivery_announced [largest_accessibility] reachable 31.0x35.0 state="Queued on this phone"
+    durable_message_state [largest_accessibility] reachable 27.0x35.0
+    wipe_state [largest_accessibility] reachable 24.0x35.0
+    wipe_begin [largest_accessibility] reachable 160.0x147.0
+    wipe_resume [largest_accessibility] DISABLED 160.0x147.0
+    wipe_resolve_corrupt [largest_accessibility] DISABLED 160.0x147.0
+    sos_arm [largest_accessibility] reachable 160.0x147.0
+    sos_cancel [largest_accessibility] DISABLED 160.0x147.0
+    retry [largest_accessibility] DISABLED 160.0x147.0
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

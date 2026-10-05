@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.godstone.mesh.lab.wipe.RecoveryLadderParityTest" tests="12" skipped="0" failures="0" errors="0" timestamp="2026-10-04T22:16:22" hostname="Naraharikripas-Mac-mini.local" time="0.049">
+  <properties/>
+  <testcase name="theDrainCheckpointIsPersistedInTheRealProductionJournal" classname="io.godstone.mesh.lab.wipe.RecoveryLadderParityTest" time="0.008"/>
+  <testcase name="anUnknownStageNameIsRefusedAndTheCheckpointDoesNotMove" classname="io.godstone.mesh.lab.wipe.RecoveryLadderParityTest" time="0.004"/>
+  <testcase name="aRebootMidWipeResumesFromTheRealProductionJournalAlone" classname="io.godstone.mesh.lab.wipe.RecoveryLadderParityTest" time="0.006"/>
+  <testcase name="aStaleRadioFrameAndAStaleUiSendAreRefusedWhileTheWipeIsPending" classname="io.godstone.mesh.lab.wipe.RecoveryLadderParityTest" time="0.004"/>
+  <testcase name="aTerminalCheckpointThatDroppedHoldsTheLadderPending" classname="io.godstone.mesh.lab.wipe.RecoveryLadderParityTest" time="0.006"/>
+  <testcase name="aWipeRequestedByAnotherOwnerIsObservedByTheDriveAndTheRevision" classname="io.godstone.mesh.lab.wipe.RecoveryLadderParityTest" time="0.004"/>
+  <testcase name="theDeleteScopeIsTheSixOwnedArtifactsAndFiltersAnythingElse" classname="io.godstone.mesh.lab.wipe.RecoveryLadderParityTest" time="0.003"/>
+  <testcase name="everyPersistedCheckpointStaysPendingThroughTheDeferredSeams" classname="io.godstone.mesh.lab.wipe.RecoveryLadderParityTest" time="0.003"/>
+  <testcase name="aRequestWhoseCheckpointDroppedNeverBeginsTheLadder" classname="io.godstone.mesh.lab.wipe.RecoveryLadderParityTest" time="0.003"/>
+  <testcase name="aCrashBetweenPublicationAndItsCheckpointSettlesAtTheTerminalRungOnThisIsle" classname="io.godstone.mesh.lab.wipe.RecoveryLadderParityTest" time="0.002"/>
+  <testcase name="theLadderIsTheIosLadderRungForRungAndRankForRank" classname="io.godstone.mesh.lab.wipe.RecoveryLadderParityTest" time="0.003"/>
+  <testcase name="aReentrantDriveIsRefusedRatherThanRunTwice" classname="io.godstone.mesh.lab.wipe.RecoveryLadderParityTest" time="0.003"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

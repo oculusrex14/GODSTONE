@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.godstone.mesh.di.GsFinal003GraphComponentTest" tests="13" skipped="0" failures="0" errors="0" timestamp="2026-10-04T22:16:15" hostname="Naraharikripas-Mac-mini.local" time="0.99">
+  <properties/>
+  <testcase name="theComponentsPumpIdentityIsUnreachableOnAHostAndSaysSo" classname="io.godstone.mesh.di.GsFinal003GraphComponentTest" time="0.014"/>
+  <testcase name="theRealComponentsGateIsReadPerCallNotCached" classname="io.godstone.mesh.di.GsFinal003GraphComponentTest" time="0.005"/>
+  <testcase name="theIdlePumpRunsInitialAndFiveMinuteInventoryOnTheInjectedClock" classname="io.godstone.mesh.di.GsFinal003GraphComponentTest" time="0.874"/>
+  <testcase name="theRealComponentsGateAnswersBothDirections" classname="io.godstone.mesh.di.GsFinal003GraphComponentTest" time="0.008"/>
+  <testcase name="theLifecycleGateIsOneAuthority" classname="io.godstone.mesh.di.GsFinal003GraphComponentTest" time="0.007"/>
+  <testcase name="theDispatcherAdmitsThroughTheGivenPumpOnly" classname="io.godstone.mesh.di.GsFinal003GraphComponentTest" time="0.019"/>
+  <testcase name="theDeviceBoundProvidersAreTheRealPlatformOnes" classname="io.godstone.mesh.di.GsFinal003GraphComponentTest" time="0.005"/>
+  <testcase name="theProductionProviderHandsTheNodeThePumpItWasGiven" classname="io.godstone.mesh.di.GsFinal003GraphComponentTest" time="0.014"/>
+  <testcase name="everyBindingIsScopedToTheComponent" classname="io.godstone.mesh.di.GsFinal003GraphComponentTest" time="0.005"/>
+  <testcase name="theDispatcherVerifiesOriginThroughTheGivenTrackerOnly" classname="io.godstone.mesh.di.GsFinal003GraphComponentTest" time="0.016"/>
+  <testcase name="theAckStoreRouteIsDeclaredOverTheDecorator" classname="io.godstone.mesh.di.GsFinal003GraphComponentTest" time="0.004"/>
+  <testcase name="theWipeInvalidatorReachesEveryOwnerTheCompositionHandedOut" classname="io.godstone.mesh.di.GsFinal003GraphComponentTest" time="0.014"/>
+  <testcase name="theComponentAssemblesSoTheGraphResolves" classname="io.godstone.mesh.di.GsFinal003GraphComponentTest" time="0.005"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>
