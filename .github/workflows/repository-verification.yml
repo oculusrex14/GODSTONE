@@ -856,7 +856,9 @@ jobs:
         run: |
           set -euo pipefail
           # The worker's own classpath is the debug unit-test variant's, so priming it is what matters. No --rerun-tasks
-          # is passed: this step WARMS caches, and the worker itself still rebuilds under its own bound.
+          # is passed here, and none is passed at launch either: this step WARMS the caches, and a worker launch now
+          # REUSES those primed compiled/KSP inputs -- the worker Test itself still executes fresh via the task's own
+          # `outputs.upToDateWhen { false }`, so freshness is not weakened by the warm caches.
           ./android/gradlew -p android :mesh:compileDebugUnitTestKotlin :mesh:compileDebugKotlin :llm:compileDebugKotlin \
             --no-daemon --console=plain
 

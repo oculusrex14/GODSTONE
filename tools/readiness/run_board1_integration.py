@@ -1411,7 +1411,17 @@ class Runner:
         worker = Worker(spec, self.runtime_dir, self.log, {})   # creates the two FIFOs
         argv = [
             str(gradlew), "-p", str(REPO / "android"), task,
-            "--no-daemon", "--console=plain", "--rerun-tasks",
+            "--no-daemon", "--console=plain",
+            # *** NO GLOBAL `--rerun-tasks`: THE WORKER'S FRESHNESS IS THE TASK'S OWN RULE, NOT A COMMAND-LINE OVERRIDE. ***
+            #
+            # *THE DEFECT THIS CLOSES: the global flag invalidated the WHOLE task graph on EVERY worker launch -- every
+            # Kotlin compile, KSP round and resource task -- so the CI pre-warm was thrown away and a launch paid the
+            # compiler cost inside the coordinator's own bound. On the honest-startup path the first Android worker was
+            # cut at the bound with its log stopping inside `:mesh:kspDebugKotlin`.* **The worker Test still runs
+            # FRESH without it: the committed `:mesh:board1IntegrationWorker` carrieth `outputs.upToDateWhen { false }`
+            # (android/mesh/build.gradle.kts), so an up-to-date worker is impossible by construction -- the actual
+            # `RealTransportHostRigWorkerTest` execution is mandated -- while its compiled/KSP/classpath PREREQUISITES
+            # may now legitimately stay warm.** *`--tests <klass>` then keeps the process status the worker's own.*
             # *** THE LAUNCH IS NARROWED TO THE WORKER CLASS ITSELF. ***
             #
             # *THE DEFECT THIS CLOSES: the committed task's filter is `*RealTransportHostRig*`, so EVERY worker launch
