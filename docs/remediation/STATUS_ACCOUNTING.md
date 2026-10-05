@@ -65,6 +65,23 @@
 > fresh-sequence refusal and heard-once assertions are unchanged, and no production authority changed.
 > iOS remained in progress at that checkpoint; no C3 canonical campaign started and no rc15 tag exists.
 > A newly committed candidate must earn its own remaining exact-C proofs; the failed probe is not relabelled.
+> C3's completed iOS aggregate also failed: 1406 Simulator tests reported two assertions in the same
+> seeded failure-address arm. The deliberately injected slot, seed/cycle/class and resource census
+> matched across both replays; only wall-clock `sweepTicks=10` versus `0` differed.
+> The private failure address excludes that heartbeat; the actual leak oracle and separate liveness
+> witness remain. The obsolete repeated delimiter comparison was deleted rather than repinned.
+> Hosted C4 `a71c697c` / `37324195279/1` passed its five non-iOS prerequisites, including repaired
+> Android, but failed the LabMesh octet-readout predicate wait before Simulator/integration/terminal
+> proof. Its announcement arm now uses the existing live-tree polling convention, unchanged bounds,
+> real readout/outcome/door assertions and the actual pre-send outcome baseline instead of English wording.
+> Actual release `37324195277/1` captured internal PASS and external `BLOCKED_EXTERNAL`.
+> Pre-seal smoke passed both real seeded-runtime/liveness arms on Foundation and registered iOS
+> 26.3.1 Simulator (two tests, zero failures per surface), and the actual multibyte-input → outcome →
+> announcement UI arm on iOS 26.5 (one test, zero failures). DGX retains logs and source/native receipts
+> at `mac-mini-offload/GODSTONE/evidence/board1-rc15-ios-fixture-smoke-xj8m3hnk`.
+> These selected-path results do not relabel failed C3/C4, supply a canonical campaign or satisfy fresh
+> mode-`all`. Corrected immutable C must still earn 179 semantic and two separately reported structural
+> controls, all 27 local gates, all seven hosted jobs and authenticated rc15 freeze.
 
 The COUNTS and the class memberships are re-derived from `REMEDIATION_STATE.json`; the narrative
 sections are maintained by hand and say so. Nothing here is new evidence. It states the

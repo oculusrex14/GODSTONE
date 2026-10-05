@@ -205,12 +205,25 @@ final class GsStress001RealRuntimeDriverTests: XCTestCase {
         var quarantinedIdentities: Int
         var admissionHistory: Int
         var timerLeases: Int
-        var leaseSweepTicks: Int
+        // *** THE SWEEP'S TICK COUNT IS *NOT* A CENSUS FIELD, AND THIS LINE IS THE REMEDY FOR A MEASURED DEFECT. ***
+        // *`leaseSweepTicksForTest` is the transport's own SWEEP LIVENESS instrument, incremented by a 1 Hz
+        // wall-clock job (`BleTransport.armLeaseSweepIfNeeded`: `Task.sleep(1s)` then `+= 1`). It is NOT a count of
+        // allocated owner resources, and it is NOT deterministic: under the campaign's per-cycle `start()`/`stop()`
+        // cadence the job is cancelled at `stop()` and re-armed at `start()`, so how many of its 1 s ticks a cycle
+        // happens to observe is a function of CPU speed and scheduler jitter, not of the seed.* Carried INSIDE the
+        // census `description`, it entered the quiescence failure the replay arm compares BYTE FOR BYTE — and on the
+        // real 5118d94e lane that made the address vary between two runs of the SAME seed (`…sweepTicks=10]` in the
+        // first, `…sweepTicks=0]` in the second) even though the OWNER state the address named — the injected live
+        // session slot, `slots=1` over baseline `slots=0` — was IDENTICAL in both. The liveness claim keepeth its OWN
+        // honest witness, `testGSSTRESS001EveryCensusStaysUnderItsOwnersCap`'s SUSTAINED activation, which is the
+        // shape the sweep's 1 s interval can actually be observed in; the two per-cycle campaigns below are the
+        // shape in which it can NEVER tick deterministically. A wall-clock reading must not sit in a determinism
+        // surface.*
         var description: String {
             "slots=\(sessionSlots) incarnations=\(peersWithIncarnations) observers=\(storeObservers) "
                 + "ackOutbox=\(ackOutboxDepth) obligations=\(ackObligations) ackFrames=\(ackFrames) "
                 + "quarantined=\(quarantinedIdentities) admissions=\(admissionHistory) "
-                + "leases=\(timerLeases) sweepTicks=\(leaseSweepTicks)"
+                + "leases=\(timerLeases)"
         }
     }
 
@@ -239,8 +252,7 @@ final class GsStress001RealRuntimeDriverTests: XCTestCase {
             ackFrames: runtime.ackStore.countFrames(),
             quarantinedIdentities: runtime.meshNode.ble.quarantineRecordCountForTest(),
             admissionHistory: runtime.meshNode.ble.admissionHistoryCountForTest(),
-            timerLeases: runtime.meshNode.ble.timerLeaseCountForTest(),
-            leaseSweepTicks: runtime.meshNode.ble.leaseSweepTicksForTest)
+            timerLeases: runtime.meshNode.ble.timerLeaseCountForTest())
     }
 
     // --------------------------------------------------------------------------------------------
@@ -1771,6 +1783,14 @@ final class GsStress001RealRuntimeDriverTests: XCTestCase {
     /// non-determinism rather than a clock. The cycle bound is SHORT here (the schedule and the reopen machinery are
     /// the same code the length arms exercise; this arm's subject is REPRODUCIBILITY, not endurance), and the
     /// failure is injected EARLY so the comparison is cheap and the address is stable.*
+    ///
+    /// *** MEASURED ON THE REAL 5118d94e LANE, AND IT IS THE DEFECT THIS ARM'S OWN CLAIM CAUGHT: the census it
+    /// printed DID carry a wall-clock field -- `sweepTicks`, the transport's 1 Hz lease-sweep liveness counter. Two
+    /// runs of this SAME seed produced `…sweepTicks=10]` and `…sweepTicks=0]` for the SAME owner state (the injected
+    /// `slots=1` over baseline `slots=0`), so the byte-for-byte compare reddened on a CLOCK and not on the owner.
+    /// THE CENSUS NO LONGER CARRIETH `sweepTicks` (see `OwnerCensus`), so the address is now the seed, the cycle,
+    /// the class and the owners' own counts -- which is what this comment always claimed and now MEASURABLY
+    /// isth.***
     func testGSSTRESS001TheSameSeedPrintsTheSameFirstFailureAddress() throws {
         // THE SCHEDULE IS A FUNCTION OF THE SEED ALONE -- and now the LENGTH too, so both are asserted.
         let (orderA, countsA) = classSchedule(cycles: 400)
@@ -1807,13 +1827,17 @@ final class GsStress001RealRuntimeDriverTests: XCTestCase {
                        + "address, byte for byte. A mismatch is a non-determinism the card forbids. "
                        + "first=[\(failureA)] second=[\(failureB)] ***")
 
-        // *** AND THE SAME CYCLE AND CLASS IN BOTH, READ STRUCTURALLY RATHER THAN BY WHOLE-STRING LUCK. ***
         XCTAssertEqual(first.cyclesCompleted, second.cyclesCompleted,
                        "*** both runs must stop at the same cycle. \(first.cyclesCompleted) vs "
                        + "\(second.cyclesCompleted) ***")
-        XCTAssertEqual(first.firstFailure?.components(separatedBy: " class:").first,
-                       second.firstFailure?.components(separatedBy: " class:").first,
-                       "*** and name the same cycle. ***")
+
+        // *** THE FIRST ADDRESS'S OWN BYTE-FOR-BYTE EQUALITY ABOVE ALREADY ENTAILETH THE SAME CYCLE AND CLASS: the
+        // address is `seed=… cycle=… class=… census=… why=…`, so equal strings entail an equal `cycle=`/`class=`
+        // prefix. A second parse of that prefix out of the SAME two Optionals was redundant -- and its audited form
+        // split on `" class:"` (space+colon), a separator the address never containeth, so it silently degenerated
+        // into a SECOND whole-string compare. *An incidental re-read of an already-compared string is the wording-
+        // only class the ledger condemneth: DELETED rather than re-pinned.* The determinism claim is carried by the
+        // byte-for-byte EQUALITY above and nothing weaker is needed here.
 
         // *** (3) REMOVE THE FAILURE: THE SAME SEED, THE SAME BOUND, A FRESH ESTATE, AND THE CAMPAIGN IS GREEN. ***
         let clean = try runCampaign(cycles: 400, injectedFailure: .none)

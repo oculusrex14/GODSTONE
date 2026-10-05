@@ -753,23 +753,49 @@ final class LabMeshAccessibilityUITests: XCTestCase {
         XCTAssertTrue(linkState.waitForExistence(timeout: 20), "the link state must render")
         // *** THE OCTET READOUT MUST BE A REAL MEASUREMENT, NOT A CONSTANT. ***
         XCTAssertTrue(
-            (octets.value as? String ?? "").contains("octets"),
+            (octets.value as? String ?? octets.label).contains("octets"),
             "*** THE OCTET READOUT MUST NAME ITS UNIT AND CARRY A MEASUREMENT. Observed: "
-                + "'\(octets.value as? String ?? "")' ***",
+                + "'\(octets.value as? String ?? octets.label)' ***",
         )
-        let before = octets.value as? String ?? ""
+        let before = octets.value as? String ?? octets.label
 
         let field = app.textFields["lab.conversation.field"]
         XCTAssertTrue(field.waitForExistence(timeout: 20), "the compose field must exist")
         field.tap()
         // *** A PAYLOAD WHERE CHARACTERS AND OCTETS DIVERGE: EMOJI AND ARABIC. ***
         field.typeText("⛵️ الطريق مسدود")
-        let moved = NSPredicate(format: "value != %@", before)
-        expectation(for: moved, evaluatedWith: octets)
-        waitForExpectations(timeout: 15)
-        let after = octets.value as? String ?? ""
+
+        // *** THE READOUT IS POLLED ON THE LIVE TREE, NOT WAITED ON THROUGH A PREDICATE EXPECTATION. ***
+        //
+        // *MEASURED, HOSTED RUN `37324195279` (iOS UI lane): this arm used
+        // `expectation(for: NSPredicate("value != %@"), evaluatedWith: octets)` and the predicate NEVER fulfilled
+        // across its whole 15s -- the trace shows ONE `Find` of `lab.conversation.octets` and then the timeout --
+        // **while the SAME multibyte payload moved the SAME readout, in the SAME run, on the SAME compiled tree,
+        // through the sibling suite (`LabMeshUITests.testGSINT001TheBoundedComposeCountsOctetsAndUpdatesItsReadout`).**
+        // THE PRODUCTION PATH IS NOT IN QUESTION: the source is byte-identical to the nineteen recorded green runs of
+        // this very arm, and the readout is `runtime.composeOctetsReadout(body_)` recomputed from `@State body_` on
+        // every keystroke. **THE INSTRUMENT WAS THE FLAKE.***
+        //
+        // *AND THE REPAIR IS THE SIBLING BUNDLE'S OWN, WHICH ALREADY NAMED THIS EXACT FAILURE MODE AND REPLACED IT:*
+        // **"`expectation(for: NSPredicate("label != %@"), evaluatedWith: swiftUIText)` IS A CLASSIC SILENT FALSE
+        // NEGATIVE -- a stale snapshot or KVC miss makes the expectation never fulfil even when the label HAS
+        // changed. Polling in a PLAIN LOOP removes that failure mode entirely."** *So the read is taken from the SAME
+        // live element, over the SAME 15-second bound -- **never a longer wait** -- and the claim is UNCHANGED: the
+        // readout must really follow the input, and a readout that genuinely did not move STILL reddens below.*
+        //
+        // *** AND THE FAILURE NOW NAMETH WHICH HALF BROKE. *** *The field's OWN rendered value is read beside the
+        // readout, so a future red distinguisheth "the payload never reached the field" from "the field carried it and
+        // the readout did not follow" -- the two readings the bare timeout could not tell apart.*
+        var after = before
+        let octetDeadline = Date().addingTimeInterval(15)
+        while Date() < octetDeadline {
+            after = octets.value as? String ?? octets.label
+            if after != before { break }
+            usleep(200_000)
+        }
         XCTAssertNotEqual(after, before,
-                          "*** THE READOUT MUST FOLLOW THE INPUT. Observed: '\(before)' -> '\(after)' ***")
+                          "*** THE READOUT MUST FOLLOW THE INPUT. Observed: '\(before)' -> '\(after)'; the compose "
+                              + "field itself readeth '\(field.value as? String ?? "")' ***")
         // *** AND A REAL STATUS CHANGE MUST REACH THE DOOR. ***
         //
         // *MEASURED, AND IT IS WHY THIS ARM WAS REWRITTEN: the first version typed and asserted the door WITHOUT EVER
@@ -803,12 +829,34 @@ final class LabMeshAccessibilityUITests: XCTestCase {
         XCTAssertTrue(scrollIntoView(send, in: app), "and it must be reachable")
         let outcome = element("lab.conversation.outcome", in: app)
         XCTAssertTrue(outcome.waitForExistence(timeout: 20), "the outcome must render")
+        // *** THE RENDERED BASELINE IS CAPTURED FROM THE SURFACE, NOT FROM AN ENGLISH LITERAL. ***
+        //
+        // *The transition the door must carry is "the outcome CHANGED", whatever this surface happened to render as its
+        // initial line -- so the pre-send value is READ here and the post-send value is compared against IT. **The
+        // comparison is therefore about the state transition itself, not about the incidental wording of the
+        // placeholder**, which is exactly the shape a wording-repin would fail to see.*
+        let outcomeBefore = outcome.label
         send.tap()
 
-        let outcomeMoved = NSPredicate(format: "label != %@", "nothing sent yet")
-        expectation(for: outcomeMoved, evaluatedWith: outcome)
-        waitForExpectations(timeout: 20)
-        let rendered = outcome.label
+        // *** THE SAME INSTRUMENT REPAIR AS THE OCTET READOUT ABOVE, FOR THE SAME MEASURED REASON. ***
+        //
+        // *`expectation(for:evaluatedWith:)` with a `label != %@` predicate is the shape the sibling bundle named as a
+        // CLASSIC SILENT FALSE NEGATIVE (a stale snapshot or KVC miss maketh the expectation never fulfil even when
+        // the label HAS changed). The claim is IDENTICAL and the bound is unchanged: the outcome must really LEAVE the
+        // value it rendered before the Send, within 20s, and a Send whose refusal never landed STILL reddens below.*
+        var rendered = outcome.label
+        let outcomeDeadline = Date().addingTimeInterval(20)
+        while Date() < outcomeDeadline {
+            rendered = outcome.label
+            if rendered != outcomeBefore { break }
+            usleep(200_000)
+        }
+        XCTAssertNotEqual(
+            rendered, outcomeBefore,
+            "*** SEND MUST PRODUCE A REAL OUTCOME TRANSITION: the runtime's own refusal must move the rendered outcome "
+                + "away from the value the surface was showing before the Send. Observed: '\(outcomeBefore)' -> "
+                + "'\(rendered)' ***",
+        )
 
         let deadline = Date().addingTimeInterval(15)
         var door = announced.value as? String ?? ""

@@ -273,6 +273,35 @@
 > The real affected class passed locally: **18 tests / 0 failures / 0 errors / 0 skips**, Gradle 22s.
 > At this checkpoint iOS remained in progress, and no C3 canonical campaign had started.
 > The corrected source requires a new immutable candidate; C3 is not tagged, frozen or relabelled as green.
+>
+> **Completed C3 iOS verdict:** the all-three-lane aggregate also failed. The Simulator ran 1406 tests
+> and reported two assertions in the same seeded failure-address arm. Both replays deliberately injected
+> one unreleased slot at cycle 399 and reported the same seed, cycle, class and resource census.
+> Their addresses differed only in the wall-clock heartbeat, `sweepTicks=10` versus `0`; this was not an
+> unexpected production slot leak. The private failure-address census now excludes that clock field.
+> The real resource-leak oracle, complete address equality, completed-cycle equality and independent
+> lease-sweep liveness witness remain. The obsolete delimiter-based repeat comparison was deleted,
+> not repinned. No production source, retry, census bound or schedule was changed.
+>
+> **Hosted candidate probe `a71c697c` (run `37324195279`, attempt 1): five non-iOS prerequisites PASS,
+> iOS FAILED before Simulator/integration/terminal proof.** Android passed with the complete-record fixture.
+> LabMesh's announcement arm timed out in its 15s `XCUIElement` predicate wait for the octet readout,
+> before checking the announcement. The same run's sibling multibyte-compose arm moved the readout.
+> The existing live-tree polling convention now serves the announcement arm instead of predicate/KVC
+> observation. Existing 15s/20s bounds and the real readout, outcome-transition and announcement-equality
+> assertions remain. Outcome transition compares the actual pre-send rendered baseline, not incidental
+> English placeholder wording. No production UI or accessibility delivery was changed.
+> Actual release capture `37324195277/1` passed with internal PASS and external `BLOCKED_EXTERNAL`.
+>
+> **Pre-seal repaired-path smoke, not exact-C campaign proof:** the two real seeded-runtime/liveness arms
+> passed on Foundation (8.960s) and the registered iOS 26.3.1 / `23D8133` Simulator (8.106s), both with
+> zero failures. The actual LabMesh multibyte-input → outcome-change → announcement arm passed on iOS
+> 26.5 in 21.562s. Logs and source/native-bound receipts are retained on DGX at
+> `mac-mini-offload/GODSTONE/evidence/board1-rc15-ios-fixture-smoke-xj8m3hnk`.
+> C3 and C4 remain failed, untagged probes; neither produced a canonical campaign or fresh mode-`all`
+> report. The next immutable candidate must earn its own 179 semantic controls and two separately
+> reported structural controls, portable integration, all 27 local gates and all seven hosted jobs.
+> No rc15 tag, freeze or external closure is claimed by these smoke results.
 
 
 **BOTH CANDIDATES REMAIN NO-GO.** The readiness flags are FALSE and enforced false by a passing canonical
