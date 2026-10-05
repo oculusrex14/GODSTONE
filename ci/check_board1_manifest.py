@@ -3213,7 +3213,7 @@ def _fixture_release_seam(base: Path) -> Path | None:
                               else {"jobs": jobs} if path.endswith("/jobs?per_page=100")
                               else {"artifacts": uploaded} if "/artifacts" in path
                               else {"commit": {"tree": {"sha": tree}}} if "/commits/" in path else None)
-    cp.job_log_text = lambda repo_, job_id: logs.get(str(job_id), "")
+    cp.job_log_text = lambda repo_, run_id_, attempt_, job_id: logs.get(str(job_id), "")
     if key not in _FIXTURE_RELEASE_CACHE:
         proof_dir = base.parent / "board1-release-proof-fixture"
         proof_dir.mkdir(parents=True, exist_ok=True)

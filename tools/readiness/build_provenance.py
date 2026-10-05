@@ -9,6 +9,7 @@ import re
 from pathlib import Path
 import subprocess
 import sys
+import tarfile
 import tempfile
 
 REPO = Path(__file__).resolve().parents[2]
@@ -16,6 +17,11 @@ REPO = Path(__file__).resolve().parents[2]
 EXPECTED_SOURCE = "ios/Godstone/Sources/GodstoneMesh/SQLCipherTrustedExpectation.swift"
 # Recipe inputs must be available in a clean checkout, before a lane emits outputs.
 RECIPE_FILES = ("tools/supplychain/build_sqlcipher_simulator.sh", "tools/supplychain/verify_sqlcipher_artifact.py", "docs/supplychain/SQLCIPHER.pins.json")
+#: The single archive that carries the ACTUAL tested bytes beside the record. One regular file, uncompressed TAR.
+TESTED_BYTES_ARCHIVE = "tested-bytes.tar"
+BUNDLE_MEMBER_PREFIX = "bundle/"
+IMAGE_MEMBER_PREFIX = "image/"
+_ARCHIVE_MEMBER_RE = re.compile(r"^(?:bundle|image)/.+$")
 
 
 def sha256(path: Path) -> str:
@@ -133,9 +139,9 @@ def verify_image(mode: str, stage: Path) -> dict:
         raise ValueError("image does not match approved register bytes")
     return {"mode": mode, "library_name": register["library_name"], "library_sha256": sha256(library),
             "library_bytes": library.stat().st_size,
-            # *** THE PATHS TRAVEL WITH THE DIGESTS SO THE GATE CAN RE-HASH THE ACTUAL BYTES. ***
-            # *A recorded digest with no path to re-hash is a claim about bytes nobody can consult; the stage is
-            # outside the repo by construction, and the gate re-readeth these files when the run is judged fresh.*
+            # *** ORIGINAL PATHS RECORD RUNTIME PROVENANCE; THE ARCHIVE SERVES THE TESTED BYTES. ***
+            # *The stage remains outside the repository. Fresh consumers re-hash the retained bundle/image/
+            # descriptor in tested-bytes.tar, never a local rebuild or the producing runner's temporary path.*
             "library_path": str(library), "descriptor_sha256": sha256(descriptor),
             "descriptor_path": str(descriptor),
             "pinned_source_commit": source["commit"], "pinned_source_tag": source["tag"],
@@ -144,12 +150,166 @@ def verify_image(mode: str, stage: Path) -> dict:
             "approved_toolchain": entry["toolchain"], "expected_source_sha256": sha256(REPO / EXPECTED_SOURCE)}
 
 
-def record_build(mode: str, stage: Path, bundle: Path, identity: dict, attempt: str) -> dict:
+def record_build(mode: str, stage: Path, bundle: Path, identity: dict, attempt: str,
+                 evidence_dir: Path) -> dict:
+    """*** THE RECORD IS READ-ONLY: IT RE-DERIVES THE *EXISTING* ARCHIVE, IT NEVER REGENERATES IT. ***
+
+    *The bytes that were tested are captured ONCE at build time by `retain_tested_bytes`; a later caller (a
+    `--skip-build` live comparison, the CLI) must not be able to conjure an archive from whatever is currently on
+    disk -- that would make the record a self-healing claim rather than a fact about the past run. So this function
+    DEMANDETH the archive under `evidence_dir`, re-hasheth its members, and REFUSETH when it is missing, when its
+    bytes disagree with the actual bundle/image/descriptor, or when it names no image pair or bundle file. Only a
+    real build invoketh `retain_tested_bytes` BEFORE this function.*"""
     if source_identity(identity["candidate_sha"]) != identity:
         raise ValueError("whole candidate source changed during build")
-    return {"schema_version": 2, "producer": "tools/readiness/build_provenance.py",
-            "producer_attempt": attempt, **identity, "recipe_digest": recipe_digest(),
-            "bundle_digest": tree_digest(bundle), **verify_image(mode, stage)}
+    value = {"schema_version": 3, "producer": "tools/readiness/build_provenance.py",
+             "producer_attempt": attempt, **identity, "recipe_digest": recipe_digest(),
+             "bundle_digest": tree_digest(bundle), **verify_image(mode, stage)}
+    value["tested_bytes"] = _existing_tested_bytes(Path(evidence_dir), value)
+    return value
+
+
+def _archive_error(exc: Exception) -> ValueError:
+    return ValueError(f"{TESTED_BYTES_ARCHIVE}: {exc}")
+
+
+def _existing_tested_bytes(evidence_dir: Path, facts: dict) -> dict:
+    """Re-read the archive that ALREADY exists and bind it to the live bundle/image/descriptor. NEVER writes."""
+    tested = tested_bytes_facts(evidence_dir / TESTED_BYTES_ARCHIVE, facts["library_name"])
+    if (tested["bundle_digest"] != facts["bundle_digest"] or tested["library_sha256"] != facts["library_sha256"]
+            or tested["library_bytes"] != facts["library_bytes"]
+            or tested["descriptor_sha256"] != facts["descriptor_sha256"]):
+        raise ValueError(f"{TESTED_BYTES_ARCHIVE} does not carry the bytes this record claims "
+                         "(bundle/image/descriptor mismatch)")
+    return {"path": TESTED_BYTES_ARCHIVE, "sha256": tested["archive_sha256"], "bytes": tested["archive_bytes"]}
+
+
+def tested_bytes_facts(archive: Path, library_name: str) -> dict:
+    """*** THE NON-EXTRACTING SHARED BYTE-HASH UTILITY. ***
+
+    *Stream the members of `archive` -- `bundle/<relative bundle file>` for each regular file of the tested bundle
+    and exactly `image/<library_name>` + `image/<library_name>.artifact.json` -- and return their exact facts without
+    extracting a byte to disk or holding the archive in memory. A symlink, hardlink, duplicate, special, traversal
+    or outside-root member is a REFUSAL, as is a missing image pair or an empty bundle. The bundle digest and the
+    image/descriptor facts are recomputed from the archive's OWN payload in the same path->content shape as
+    `tree_digest`.*"""
+    if not re.fullmatch(r"[^/]+", library_name):
+        raise ValueError(f"library_name {library_name!r} is not a bare file name")
+    archive = Path(archive)
+    if not archive.is_file():
+        raise ValueError(f"tested-bytes archive absent: {archive}")
+    library_member = f"{IMAGE_MEMBER_PREFIX}{library_name}"
+    descriptor_member = library_member + ".artifact.json"
+    h_archive, h_bundle, h_image, h_descriptor = hashlib.sha256(), hashlib.sha256(), hashlib.sha256(), hashlib.sha256()
+    archive_bytes = 0
+    entries: set[str] = set()
+    payload: dict[str, tuple[str, int]] = {}
+    try:
+        with archive.open("rb") as fh:
+            while True:
+                block = fh.read(1048576)
+                if not block:
+                    break
+                h_archive.update(block)
+                archive_bytes += len(block)
+        with tarfile.open(archive, "r:") as tar:
+            for member in tar:
+                name = member.name
+                if not member.isfile():
+                    raise ValueError(f"member {name!r} is type {member.type!r}; only regular files are allowed")
+                if not _ARCHIVE_MEMBER_RE.fullmatch(name) or "//" in name:
+                    raise ValueError(f"member {name!r} is outside the bundle/image roots")
+                parts = name.split("/")
+                if any(part in ("", ".", "..") for part in parts):
+                    raise ValueError(f"member {name!r} contains an empty or traversal component")
+                if name in entries:
+                    raise ValueError(f"duplicate member {name!r}")
+                entries.add(name)
+                source = tar.extractfile(member)
+                digest = hashlib.sha256()
+                size = 0
+                while True:
+                    block = source.read(1048576)
+                    if not block:
+                        break
+                    digest.update(block)
+                    size += len(block)
+                if name == library_member:
+                    h_image = digest
+                elif name == descriptor_member:
+                    h_descriptor = digest
+                elif name.startswith(BUNDLE_MEMBER_PREFIX):
+                    rel = name[len(BUNDLE_MEMBER_PREFIX):]
+                    h_bundle.update(rel.encode()); h_bundle.update(b"\0")
+                    h_bundle.update(digest.hexdigest().encode()); h_bundle.update(b"\0")
+                payload[name] = (digest.hexdigest(), size)
+    except ValueError:
+        raise
+    except (tarfile.TarError, OSError) as exc:
+        raise _archive_error(exc) from exc
+    if not any(name.startswith(BUNDLE_MEMBER_PREFIX) for name in entries):
+        raise ValueError(f"{TESTED_BYTES_ARCHIVE}: carries no bundle files")
+    for required in (library_member, descriptor_member):
+        if required not in entries:
+            raise ValueError(f"{TESTED_BYTES_ARCHIVE}: carries no {required}")
+    return {"archive_sha256": h_archive.hexdigest(), "archive_bytes": archive_bytes,
+            "bundle_digest": h_bundle.hexdigest(),
+            "library_sha256": h_image.hexdigest(),
+            "library_bytes": payload[library_member][1], "descriptor_sha256": h_descriptor.hexdigest()}
+
+
+def retain_tested_bytes(bundle: Path, image: dict, evidence_dir: Path) -> dict:
+    """*** CAPTURE THE ACTUAL TESTED BYTES, ONCE, BESIDE THE RECORD. ***
+
+    *The record must travel with the real bytes it describes: a report whose bundle/image paths reach into a local
+    `.build` tree or a `/var/folders` temp stage proves nothing to a reader who lacks those paths. So this reads the
+    VERIFIED register image and descriptor, DEREFERENCES every source file of the actual bundle, and writes exactly
+    ONE uncompressed TAR -- `bundle/<relative>` files, `image/<library_name>`, `image/<library_name>.artifact.json`
+    -- re-hashing the copied payload and REFUSING if any byte differs from the bundle's `tree_digest` or the
+    image/descriptor digests. It NEVER rebuilds and NEVER invents bytes.*"""
+    library_name = image["library_name"]
+    library = Path(image["library_path"])
+    descriptor = Path(image["descriptor_path"])
+    if not bundle.is_dir():
+        raise ValueError(f"built bundle absent: {bundle}")
+    if not library.is_file() or not descriptor.is_file():
+        raise ValueError("the retained image/descriptor pair is absent")
+    evidence_dir = Path(evidence_dir)
+    evidence_dir.mkdir(parents=True, exist_ok=True)
+    archive = evidence_dir / TESTED_BYTES_ARCHIVE
+
+    bundle_files: list[tuple[Path, str]] = []
+    for path in sorted(bundle.rglob("*")):
+        if path.is_symlink():
+            raise ValueError(f"bundle carrieth a symlink: {path.relative_to(bundle).as_posix()}")
+        if path.is_file():
+            bundle_files.append((path, path.relative_to(bundle).as_posix()))
+    if not bundle_files:
+        raise ValueError("bundle carrieth no regular files")
+    bundle_digest_value = digest_files({rel: sha256(path) for path, rel in bundle_files})
+
+    tmp = archive.with_suffix(archive.suffix + ".tmp")
+    try:
+        with tarfile.open(tmp, "w", format=tarfile.GNU_FORMAT) as tar:
+            tar.dereference = True
+            for path, rel in bundle_files:
+                tar.add(path, arcname=BUNDLE_MEMBER_PREFIX + rel, recursive=False)
+            tar.add(library, arcname=IMAGE_MEMBER_PREFIX + library_name, recursive=False)
+            tar.add(descriptor, arcname=f"{IMAGE_MEMBER_PREFIX}{library_name}.artifact.json", recursive=False)
+        checked = tested_bytes_facts(tmp, library_name)
+        if (checked["bundle_digest"] != bundle_digest_value
+                or checked["library_sha256"] != image["library_sha256"]
+                or checked["library_bytes"] != image["library_bytes"]
+                or checked["descriptor_sha256"] != image["descriptor_sha256"]):
+            raise ValueError(f"captured {TESTED_BYTES_ARCHIVE} does not match the tested bundle/image")
+        tmp.replace(archive)
+    except (tarfile.TarError, OSError) as exc:
+        tmp.unlink(missing_ok=True)
+        raise _archive_error(exc) from exc
+    except ValueError:
+        tmp.unlink(missing_ok=True)
+        raise
+    return {"path": TESTED_BYTES_ARCHIVE, "sha256": checked["archive_sha256"], "bytes": checked["archive_bytes"]}
 
 
 def main() -> int:
@@ -171,7 +331,13 @@ def main() -> int:
         else:
             if not args.attempt or not args.identity or not args.bundle:
                 raise ValueError("record requires build identity, actual bundle, and unique producer attempt")
-            value = record_build(args.mode, args.stage, args.bundle, json.loads(args.identity.read_text()), args.attempt)
+            if args.out is None:
+                raise ValueError("record requires --out: the tested-bytes archive MUST travel beside the record, "
+                                 "so the record's evidence directory is the --out file's parent")
+            identity = json.loads(args.identity.read_text())
+            image = verify_image(args.mode, args.stage)
+            retain_tested_bytes(args.bundle, image, args.out.parent)
+            value = record_build(args.mode, args.stage, args.bundle, identity, args.attempt, args.out.parent)
         text = json.dumps(value, sort_keys=True, indent=2) + "\n"
         if args.out:
             args.out.write_text(text)

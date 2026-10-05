@@ -170,12 +170,19 @@ def fetch_artifacts(repo: str, run_id: int) -> list[dict[str, Any]]:
                        f"?per_page=100").get("artifacts") or [])
 
 
-def job_log_text(repo: str, job_id: int) -> str:
-    """The job's raw log, or '' when the API will not serve it (a 302 to a blob)."""
-    try:
-        return _run(["gh", "api", f"repos/{repo}/actions/jobs/{job_id}/logs"])
-    except CaptureError:
-        return ""
+def job_log_text(repo: str, run_id: int, attempt: int, job_id: int) -> str:
+    """The PINNED attempt's raw job log, read from the run's own attempt.
+
+    `gh run view --attempt --job --log` reade the exact pinned attempt; a log the
+    pinned attempt cannot serve raiseth `CaptureError` naming the run, attempt and
+    job -- an unavailable log is never mistaken for an empty one."""
+    text = _run(["gh", "run", "view", str(run_id), "--repo", repo,
+                 "--attempt", str(attempt), "--job", str(job_id), "--log"])
+    if not text.strip():
+        raise CaptureError(f"the log of job {job_id} in run {run_id} attempt {attempt} "
+                           f"of {repo!r} is unavailable: the pinned attempt served no "
+                           f"log content")
+    return text
 
 
 def boundary_from_log(text: str) -> dict[str, Any] | None:
@@ -571,7 +578,8 @@ def _required_uploaded_artifacts(uploaded: Sequence[Mapping[str, Any]]) -> dict[
     return by_name
 
 
-def _pinned_logs(repo: str, jobs: Sequence[Mapping[str, Any]]) -> dict[str, str]:
+def _pinned_logs(repo: str, run_id: int, attempt: int,
+                 jobs: Sequence[Mapping[str, Any]]) -> dict[str, str]:
     """The logs of the five required jobs, keyed by job id -- no other job's log."""
     specs = INTERNAL_JOB_SPECS + EXTERNAL_JOB_SPECS
     wanted = []
@@ -579,7 +587,8 @@ def _pinned_logs(repo: str, jobs: Sequence[Mapping[str, Any]]) -> dict[str, str]
         name = str(job.get("name") or "")
         if any(spec["display_name"] == name or spec["job_id"] in name for spec in specs):
             wanted.append(job)
-    return {str(j["id"]): job_log_text(repo, int(j["id"])) for j in wanted}
+    return {str(j["id"]): job_log_text(repo, run_id, attempt, int(j["id"]))
+            for j in wanted}
 
 
 def capture(repo: str, run_id: int, attempt: int, candidate_sha: str,
@@ -626,7 +635,7 @@ def capture(repo: str, run_id: int, attempt: int, candidate_sha: str,
     jobs = fetch_jobs(repo, run_id, attempt)
     uploaded = _required_uploaded_artifacts(fetch_artifacts(repo, run_id))
     artifacts = {name: _artifact_row(name, meta) for name, meta in uploaded.items()}
-    logs = _pinned_logs(repo, jobs)
+    logs = _pinned_logs(repo, run_id, attempt, jobs)
     remote_tree = actual_remote_tree(repo, candidate_sha, tree_sha)
     document = map_facts_to_document(candidate_sha=candidate_sha, tree_sha=remote_tree,
                                      run=run, jobs=jobs, artifacts=artifacts, logs=logs)

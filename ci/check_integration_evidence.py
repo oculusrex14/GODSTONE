@@ -37,6 +37,11 @@ THE LAW THIS GATE ENFORCES -- EACH CLAUSE IS A MEASURED DEFECT CLASS FROM ELSEWH
      run distinguishable from a re-committed old one.**
   6. NO FABRICATED GREEN. *A report claiming a mode it did not run, a `schema_version`/`protocol_version` it does not
      carry, or a transcript whose framing the report cannot describe, is refused.*
+  7. THE TESTED BYTES TRAVEL, AND THE ARCHIVE IS THE AUTHORITY. *A fresh (schema-3) report carrieth the actual bytes
+     it tested as `tested-bytes.tar` beside it; the gate re-hasheth the raw archive AND streams its members, binding
+     the bundle/image/descriptor to the attestation's recorded facts and the image to the REGISTER's approved
+     `expected_output`.* **A `bundle_path`/`library_path`/`descriptor_path` is runtime provenance only -- a local
+     `.build` tree or a resurrected `/tmp` stage is NEVER consulted, so the evidence can be judged in any checkout.**
 
 *THE GATE PRODUCETH A VERDICT AND NAMETH EVERY CLAUSE IT REFUSED; IT NEVER EDITS THE EVIDENCE. The coordinator
 PRODUCETH; this JUDGETH.*
@@ -46,17 +51,27 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import io
 import json
 import os
 import re
 import sys
 import subprocess
+import tarfile
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
 
 SCHEMA_VERSION = 1
 PROTOCOL_VERSION = 1
+
+#: *** THE ONE ARCHIVE NAME A FRESH REPORT MAY SERVE ITS TESTED BYTES UNDER. ***
+#:
+#: *The producer's `retain_tested_bytes` writeth `tested-bytes.tar` into the evidence dir beside
+#: `integration-report.json`; the attestation's nested `tested_bytes.path` must name exactly this, resolved under the
+#: report directory. **An absolute path or a temp-dir fallback is refused: the bytes must TRAVEL with the evidence,
+#: or a reader in another checkout cannot judge them at all.***
+TESTED_BYTES_ARCHIVE = "tested-bytes.tar"
 
 #: The two live foreign-platform directions and the four controls, exactly as the coordinator's own constants name
 #: them. *A run of `mode=all` carrieth every `(direction, control)` pair below.*
@@ -464,7 +479,106 @@ def check_cancellation_negative(report: dict) -> list[str]:
     return problems
 
 
-def check_build_attestation(report: dict, *, recompute: bool = False) -> list[str]:
+def _tested_bytes_problems(report: dict, report_dir: Path) -> list[str]:
+    """*** THE SERVED ARCHIVE'S STRUCTURAL SHAPE, VALIDATED ALWAYS (RECOMPUTED OR NOT). ***
+
+    *The attestation's nested `tested_bytes` must be a proper dict naming EXACTLY `tested-bytes.tar` under the report
+    directory, with a raw-tar sha256 and a POSITIVE byte count. **A report that names an absolute path, a temp path or
+    a zero/negative size is refused before any payload byte is examined** -- the `report_dir`-relative name is the
+    whole point of shipping the archive, because a reader in another checkout must be able to bind the bytes it was
+    handed.*
+    """
+    problems: list[str] = []
+    att = report.get("build_attestation")
+    if not isinstance(att, dict):
+        return problems
+    tb = att.get("tested_bytes")
+    if not isinstance(tb, dict) or not tb:
+        problems.append("integration evidence: the build attestation carrieth NO `tested_bytes` mapping -- *the "
+                        "served raw tar and its payload are the only bytes a reader can bind; a report without it "
+                        "bindeth nothing*")
+        return problems
+    path = tb.get("path")
+    if path != TESTED_BYTES_ARCHIVE:
+        problems.append(f"integration evidence: the attestation's tested_bytes.path is {path!r}, expected "
+                        f"{TESTED_BYTES_ARCHIVE!r} resolved under {report_dir} -- *an absolute or temp path is not "
+                        f"a served archive; the bytes must travel beside the report*")
+    sha = tb.get("sha256")
+    if not isinstance(sha, str) or not re.fullmatch(r"[0-9a-f]{64}", sha):
+        problems.append(f"integration evidence: the attestation's tested_bytes.sha256 is {sha!r}, not a lowercase "
+                        f"sha256 of the raw archive")
+    nbytes = tb.get("bytes")
+    if not isinstance(nbytes, int) or isinstance(nbytes, bool) or nbytes <= 0:
+        problems.append(f"integration evidence: the attestation's tested_bytes.bytes is {nbytes!r}, not a positive "
+                        f"integer byte count")
+    return problems
+
+
+def _served_archive_problems(att: dict, report_dir: Path, expected: dict) -> list[str]:
+    """*** THE SERVED ARCHIVE IS THE ONLY SOURCE OF TESTED BYTES; NO LOCAL PATH IS EVER CONSULTED. ***
+
+    *This is the transportable half of the freshness clause: it binds the raw `tested-bytes.tar` (sha + byte count)
+    and streams its members, requiring the archive's OWN bundle digest, image sha/byte count and descriptor sha to
+    equal the attestation's recorded values AND the image to equal the REGISTER's approved `expected_output`. **The
+    caller's `bundle_path`/`library_path`/`descriptor_path` are runtime provenance only -- never reached here -- so a
+    local `.build` tree or a resurrected `/tmp` stage cannot shadow the packaged bytes.***
+    """
+    problems: list[str] = []
+    sys.path.insert(0, str(REPO / "tools" / "readiness"))
+    import build_provenance
+    tb = att.get("tested_bytes") if isinstance(att.get("tested_bytes"), dict) else {}
+    archive = report_dir / TESTED_BYTES_ARCHIVE
+    if not archive.is_file():
+        problems.append(f"integration evidence: the served archive `{TESTED_BYTES_ARCHIVE}` is ABSENT under "
+                        f"{report_dir} -- *the report names bytes it does not carry; no local `.build`/temp fallback "
+                        f"is consulted*")
+        return problems
+    # (a) *** THE RAW ARCHIVE IS BOUND BY SHA AND BYTE COUNT -- the bytes that travelled. ***
+    actual_sha = sha256_file(archive)
+    actual_bytes = archive.stat().st_size
+    if tb.get("sha256") != actual_sha:
+        problems.append(f"integration evidence: the served archive `{TESTED_BYTES_ARCHIVE}` hash eth to "
+                        f"{actual_sha[:16]}… but the attestation records tested_bytes.sha256 "
+                        f"{str(tb.get('sha256'))[:16]}… -- *the raw tar itself was swapped, so every member below "
+                        f"is already suspect*")
+    if tb.get("bytes") != actual_bytes:
+        problems.append(f"integration evidence: the served archive is {actual_bytes} bytes but the attestation "
+                        f"records tested_bytes.bytes={tb.get('bytes')!r}")
+    # (b) *** THE PAYLOAD IS STREAMED AND EVERY MEMBER IS BOUND -- a digest-updated tar whose MEMBER bytes changed
+    #     must fail on the member facts even when its raw sha was recomputed to match. ***
+    try:
+        facts = build_provenance.tested_bytes_facts(archive, str(att.get("library_name")))
+    except (ValueError, OSError, tarfile.TarError) as exc:
+        problems.append(f"integration evidence: the served archive cannot be read: {exc} -- *a malformed, unsafe or "
+                        f"incomplete archive binds nothing*")
+        return problems
+    if facts.get("archive_sha256") != tb.get("sha256") or facts.get("archive_bytes") != tb.get("bytes"):
+        problems.append("integration evidence: the shared archive reader disagreeth on the raw archive's own "
+                        "sha256/byte count -- *one of the two readers is not hashing the bytes it was handed*")
+    if facts.get("bundle_digest") != att.get("bundle_digest"):
+        problems.append(f"integration evidence: the served bundle hashes to "
+                        f"{str(facts.get('bundle_digest'))[:16]}…, but the attestation recorded bundle_digest "
+                        f"{str(att.get('bundle_digest'))[:16]}… -- *the fixture in the served archive is not the "
+                        f"attested bundle*")
+    if facts.get("library_sha256") != att.get("library_sha256") or \
+            facts.get("library_sha256") != expected.get("sha256"):
+        problems.append(f"integration evidence: the served image hashes to "
+                        f"{str(facts.get('library_sha256'))[:16]}…, but the attestation records "
+                        f"{str(att.get('library_sha256'))[:16]}… and the REGISTER authoriseth "
+                        f"{str(expected.get('sha256'))[:16]}… -- *the dlopened image is not the approved one*")
+    if facts.get("library_bytes") != att.get("library_bytes") or \
+            facts.get("library_bytes") != expected.get("bytes"):
+        problems.append(f"integration evidence: the served image is {facts.get('library_bytes')!r} bytes, but the "
+                        f"attestation records library_bytes={att.get('library_bytes')!r} and the REGISTER "
+                        f"authoriseth {expected.get('bytes')!r}")
+    if facts.get("descriptor_sha256") != att.get("descriptor_sha256"):
+        problems.append(f"integration evidence: the served descriptor hashes to "
+                        f"{str(facts.get('descriptor_sha256'))[:16]}…, but the attestation records "
+                        f"{str(att.get('descriptor_sha256'))[:16]}… -- *the sidecar's bytes are the fact*")
+    return problems
+
+
+def check_build_attestation(report: dict, report_dir: Path, *, recompute: bool = False) -> list[str]:
     """*** THE BUILT FIXTURE MUST BE IDENTITY-BOUND, NOT ASSUMED, AND NOT SELF-DECLARED. ***
 
     *THE DEFECT THIS CLOSES, AND IT HAS TWO HALVES. First, `--skip-build` once assumed an artifact and a caller
@@ -489,18 +603,19 @@ def check_build_attestation(report: dict, *, recompute: bool = False) -> list[st
         return problems
     # *** A SELF-DECLARED ATTESTATION IS REFUSED OUTRIGHT. ***
     #
-    # *The real producer (`build_provenance.record_build` -> `verify_image`) emiteth schema 2 WITHOUT any
+    # *The real producer (`build_provenance.record_build` -> `verify_image`) emiteth schema 3 WITHOUT any
     # agreement booleans -- agreement is COMPUTED here from the register and the bytes. A report carryeth those
     # keys only if a writer manufactured them, which is the exact forgery class this clause existeth to catch.*
     for self_claim in ("library_agrees_with_register", "pinned_source_commit_matches_register",
                         "register_expected_sha256"):
         if self_claim in att:
             problems.append(f"integration evidence: the build attestation carrieth the self-claim field "
-                            f"`{self_claim}` -- *the schema-2 producer never emitseth agreement booleans; a report "
+                            f"`{self_claim}` -- *the schema-3 producer never emitseth agreement booleans; a report "
                             f"that ASSERTS its own agreement is not the record this gate trusteth*")
-    if att.get("schema_version") != 2:
+    if att.get("schema_version") != 3:
         problems.append(f"integration evidence: the build attestation schema is {att.get('schema_version')!r}, "
-                        f"expected 2 -- *schema 1 was the self-claim shape this clause replaced*")
+                        f"expected 3 -- *schema 2 lacked the served `tested_bytes` archive, so its recorded "
+                        f"library/bundle digests were claims about bytes no reader was handed*")
     if att.get("producer") != "tools/readiness/build_provenance.py":
         problems.append(f"integration evidence: the build attestation producer is {att.get('producer')!r}, "
                         f"expected 'tools/readiness/build_provenance.py' -- *only the building runner attesteth*")
@@ -511,6 +626,8 @@ def check_build_attestation(report: dict, *, recompute: bool = False) -> list[st
                 "pinned_arch", "pinned_cipher_version_major", "approved_toolchain", "expected_source_sha256"):
         if not att.get(key):
             problems.append(f"integration evidence: the build attestation carrieth NO `{key}`")
+    # *** THE SERVED ARCHIVE'S STRUCTURE IS JUDGED ALWAYS, RECOMPUTED OR NOT. ***
+    problems.extend(_tested_bytes_problems(report, report_dir))
     # *** THE REGISTER, NOT THE SIDECAR, IS THE SUPPLY AUTHORITY. ***
     register_ok = False
     try:
@@ -544,59 +661,38 @@ def check_build_attestation(report: dict, *, recompute: bool = False) -> list[st
                                 f"{str(att.get(key))[:16]}… -- *the run and its build record name different bytes*")
     except (ValueError, OSError, KeyError, ImportError) as exc:
         problems.append(f"integration evidence: the attestation cannot be checked against the live register: {exc}")
-    if recompute and register_ok:
-        # *** FRESHNESS: EVERY DIGEST RECOMPUTED FROM THE BYTES ON DISK. ***
-        # *A recorded digest is a CLAIM about a past build; only a hash taken NOW from the live tree, the live
-        # bundle and the staged image proves this candidate is STILL what was attested. The caller's hashes and
-        # booleans authorise nothing by themselves.*
-        try:
-            live_identity = build_provenance.source_identity(report.get("candidate_sha"))
-        except (ValueError, OSError, subprocess.CalledProcessError) as exc:
-            live_identity = None
-            problems.append(f"integration evidence: candidate identity re-derivation REFUSED: {exc} -- *the "
-                            f"attested candidate is not the clean current HEAD, so the run is not bound to a "
-                            f"fresh revision*")
-        if live_identity is not None:
-            for key in ("candidate_sha", "candidate_tree", "whole_source_digest"):
-                if att.get(key) != live_identity.get(key):
-                    problems.append(f"integration evidence: attestation {key} is stale -- the live tree hash eth "
-                                    f"{str(live_identity.get(key))[:16]}…, attestation says {str(att.get(key))[:16]}…")
-        if att.get("recipe_digest") != build_provenance.recipe_digest():
-            problems.append("integration evidence: the recipe_digest does not recompute from the live builder/"
-                            "verifier/register/expectation bytes -- *the build was not made by THIS recipe*")
-        bundle = report.get("bundle_path") or att.get("bundle_path")
-        if bundle:
-            bundle_path = Path(bundle)
-            if not bundle_path.is_absolute():
-                bundle_path = REPO / bundle_path
-            try:
-                if att.get("bundle_digest") != build_provenance.tree_digest(bundle_path):
-                    problems.append(f"integration evidence: the bundle at {bundle} does not hash to the attested "
-                                    f"bundle_digest -- *the tested fixture is not the attested bytes*")
-            except ValueError as exc:
-                problems.append(f"integration evidence: the attested bundle is unreadable: {exc}")
-        else:
-            problems.append("integration evidence: no `bundle_path` travelseth with the report, so the bundle "
-                            "digest CANNOT be recomputed -- *a recorded hash with no bytes to check is a claim*")
-        for path_key, digest_key, label in (("library_path", "library_sha256", "staged image"),
-                                              ("descriptor_path", "descriptor_sha256", "descriptor")):
-            target = att.get(path_key)
-            if not target:
-                continue
-            target_path = Path(target)
-            if target_path.is_file():
-                if att.get(digest_key) != sha256_file(target_path):
-                    problems.append(f"integration evidence: the {label} at {target} does not hash to the "
-                                    f"attested {digest_key} -- *the sidecar is a self-report; the bytes are the "
-                                    f"fact*")
-            elif label == "staged image":
-                problems.append(f"integration evidence: the attested staged image {target} is ABSENT -- *the run "
-                                f"claims a dlopen target that is not on disk*")
-        expectation = REPO / "ios/Godstone/Sources/GodstoneMesh/SQLCipherTrustedExpectation.swift"
-        if expectation.is_file() and att.get("expected_source_sha256") != sha256_file(expectation):
-            problems.append("integration evidence: the tracked compiled-in SQLCipher expectation does not hash to "
-                            "the attested expected_source_sha256 -- *the compiled bytes no longer describe the "
-                            "register's image*")
+    # *** THE FRESHNESS HALF NOW JUDGES THE SERVED ARCHIVE, NOT THE PATHS THE BUILD HAPPENED TO USE. ***
+    #
+    # *THE DEFECT THIS CLOSES: the old recompute re-hashed `bundle_path`/`library_path`/`descriptor_path` -- the
+    # original `.build` tree and the staged temp image. On the producing host those paths exist; on a reader's
+    # checkout they do not (the staged `/tmp` image is `mkdtemp`-random and is GONE), so the check was unsatisfiable
+    # off-host and a caller could reach whatever local `.build` happened to be there. **The tested bytes now travel
+    # INSIDE the report as `tested-bytes.tar`, and this clause re-hashes that archive's raw bytes AND streams its
+    # members to bind the attested bundle/library/descriptor. A local `.build` shadow is never consulted.***
+    if not recompute or not register_ok:
+        return problems
+    try:
+        live_identity = build_provenance.source_identity(report.get("candidate_sha"))
+    except (ValueError, OSError, subprocess.CalledProcessError) as exc:
+        live_identity = None
+        problems.append(f"integration evidence: candidate identity re-derivation REFUSED: {exc} -- *the "
+                        f"attested candidate is not the clean current HEAD, so the run is not bound to a "
+                        f"fresh revision*")
+    if live_identity is not None:
+        for key in ("candidate_sha", "candidate_tree", "whole_source_digest"):
+            if att.get(key) != live_identity.get(key):
+                problems.append(f"integration evidence: attestation {key} is stale -- the live tree hash eth "
+                                f"{str(live_identity.get(key))[:16]}…, attestation says {str(att.get(key))[:16]}…")
+    if att.get("recipe_digest") != build_provenance.recipe_digest():
+        problems.append("integration evidence: the recipe_digest does not recompute from the live builder/"
+                        "verifier/register/expectation bytes -- *the build was not made by THIS recipe*")
+    _register, _source, entry = build_provenance._register_entry(str(att.get("mode", "")))
+    problems.extend(_served_archive_problems(att, report_dir, entry["expected_output"]))
+    expectation = REPO / "ios/Godstone/Sources/GodstoneMesh/SQLCipherTrustedExpectation.swift"
+    if expectation.is_file() and att.get("expected_source_sha256") != sha256_file(expectation):
+        problems.append("integration evidence: the tracked compiled-in SQLCipher expectation does not hash to "
+                        "the attested expected_source_sha256 -- *the compiled bytes no longer describe the "
+                        "register's image*")
     return problems
 
 
@@ -875,7 +971,7 @@ def check_report(report_dir: Path, *, require_mode: str | None = None,
     # gate's own selftest turneth it ON to prove it BITES. A FRESH run has no such exemption: `check_report`'s
     # default is ON, and the terminal job calls it with the default.*
     if check_fresh_run_proofs:
-        problems.extend(check_build_attestation(report, recompute=check_inputs))
+        problems.extend(check_build_attestation(report, report_dir, recompute=check_inputs))
         problems.extend(check_terminations(report, totals))
         problems.extend(check_reopened_estate_proofs(report))
         problems.extend(check_cancellation_negative(report))
@@ -913,6 +1009,24 @@ def selftest(fixtures_root: Path | str | None = None) -> int:
     st_expectation = REPO / build_provenance.EXPECTED_SOURCE
     st_expectation_sha = (sha256_file(st_expectation) if st_expectation.is_file()
                           else hashlib.sha256(b"selftest expectation:" + st_recipe.encode()).hexdigest())
+    # *** THE SYNTHETIC SERVED ARCHIVE'S NAMES -- one bundle file plus the exact image pair. ***
+    st_bundle_rel = "GodstoneMeshTests.xctest/GodstoneMeshTests"
+    st_bundle_bytes = b"selftest built test bundle bytes\n"
+    st_library_bytes = b"selftest staged sqlcipher image bytes\n" * 8
+    st_descriptor_bytes = b'{"selftest": "artifact descriptor"}\n'
+
+    def make_served_tar(bundle_rel: str, bundle_bytes: bytes, library_name: str,
+                        library_bytes: bytes, descriptor_bytes: bytes) -> bytes:
+        """A raw uncompressed tar carrying ONE bundle file plus the exact image pair, in memory."""
+        buf = io.BytesIO()
+        with tarfile.open(fileobj=buf, mode="w", format=tarfile.GNU_FORMAT) as tar:
+            for name, payload in ((f"bundle/{bundle_rel}", bundle_bytes),
+                                  (f"image/{library_name}", library_bytes),
+                                  (f"image/{library_name}.artifact.json", descriptor_bytes)):
+                info = tarfile.TarInfo(name)
+                info.size = len(payload)
+                tar.addfile(info, io.BytesIO(payload))
+        return buf.getvalue()
 
     # *** THE FIXTURE ROOT IS RESOLVED ONCE, LOUDLY. *** *An absent supplied root is a typed refusal, not a raw
     # `FileNotFoundError` from a later `read_bytes()`.*
@@ -998,15 +1112,18 @@ def selftest(fixtures_root: Path | str | None = None) -> int:
             rep[_key] = _value
         rep["bundle_path"] = "ios/Packages/GodstoneFoundation/.build/debug/GodstoneMeshTests.xctest"
         rep["build_attestation"] = {
-            # *** SCHEMA 2: the producer's shape -- recorded facts, NO agreement booleans. ***
-            "schema_version": 2, "producer": "tools/readiness/build_provenance.py",
+            # *** SCHEMA 3: the producer's current shape -- recorded facts PLUS the served archive, NO agreement
+            #     booleans. ***
+            "schema_version": 3, "producer": "tools/readiness/build_provenance.py",
             "producer_attempt": rep.get("run_id") or "selftest-attempt", "mode": "macos",
             **identity, "source_digest": rep.get("input_digest", "0" * 64),
-            "recipe_digest": st_recipe, "bundle_digest": "f" * 64,
+            "recipe_digest": st_recipe,
+            "bundle_digest": build_provenance.digest_files(
+                {st_bundle_rel: hashlib.sha256(st_bundle_bytes).hexdigest()}),
             "library_name": st_register["library_name"],
             "library_sha256": st_expected["sha256"], "library_bytes": st_expected["bytes"],
             "library_path": f"/tmp/gs-selftest-{rep.get('run_id')}/libsqlcipher.0.dylib",
-            "descriptor_sha256": "b" * 64,
+            "descriptor_sha256": hashlib.sha256(st_descriptor_bytes).hexdigest(),
             "descriptor_path": f"/tmp/gs-selftest-{rep.get('run_id')}/libsqlcipher.0.dylib.artifact.json",
             "pinned_source_commit": st_source["commit"], "pinned_source_tag": st_source["tag"],
             "pinned_source_repo": st_source["repo"], "pinned_platform": st_entry["platform"],
@@ -1014,6 +1131,16 @@ def selftest(fixtures_root: Path | str | None = None) -> int:
             "pinned_cipher_version_major": st_register["cipher_version_major"],
             "approved_toolchain": st_entry["toolchain"],
             "expected_source_sha256": st_expectation_sha,
+        }
+        # *** THE SERVED ARCHIVE: ONE bundle file PLUS the exact image pair, as a raw uncompressed tar beside the
+        #     report. Its raw sha/byte count are recorded in the nested `tested_bytes`. ***
+        raw = make_served_tar(st_bundle_rel, st_bundle_bytes, st_register["library_name"],
+                              st_library_bytes, st_descriptor_bytes)
+        (d / TESTED_BYTES_ARCHIVE).write_bytes(raw)
+        rep["build_attestation"]["tested_bytes"] = {
+            "path": TESTED_BYTES_ARCHIVE,
+            "sha256": hashlib.sha256(raw).hexdigest(),
+            "bytes": len(raw),
         }
         rep["build_attestation_verified"] = False
         rep["skip_build"] = False
@@ -1067,9 +1194,11 @@ def selftest(fixtures_root: Path | str | None = None) -> int:
 
     def att_case(name: str, mutate, needle: str, *, recompute: bool = False) -> None:
         with tempfile.TemporaryDirectory() as td:
-            report = base_report(Path(td))
-        mutate(report, None)
-        _assert_case(name, "red", check_build_attestation(report, recompute=recompute), needle)
+            d = Path(td)
+            report = base_report(d)
+            mutate(report, d)
+            probs = check_build_attestation(report, d, recompute=recompute)
+        _assert_case(name, "red", probs, needle)
 
     def crash_case(name: str, mutate, needle: str) -> None:
         term = synthetic_crash_terms()[0]
@@ -1368,6 +1497,19 @@ def selftest(fixtures_root: Path | str | None = None) -> int:
     crash_case("30c. the pre-halt declaration does not declare the halt code",
                lambda t, d: t.__setitem__("about_to_halt_code", 0),
                "declare the halt code")
+
+    # 31-32. *** THE SERVED ARCHIVE'S STRUCTURAL REFUSALS (register-independent). ***
+    #
+    # *The PAYLOAD substitutions (bundle/image/descriptor byte swaps and a local-path shadow) are proven by the
+    # dedicated `ServedTestedBytes` court in `tools/readiness/tests/test_integration_evidence.py`, which builds a
+    # self-consistent synthetic archive and its own register-style `expected_output` -- a recompute-based case here
+    # could not be self-consistent, because this base must simultaneously satisfy the LIVE register's image digest.*
+    att_case("31. the attestation carrieth NO served tested_bytes mapping",
+             lambda r, d: r["build_attestation"].pop("tested_bytes", None),
+             "NO `tested_bytes`", recompute=False)
+    att_case("32. the tested_bytes names a non-served archive path",
+             lambda r, d: r["build_attestation"]["tested_bytes"].__setitem__("path", "/tmp/elsewhere.tar"),
+             "tested_bytes.path", recompute=False)
 
     width = max(len(c[0]) for c in results)
     print("\n== integration-evidence selftest: mutation | expected | observed | verdict ==")

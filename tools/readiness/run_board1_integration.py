@@ -1201,11 +1201,15 @@ class Runner:
         self.bundle_digest_value = bundle_digest(self.resolve_swift_bundle())[0]
         self.log(f"  built macOS test bundle digest = {self.bundle_digest_value}")
         # *** AND THE BUILD'S ATTESTATION IS WRITTEN, SO AN ASSUMED BUILD CAN BE VERIFIED AGAINST WHAT WAS BUILT. ***
-        self.build_attestation_value = self.make_build_attestation("macos")
+        # *** THE ACTUAL TESTED BYTES ARE RETAINED FIRST, BESIDE THE RECORD, SO THE RECORD IS RE-READABLE WITHOUT
+        # THE LOCAL `.build` BUNDLE OR THE STAGED IMAGE PATH SURVIVING. *** *An initial build is the ONLY caller of
+        # `retain_tested_bytes`: every later consumer re-reads this archive, never regenerates it.*
+        self.build_attestation_value = self.make_build_attestation("macos", evidence_dir=self.evidence_dir, retain=True)
         attestation_path = self.evidence_dir / "build-attestation.json"
         attestation_path.write_text(json.dumps(self.build_attestation_value, indent=2) + "\n")
         self.log(f"  build attestation = {attestation_path.name} "
-                 f"(library_present={self.build_attestation_value.get('library_present')})")
+                 f"(library_present={self.build_attestation_value.get('library_present')}) "
+                 f"tested_bytes={(self.build_attestation_value.get('tested_bytes') or {}).get('bytes')}")
 
     def _require_skip_build_binding(self) -> None:
         """*** `--skip-build` REQUIRES THE REAL BUILD'S ATTESTATION **AND** AN EXACT CANDIDATE SHA. ***"""
@@ -1223,11 +1227,18 @@ class Runner:
                  f"{self.args.candidate_sha[:16]}… ***")
 
 
-    def make_build_attestation(self, mode: str) -> dict[str, Any]:
+    def make_build_attestation(self, mode: str, *, evidence_dir: Path,
+                               retain: bool = False) -> dict[str, Any]:
+        """*** `record_build` IS READ-ONLY: it re-derives the EXISTING tested-bytes archive under `evidence_dir`.
+        Only an INITIAL actual build passeth `retain=True`, which captures the bytes ONCE; every other caller (the
+        `--skip-build` live comparison) must already find the archive it verifies a previous run recorded. ***"""
         try:
-            value = build_provenance.record_build(
-                mode, Path(os.environ["GODSTONE_SQLCIPHER_ARTIFACT_DIR"]),
-                self.resolve_swift_bundle(), self.identity, self.run_id)
+            stage = Path(os.environ["GODSTONE_SQLCIPHER_ARTIFACT_DIR"])
+            bundle = self.resolve_swift_bundle()
+            if retain:
+                build_provenance.retain_tested_bytes(
+                    bundle, build_provenance.verify_image(mode, stage), evidence_dir)
+            value = build_provenance.record_build(mode, stage, bundle, self.identity, self.run_id, evidence_dir)
             value["source_digest"] = self.digest
             return value
         except (KeyError, ValueError, OSError, subprocess.CalledProcessError) as exc:
@@ -1267,10 +1278,28 @@ class Runner:
             problems, _ = check_report(record_path.parent, check_fixture_collision=False)
             if problems:
                 raise ValueError("previous build evidence refused: " + "; ".join(problems))
-            live = self.make_build_attestation("macos")
+            # *** THE LIVE INPUTS MUST STILL PRODUCE THE RECORDED FACTS, AND THE PREVIOUS RUN'S *EXISTING*
+            # TESTED-BYTES ARCHIVE IS THE ONE COMPARED -- `record_build` is READ-ONLY and NEVER regenerates it, so a
+            # wrong previous run/source/bundle/image/archive REFUSETH here instead of self-healing. ***
+            live = self.make_build_attestation("macos", evidence_dir=record_path.parent)
             live["producer_attempt"] = recorded.get("producer_attempt")
-            if live != recorded:
+            if live.get("tested_bytes") != recorded.get("tested_bytes"):
+                raise ValueError("tested-bytes archive is absent or differs from the completed run's")
+            live.pop("tested_bytes")
+            recorded_facts = dict(recorded)
+            recorded_facts.pop("tested_bytes", None)
+            if live != recorded_facts:
                 raise ValueError("candidate/tree/whole source/recipe/bundle/image/expected source differs")
+            # *** AND THE VERIFIED ORIGINAL ARCHIVE IS COPIED INTO THIS RUN'S EVIDENCE DIR, SO `--skip-build` DOES NOT
+            # REBUILD AN ARCHIVAL PROOF OF A PREVIOUS RUN -- IT CARRIES THE PREVIOUS RUN'S VERIFIED BYTES FORWARD. ***
+            source = record_path.parent / build_provenance.TESTED_BYTES_ARCHIVE
+            destination = self.evidence_dir / build_provenance.TESTED_BYTES_ARCHIVE
+            if source.resolve() != destination.resolve():
+                shutil.copyfile(source, destination)
+            expected_archive = recorded.get("tested_bytes") or {}
+            if (not destination.is_file() or destination.stat().st_size != expected_archive.get("bytes")
+                    or sha256_file(destination) != expected_archive.get("sha256")):
+                raise ValueError("the archival proof carried forward does not match the completed run's record")
         except (ValueError, OSError, subprocess.CalledProcessError) as exc:
             raise Refused(f"--skip-build attestation REFUSED: {exc}") from exc
         self._compile_android_fixtures()
@@ -2363,8 +2392,8 @@ class Runner:
             "input_files": self.input_files,
             "toolchain": self.toolchains,
             # *** THE BUILT FIXTURE'S OWN DIGEST, SO A READER CAN BIND THE RUN TO THE EXACT BUNDLE IT EXERCISED. ***
-            # *The PATH travelseth too, so the gate re-hasheth the bundle over the bytes on disk rather than trusting
-            # the recorded digest -- a recorded hash is a claim, a recomputed hash is a fact about these bytes.*
+            # *The path records where workers ran. The served archive carries these exact bytes, revalidated
+            # against the live bundle and image after the workers finish, before any PASS report is published.*
             "bundle_digest": self.bundle_digest_value,
             "bundle_path": (str(self._swift_bundle.relative_to(REPO)) if self._swift_bundle
                             and self._swift_bundle.is_relative_to(REPO) else
@@ -2497,6 +2526,10 @@ class Runner:
         if failure is None:
             try:
                 self._require_retained_logs()
+                live_build = self.make_build_attestation("macos", evidence_dir=self.evidence_dir)
+                live_build["producer_attempt"] = self.build_attestation_value["producer_attempt"]
+                if live_build != self.build_attestation_value:
+                    raise Refused("tested bundle/image/archive changed while integration workers executed")
             except Refused as exc:
                 failure = str(exc)
                 self.log(f"*** REFUSED: {failure} ***")

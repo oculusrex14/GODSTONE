@@ -677,7 +677,7 @@ class ReleaseProofAuthenticationCourt(unittest.TestCase):
         self.addCleanup(lambda: (setattr(CP, "gh_api", saved[0]),
                                  setattr(CP, "job_log_text", saved[1])))
         CP.gh_api = gh_api
-        CP.job_log_text = lambda repo, job_id: logs.get(str(job_id), "")
+        CP.job_log_text = lambda repo, run_id, attempt, job_id: logs.get(str(job_id), "")
 
     def _genuine(self):
         run, jobs, logs = self._facts()

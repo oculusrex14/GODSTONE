@@ -1166,7 +1166,7 @@ class Schema2ReleaseProofConsumptionTests(unittest.TestCase):
                                   else {"jobs": jobs} if path.endswith("/jobs?per_page=100")
                                   else {"artifacts": uploaded} if "/artifacts" in path
                                   else {"commit": {"tree": {"sha": c_tree}}} if "/commits/" in path else None)
-        cp.job_log_text = lambda repo, job_id: logs.get(str(job_id), "")
+        cp.job_log_text = lambda repo, run_id, attempt, job_id: logs.get(str(job_id), "")
         try:
             # *A FORGED, locally-sealed document that claims a DIFFERENT job/artifact population than the facts.*
             forged = vrp.seal({"schema": 2, "candidate": {"sha": c_sha, "tree_sha": c_tree},

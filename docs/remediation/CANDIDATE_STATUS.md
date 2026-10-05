@@ -224,7 +224,43 @@
 > Local create and reuse paths both passed without a runtime download. The actual created device's stock
 > image passed unchanged staging: 2024112 bytes, IOSSIMULATOR/arm64, SHA256
 > `7acd62eeaf83809cb22da08615c10b0a08f28fb029d4cf2a935525e02e25c3d5`.
-> Hosted installation and exact-candidate convergence remain to be measured on the corrected immutable tree.
+> Hosted installation was measured successfully by the next immutable probe below; exact-candidate convergence remains pending.
+>
+> **Hosted candidate probe `3883c9f3` (run `37275912694`, attempt 1): SIX prerequisites PASS, terminal FAILED.**
+> The iOS job completed in 4h14m. Its actual simulator log names the provisioned iOS 26.3 device and
+> build `23D8133` runtime image, with the same 2024112-byte stock SHA256 recorded above.
+> All 1406 simulator tests passed; the raw xcodebuild status was 0. Constraints, parity/readiness,
+> content, mesh simulation and Android also passed. The integration producer completed mode `all`
+> with eight cross-platform and two crash rows, but that hosted producer result is not yet portable replay proof:
+> the downloaded consumer refused a different local compiled-bundle digest and the absent runner-temporary
+> SQLCipher image. No unrelated local binary may stand in for those attested bytes.
+> Terminal verification failed at authenticated release capture before the canonical campaign or gate manifest.
+> The collector discarded log-retrieval failures into an empty string, then reported a missing boundary command
+> section; the underlying hosted retrieval cause was not retained and is not asserted.
+> `UNKNOWN STEP` display labels are not the cause: actual command groups and typed markers survived in the
+> retained log, and the existing section parser accepts those prefixes.
+> The reader now retrieves the exact run/attempt/job archive through `gh run view --log`, propagates retrieval
+> errors, and refuses blank logs explicitly. Actual capture of release attempt `37275912618/1` passed in
+> 15.43s with internal PASS and typed external `BLOCKED_EXTERNAL`; command-scoped marker, named-step,
+> internal-failure and remote candidate/tree checks are unchanged.
+> Both failed probes remain untagged. The next immutable candidate must supply its own complete campaign,
+> portable integration bytes, all 27 gates and all seven hosted jobs before rc15 freeze.
+>
+> **Portable tested-byte cutover:** fresh build attestations now use schema 3 and a mandatory
+> report-relative `tested-bytes.tar`. The archive carries the actual tested bundle tree and registered
+> SQLCipher image/descriptor pair. Both the raw archive hash/size and each payload digest are checked;
+> original paths remain runtime provenance, not replay locations or local-build fallbacks.
+> The producer verifies copied bytes before publication. Skip-build validation reads the previous archive
+> without regenerating it, then carries that verified archive into the new report directory.
+> An actual compiled Swift bundle and register-verified 1225016-byte macOS image were packaged directly on
+> DGX and re-read successfully: archive 30935040 bytes, SHA256
+> `dc5b586cc1bdba7c604d874708adc5262f7eebbb1b11b773d7c86eb86902b096`.
+> All 15 integration behavior tests and the integration gate's 43 isolated selftest cases passed.
+> These are API/guard proofs, not a new integration campaign or canonical mutation result.
+> A fresh mode-`all` report from the next immutable candidate remains required.
+> The producer also revalidates the live bundle/image/archive after all workers finish and before publishing
+> a PASS report. An owned copy of the real compiled bundle was changed after retention; the record reader
+> refused the drift. The original bundle was untouched and the temporary copy was removed.
 
 
 **BOTH CANDIDATES REMAIN NO-GO.** The readiness flags are FALSE and enforced false by a passing canonical

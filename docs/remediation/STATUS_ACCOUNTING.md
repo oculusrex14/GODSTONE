@@ -39,7 +39,24 @@
 > iOS 27.0 runtime lacked the plain Apple SQLite image, and the terminal campaign was skipped.
 > The corrected workflow explicitly provisions the registered iOS 26.3.1 / `23D8133` arm64 runtime.
 > Local create/reuse and actual stock-image staging passed without downloading a runtime; no native
-> validation guard changed. Corrected immutable-candidate hosted installation and all-gate proof are still pending.
+> validation guard changed. Hosted probe `3883c9f3` / `37275912694` attempt 1 then passed all six prerequisites,
+> including the actual registered runtime, identical stock-image digest and all 1406 simulator tests.
+> Its terminal job failed release capture before any canonical campaign or gate manifest: log-retrieval errors
+> were discarded into an empty log. The underlying hosted retrieval cause was not retained; `UNKNOWN STEP`
+> display labels do not break the existing raw-command parser.
+> The corrected exact-run/attempt/job archive reader captured actual release `37275912618/1` successfully
+> in 15.43s with internal PASS and external `BLOCKED_EXTERNAL`, without weakening any boundary or identity guard.
+> The hosted integration producer completed eight cross-platform and two crash rows, but downloaded replay
+> refused host-specific compiled/image paths; actual attested-byte portability remains to be repaired.
+> Both probes remain untagged. A new immutable candidate still requires its own campaign, portable integration,
+> all 27 gates, all seven hosted jobs and authenticated freeze; no completed preparatory proof is relabelled.
+> Fresh build attestations now require schema 3 and digest-bound `tested-bytes.tar` beside the report;
+> the tested bundle and verified native image/descriptor travel with the artifact, without runner-path fallback.
+> Actual compiled/native bytes were archived on DGX and accepted by the served-byte reader (30935040 bytes).
+> All 15 integration behavior tests and 43 isolated gate selftest cases passed; these do not count as canonical
+> controls or fresh mode-`all` candidate proof. The next immutable run must produce that report itself.
+> Post-worker publication revalidates the live build against the retained archive. A real compiled-bundle
+> copy changed after retention was refused; the original input was untouched and the temporary copy removed.
 
 The COUNTS and the class memberships are re-derived from `REMEDIATION_STATE.json`; the narrative
 sections are maintained by hand and say so. Nothing here is new evidence. It states the
