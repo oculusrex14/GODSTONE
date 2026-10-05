@@ -38,5 +38,15 @@
       "note": "Taken from the runtimeRoot of the EXACT runtime the lane resolved for its device UDID (never the last-available runtime). The image is a real Mach-O file on disk within the CoreSimulator volume, unlike the bare /usr/lib/libsqlite3.dylib path (which is not a plain file on the simulator and, on modern macOS hosts, liveth only in the dyld shared cache)."
     }
   ],
+  "simulator_runtime": {
+    "runtime_identifier": "com.apple.CoreSimulator.SimRuntime.iOS-26-3",
+    "version": "26.3.1",
+    "build": "23D8133",
+    "platform": "iOS",
+    "architecture": "arm64",
+    "device_type_identifier": "com.apple.CoreSimulator.SimDeviceType.iPhone-17-Pro-Max",
+    "device_name": "Board1 Stock SQLite iPhone17ProMax",
+    "note": "THE MEASURED RUNTIME THE SIMULATOR LANE SELECTS DELIBERATELY RATHER THAN BY NEWNESS. This is not a digest pin either: it is the IDENTITY of the Apple iOS Simulator runtime whose runtimeRoot carrieth a plain usr/lib/libsqlite3.dylib (the profile-root packaging), which the stock oracle needs on disk. `tools/supplychain/provision_ios_simulator_runtime.py` reads this ONE entry, selects the exact installed runtime if present (so a local host that carrieth it downloads NOTHING), otherwise installs exactly this version with `xcodebuild -downloadPlatform iOS -buildVersion 26.3.1 -architectureVariant arm64`, re-validates the installed identity, and creates/reuses the uniquely named device below bound to it, exporting GS_SIM for the lane. Every field IS REQUIRED: a mismatch is refused by name, and NO fallback runtime and NO silent newest-with-substitution is permitted -- a missing Apple asset stays a FAILED PROVISION."
+  },
   "consumed_by": "tools/supplychain/stage_stock_sqlite.sh (validates + stages the runtime image into the lane's stock stage and the test bundle's Frameworks/), and the GF-004 court helper gf004StockSQLiteImage() in GsFinal004OwnedConnectionTests.swift (resolves the staged copy / bundle copy / SIMULATOR_ROOT image / host literal and binds it with SqlCipherDylibEngine)."
 }

@@ -777,6 +777,35 @@ jobs:
           name: ios-light-artifact-evidence
           path: ${{ runner.temp }}/board1-ios-artifact
           if-no-files-found: error
+      # *** PROVISION THE MEASURED SIMULATOR RUNTIME AND BIND A DEVICE TO IT -- THE MISSING HOSTED PREREQUISITE. ***
+      #
+      # *MEASURED, HOSTED RUN `37266700328`: the runner image shipped ONLY a newer iOS runtime, the simulator lane
+      # resolved it by newness (`GS_SIM` unset -> newest available iPhone -> that runtime's root), and its runtimeRoot
+      # carrieth NO plain `usr/lib/libsqlite3.dylib` -- so the stock SQLite oracle
+      # (`tools/supplychain/stage_stock_sqlite.sh`) refused, exactly as its fail-closed guard mandateth ("a missing
+      # system SQLite is a FAILED STAGE, not a skip").* **THE GAP IS A MISSING DECLARED HOSTED PREREQUISITE -- the
+      # MEASURED FACTS ARE: the image (20260928.0222.1, Xcode 27.0) shipped only a newer iOS runtime; that runtime's
+      # root carrieth no plain image; and the local host carrieth the iOS 26.3 profile runtime whose root DOES hold
+      # the image, the lineage of the committed green evidence.***
+      #
+      # *** THE REPAIR IS A DELIBERATE RUNTIME SELECTION, NOT A NEWER-ON-NEWEST GAMBLE. *** *`provision_ios_simulator_
+      # runtime.py` reads ONE registered identity (`docs/supplychain/STOCK_SQLITE.pins.json`'s `simulator_runtime`),
+      # inspects the ACTUAL `simctl` state, and USES the exact installed runtime if it is there -- so a host that
+      # carrieth it downloads NOTHING. Only an ABSENT runtime is installed, with the real `xcodebuild -downloadPlatform
+      # iOS -buildVersion 26.3.1 -architectureVariant arm64` CLI, and the installed state is RE-VALIDATED rather than
+      # the download's exit status trusted. The uniquely named device it creates (or reuses) is bound to THAT runtime,
+      # and its NAME is exported as `GS_SIM` for the committed lane -- whose parser resolves the device and readeth the
+      # runtime from the simctl GROUP HEADER, so NO device-parser change is needed.*
+      #
+      # *** NO FALLBACK RUNTIME AND NO SILENT 'LATEST' SUBSTITUTION: a missing Apple asset stays a FAILED PROVISION,
+      # and a failure here aborts the job BEFORE the lane -- the correct outcome, because no honest lane can run on a
+      # runtime that carrieth no stock oracle. THIS IS PLACED AFTER THE UI LANE AND IMMEDIATELY BEFORE THE SIMULATOR
+      # LANE, SO THE UI COURTS AND THEIR `GS_SIM` RESOLUTION ARE UNTOUCHED.***
+      - name: provision the measured iOS simulator runtime and bind a device to it
+        run: |
+          set -euo pipefail
+          python3 tools/supplychain/provision_ios_simulator_runtime.py
+
       # Execute GodstoneMeshTests via xcodebuild on a simulator -- the real iOS
       # test execution, not just the host swift-test mirror.
       #

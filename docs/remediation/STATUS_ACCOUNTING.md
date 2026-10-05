@@ -35,6 +35,11 @@
 > authenticated hosted green, annotated rc15 tag and attestation-only successor.** The five external obligations
 > and independent verification remain outstanding: no finding carries `closure_evidence`, no finding is
 > `VERIFIED_FIXED`, and no READY/COMPLETE claim is made. Historical `PARTIAL`/`OPEN` narrative below is superseded.
+> Hosted probe `a73da925` / `37266700328` attempt 1 failed only iOS stock-oracle supply; its selected
+> iOS 27.0 runtime lacked the plain Apple SQLite image, and the terminal campaign was skipped.
+> The corrected workflow explicitly provisions the registered iOS 26.3.1 / `23D8133` arm64 runtime.
+> Local create/reuse and actual stock-image staging passed without downloading a runtime; no native
+> validation guard changed. Corrected immutable-candidate hosted installation and all-gate proof are still pending.
 
 The COUNTS and the class memberships are re-derived from `REMEDIATION_STATE.json`; the narrative
 sections are maintained by hand and say so. Nothing here is new evidence. It states the

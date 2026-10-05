@@ -211,6 +211,20 @@
 > selected at compile time, so preparing one lane does not invalidate its sibling's source digest.
 > Staging and the real host-image verifier were exercised successfully; the strengthened replacement-image
 > refusal witness passed. Preparatory B simulator and campaign re-sealing are complete; exact-C verification and release freeze remain pending.
+>
+> **Hosted candidate probe `a73da925` (run `37266700328`, attempt 1): FAILED, not frozen.**
+> Constraints, parity/readiness, content, mesh simulation and Android passed. The iOS job stopped before
+> simulator execution: its resolved iOS 27.0 cryptex runtime supplied no plain `usr/lib/libsqlite3.dylib`.
+> The stock-oracle guard correctly refused missing supply; the terminal job was skipped and no exact-C
+> mutation campaign or gate manifest was produced. Release proof `37266700386/1` measured internal PASS
+> with typed external `BLOCKED_EXTERNAL`; that is not seven-job convergence or READY.
+> The hosted prerequisite is now explicit: `provision_ios_simulator_runtime.py` reads the registered
+> iOS 26.3.1 / build `23D8133` / arm64 identity, installs it only if absent, and binds a unique device
+> before the simulator lane. No stock-image/export/cipher or source-digest guard changed.
+> Local create and reuse paths both passed without a runtime download. The actual created device's stock
+> image passed unchanged staging: 2024112 bytes, IOSSIMULATOR/arm64, SHA256
+> `7acd62eeaf83809cb22da08615c10b0a08f28fb029d4cf2a935525e02e25c3d5`.
+> Hosted installation and exact-candidate convergence remain to be measured on the corrected immutable tree.
 
 
 **BOTH CANDIDATES REMAIN NO-GO.** The readiness flags are FALSE and enforced false by a passing canonical
