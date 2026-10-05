@@ -31,8 +31,8 @@
 > settles ONLY the source half of a review's claim and does NOT discharge any obligation.
 > **Historical campaign (2026-10-04):** the full board1 campaign on baseline `c5a565fcb83e3e636ebe3ac253bd0f6351d41da3`
 > (tested tree `f67d8dd18be11928c39a3932296217a7dc5b8604`, canonical manifest `docs/remediation/evidence/board1-rc15-rods`)
-> KILLED **181/181** required rods -- **179 SEMANTIC + 2 STRUCTURAL rows, separately classified and NEVER quoted as one
-> aggregate** (`LANE-ROD-6-android-runner-aborts-before-digests` tests_run 1/restored 1; `ARCHIVE-PROV-007` tests_run
+> recorded **179 SEMANTIC controls KILLED and 2 STRUCTURAL controls KILLED**; these populations stay separate
+> and are NEVER quoted as a combined score (`LANE-ROD-6-android-runner-aborts-before-digests` tests_run 1/restored 1; `ARCHIVE-PROV-007` tests_run
 > 43/restored 43). SEMANTIC catches split into 178 `witness`-channel rows (build_exit 0) and ONE lawful
 > `compiler`-channel row, `IOS-RECOVERY-006` (build_exit 1, tests_run null, restored-green 10).
 > STRUCTURAL catches are TWO `witness`-channel rows (build_exit 0), accounted separately.
@@ -261,6 +261,18 @@
 > The producer also revalidates the live bundle/image/archive after all workers finish and before publishing
 > a PASS report. An owned copy of the real compiled bundle was changed after retention; the record reader
 > refused the drift. The original bundle was untouched and the temporary copy was removed.
+>
+> **Hosted candidate probe `5118d94e` (run `37310847380`, attempt 1): Android FAILED before terminal proof.**
+> The actual Android job reports 1479 tests / 1 failure. Its failed XML case, `ReadinessT23Test`
+> `testTheExactDuplicateIsSparedTheFreshSequencePerisheth`, expected `HANDSHAKE_IN_PROGRESS` but observed `CLOSED`.
+> This fixture replayed only the first fragment of a 32-byte HS1. At the default 20-byte ATT value length,
+> the first fragment carries only 12 payload bytes, so production correctly refused a different record.
+> Asynchronous handshake startup made the first fragment's completeness depend on the MTU timing.
+> The existing T22 full-record reassembly pattern now serves both HS1 and HS2 duplicate fixtures in T23.
+> All exact-duplicate, fresh-sequence refusal and heard-once assertions remain; no production authority changed.
+> The real affected class passed locally: **18 tests / 0 failures / 0 errors / 0 skips**, Gradle 22s.
+> At this checkpoint iOS remained in progress, and no C3 canonical campaign had started.
+> The corrected source requires a new immutable candidate; C3 is not tagged, frozen or relabelled as green.
 
 
 **BOTH CANDIDATES REMAIN NO-GO.** The readiness flags are FALSE and enforced false by a passing canonical

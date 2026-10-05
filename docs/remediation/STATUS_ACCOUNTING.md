@@ -47,7 +47,7 @@
 > The corrected exact-run/attempt/job archive reader captured actual release `37275912618/1` successfully
 > in 15.43s with internal PASS and external `BLOCKED_EXTERNAL`, without weakening any boundary or identity guard.
 > The hosted integration producer completed eight cross-platform and two crash rows, but downloaded replay
-> refused host-specific compiled/image paths; actual attested-byte portability remains to be repaired.
+> refused host-specific compiled/image paths; that producer result did not carry portable tested bytes.
 > Both probes remain untagged. A new immutable candidate still requires its own campaign, portable integration,
 > all 27 gates, all seven hosted jobs and authenticated freeze; no completed preparatory proof is relabelled.
 > Fresh build attestations now require schema 3 and digest-bound `tested-bytes.tar` beside the report;
@@ -57,6 +57,14 @@
 > controls or fresh mode-`all` candidate proof. The next immutable run must produce that report itself.
 > Post-worker publication revalidates the live build against the retained archive. A real compiled-bundle
 > copy changed after retention was refused; the original input was untouched and the temporary copy removed.
+> Hosted probe `5118d94e` / `37310847380` attempt 1 then failed Android: one of 1479 tests closed
+> the half-spoken handshake while the fixture claimed an exact duplicate. The fixture had replayed only
+> the first fragment of HS1, not its complete 32-byte payload; MTU/startup ordering exposed the truncation.
+> T23 now uses the existing T22 full-record reassembly pattern for both HS1 and HS2 duplicate fixtures.
+> The real affected class passed **18 tests / 0 failures / 0 errors / 0 skips**; duplicate acceptance,
+> fresh-sequence refusal and heard-once assertions are unchanged, and no production authority changed.
+> iOS remained in progress at that checkpoint; no C3 canonical campaign started and no rc15 tag exists.
+> A newly committed candidate must earn its own remaining exact-C proofs; the failed probe is not relabelled.
 
 The COUNTS and the class memberships are re-derived from `REMEDIATION_STATE.json`; the narrative
 sections are maintained by hand and say so. Nothing here is new evidence. It states the

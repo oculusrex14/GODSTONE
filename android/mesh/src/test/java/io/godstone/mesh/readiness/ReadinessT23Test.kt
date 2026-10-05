@@ -25,6 +25,7 @@ import io.godstone.mesh.transport.BleLinkInfoV1
 import io.godstone.mesh.transport.BleOutletHooks
 import io.godstone.mesh.transport.BleRecordFragmenter
 import io.godstone.mesh.transport.BleRecordCodec
+import io.godstone.mesh.transport.BleRecordReassembler
 import io.godstone.mesh.transport.BleRecordType
 import io.godstone.mesh.transport.BleServerAction
 import io.godstone.mesh.transport.BleServerOrchestrationDriver
@@ -632,7 +633,29 @@ class ReadinessT23Test {
 
     private fun seqOfFragment(value: ByteArray): Int = value[2].toInt() and 0xFF
 
-    private fun payloadOfFragment(value: ByteArray): ByteArray = value.copyOfRange(8, value.size)
+    /**
+     * *** THE WHOLE RECORD, REASSEMBLED FROM ITS FRAGMENTS -- MTU-INDEPENDENT BY CONSTRUCTION. ***
+     *
+     * *A court that re-presents a captured record to the dedup door MUST reassemble the COMPLETE payload first.
+     * `payloadOfFragment(fragments.first())` is `copyOfRange(8, size)` -- the FIRST FRAGMENT'S slice only, which
+     * equalleth the whole record ONLY when it travelled in ONE fragment. **At the legacy default ATT length (20)
+     * the initiator's HS1 (exactly 32 payload octets) is THREE fragments whose first carrieth TWELVE octets**, and
+     * a court that lifts `.first()` presenteth a TRUNCATED payload to `feedResponderHandshakeRecordForTest`; the
+     * transcript then rightly findeth no exact duplicate, the door falleth to its stage law and the relation
+     * CLOSED -- MEASURED on the 2-core runner, run 37310847380 job 111765589029, ReadinessT23Test:932.* The
+     * production begin coroutine (`maybeBeginTrustedHandshake`, on `Dispatchers.IO`) races this arm's own MTU-247
+     * ladder, so the fragment count -- and therefore whether the truncation bit -- varied run to run.*
+     *
+     * *The reassembler runneth over the captured fragments and yieldeth the whole payload, one fragment or three.*
+     */
+    private fun wholeRecordOf(fragments: List<ByteArray>): ByteArray {
+        val reassembler = BleRecordReassembler()
+        var whole: BleReassembledRecord? = null
+        for (f in fragments) {
+            reassembler.receiveFragmentBytes(f)?.let { whole = it }
+        }
+        return whole?.payload ?: error("the fragments did not reassemble into a whole record")
+    }
 
     private fun forge(type: BleRecordType, seq: Int, payload: ByteArray): List<ByteArray> =
         BleRecordFragmenter.fragment(type, seq, payload, 247)
@@ -883,7 +906,11 @@ class ReadinessT23Test {
         val conn = rig.initiatorConnection()
         assertEquals("the initiator standeth ready", BleConnectionState.READY, conn.state)
         val secondSeq = seqOfFragment(hs2[0])
-        val secondTale = payloadOfFragment(hs2[0])
+        // *** THE WHOLE COUNSEL, REASSEMBLED -- `payloadOfFragment(hs2[0])` IS THE FIRST FRAGMENT ONLY. ***
+        // The 229-octet HS2 travelleth in MANY fragments at any real ATT length; the first fragment carrieth but a
+        // slice, and a truncated re-presenting would find no exact duplicate in the transcript. Reassembly maketh
+        // the counter-proof MTU-independent, exactly as it does in the sibling arm below.
+        val secondTale = wholeRecordOf(hs2)
         // *** THE COUNTER-PROOF FIRST: the third counsel really did travel, so a later zero is a MEASUREMENT. ***
         val hs3Before = rig.aliceOutlet.writesTo(rig.bobAddress).count { isType(it, BleRecordType.HS3) }
         assertTrue(
@@ -924,7 +951,13 @@ class ReadinessT23Test {
             rig.responderConnection().state == BleConnectionState.HANDSHAKE_IN_PROGRESS
         }
         val firstSeq = seqOfFragment(hs1[0])
-        val firstTale = payloadOfFragment(hs1[0])
+        // *** THE WHOLE COUNSEL, REASSEMBLED -- `payloadOfFragment(hs1[0])` IS THE FIRST FRAGMENT ONLY. ***
+        // At the legacy default ATT length the 32-octet HS1 travelleth in THREE fragments, and a court that
+        // presenteth the first fragment's twelve octets is presenting a TRUNCATED counsel: the transcript rightly
+        // findeth no exact duplicate, the door falleth to "hs1 at stage HANDSHAKE_IN_PROGRESS" and the relation
+        // CLOSED before the fresh-sequence clause ever ran (MEASURED, ReadinessT23Test:932). Reassembly maketh the
+        // arm MTU-independent, so the "exact duplicate" it re-presenteth is the counsel that truly crossed.
+        val firstTale = wholeRecordOf(hs1)
         val conn = rig.responderConnection()
         // (a) the selfsame first counsel, byte and sequence alike, is hearkened not
         rig.bob.feedResponderHandshakeRecordForTest(
