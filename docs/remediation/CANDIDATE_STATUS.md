@@ -302,6 +302,34 @@
 > report. The next immutable candidate must earn its own 179 semantic controls and two separately
 > reported structural controls, portable integration, all 27 local gates and all seven hosted jobs.
 > No rc15 tag, freeze or external closure is claimed by these smoke results.
+>
+> **Completed hosted C5 `9aaf7fc0` / `37346047303/1`: all three real iOS lanes PASS; the job FAILED later
+> in mode-`all` integration.** Android separately failed while installing NDK `27.0.12077973`: the
+> downloaded payload was not a ZIP archive. No fresh Android test verdict or external-blocker
+> classification is claimed for that internal supply failure.
+> The integration producer retained its actual schema-3 tested-byte archive and completed Android
+> crash prepare/recovery, but the first honest Android worker never emitted startup identity within
+> 600s. Its retained log ended in `:mesh:kspDebugKotlin`. Global `--rerun-tasks` on every worker launch
+> invalidated the entire pre-warmed compiler graph. Worker launch now reuses those compiled inputs;
+> the existing dedicated Test's `outputs.upToDateWhen { false }` still forces fresh execution.
+> Task/class identity, framing, native/source evidence, process termination and the 600s bound remain.
+> The independent full Android lane retains its own forced execution.
+>
+> **Pre-seal full repair smoke `9845229e`, not final-C proof:** fresh mode-`all` passed in 173.14s.
+> All eight cross-platform rows and both Android crash/recovery rows passed. The existing evidence
+> checker reported zero problems and authenticated two actual crash terminations. The actual honest
+> worker executed its Test with 60 prerequisite tasks up-to-date, including Kotlin/KSP compilation.
+> Source input digests agreed before and after; the actual bundle and registered native image remained
+> bound through publication. The portable archive is 30,935,040 bytes, SHA-256
+> `0182d12f57213f2fd97c6597d8cbdba490105af6734be66317291067127d90c3`.
+> DGX retains 134 hash-verified regular files at
+> `mac-mini-offload/GODSTONE/evidence/board1-rc15-worker-smoke-pz_k5q_0`; active FIFO/SQLite runtime
+> stayed local. C5's actual release capture `37346047147/2` reported internal PASS and external
+> `BLOCKED_EXTERNAL`; attempt 1's internal NDK failure was refused, not relabelled.
+> C5 remains failed and untagged, with no canonical campaign. The corrected final candidate must earn
+> its own 179 semantic and two separately reported structural controls, fresh portable integration,
+> all 27 local gates, all seven hosted jobs, annotated rc15 and authenticated attestation-only child.
+> `REMEDIATION_IN_PROGRESS` and all five external obligations remain; these smoke results close none.
 
 
 **BOTH CANDIDATES REMAIN NO-GO.** The readiness flags are FALSE and enforced false by a passing canonical

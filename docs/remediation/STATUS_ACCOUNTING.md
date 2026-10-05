@@ -82,6 +82,22 @@
 > These selected-path results do not relabel failed C3/C4, supply a canonical campaign or satisfy fresh
 > mode-`all`. Corrected immutable C must still earn 179 semantic and two separately reported structural
 > controls, all 27 local gates, all seven hosted jobs and authenticated rc15 freeze.
+> Completed C5 `9aaf7fc0` / `37346047303/1` passed all three real iOS lanes, but failed later in
+> mode-`all` integration: the first honest Android worker never emitted startup identity within 600s,
+> and its retained log ended in KSP compilation. Android's separate lane failed installing a non-ZIP
+> NDK `27.0.12077973` payload; no fresh Android test verdict is claimed.
+> The coordinator no longer forces the entire warmed compiler graph to rerun for every worker.
+> Its dedicated Gradle Test still always executes freshly; task/class, source/native evidence,
+> process termination and the 600s bound are unchanged. The full Android lane remains forced.
+> Actual unpublished repair checkpoint `9845229e` passed complete mode-`all` in 173.14s: eight
+> cross-platform rows, two crash/recovery rows, two authenticated crash terminations and zero
+> evidence-checker problems. Source digests agreed; DGX retains 134 hash-verified regular proof
+> files at `mac-mini-offload/GODSTONE/evidence/board1-rc15-worker-smoke-pz_k5q_0`.
+> Actual C5 release `37346047147/2` captured internal PASS and external `BLOCKED_EXTERNAL`.
+> These are pre-seal repair results, not a final-C campaign or freeze. C5 remains failed, untagged
+> and campaign-free. Final immutable C must still earn its own separately reported 179 semantic
+> and two structural controls, fresh mode-`all`, 27 local gates, seven hosted jobs and rc15/A replay.
+> `REMEDIATION_IN_PROGRESS` and the five open/blocked external obligations remain unchanged.
 
 The COUNTS and the class memberships are re-derived from `REMEDIATION_STATE.json`; the narrative
 sections are maintained by hand and say so. Nothing here is new evidence. It states the
