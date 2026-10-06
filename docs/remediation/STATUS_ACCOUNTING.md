@@ -1,6 +1,6 @@
 # Status accounting — AUDIT-003-R1 (counts derived at round 88; narrative carried to round 97)
 
-> **CURRENT STATE (2026-10-05) — DERIVED, NOT CARRIED.** *Everything below this banner is HISTORICAL
+> **CURRENT STATE (2026-10-06) — DERIVED, NOT CARRIED.** *Everything below this banner is HISTORICAL
 > audit-trail narrative from the round-88/97 era and is preserved verbatim; it must NOT be read as the
 > current state.* **The current canonical state is DERIVED from the structured obligations by
 > `scripts/build_structured_closure.py`: 35 internal obligations DISCHARGED and 0 OPEN -- NO finding remains internally
@@ -116,6 +116,28 @@
 > This selected repair smoke does not complete C6 or supply the next candidate's canonical population.
 > The next immutable C must earn its own 179 semantic and two separately reported structural controls,
 > fresh mode-`all`, all 27 local gates, seven hosted jobs and authenticated rc15/A replay; B remains untouched.
+> `REMEDIATION_IN_PROGRESS`, five external obligations and zero `VERIFIED_FIXED` remain unchanged.
+> C7 `66d061ec` / `37435793791` remained immutable through its approved whole-workflow retry.
+> Attempt 1 ended in a GitHub internal iOS runner error. Exactly three conflicting original artifact
+> ZIPs, 23,655,054 bytes, were SHA-verified on DGX before the user-approved deletion; no others deleted.
+> Attempt 2 passed five non-iOS jobs and Foundation/UI steps, but real Simulator execution failed
+> one of 1,406 tests: T15's 1.241s raw-advertisement flood saw zero refusals because its admission
+> budget used real uptime instead of the transport's frozen injected clock. Raw exit was 65;
+> terminal was skipped, and neither C7 attempt started mode-`all` or canonical controls.
+> Actual release `37435793774/1` captured internal PASS and external `BLOCKED_EXTERNAL`.
+> Unpublished repair checkpoint `58cfdc46` shares the existing resolved transport monotonic clock
+> with both admission budgets; production default uptime, charge-before-parse, 65,536-record
+> global limit, 1,000ms window and all registered controls remain unchanged. The existing T15 case
+> now also proves next-window admission restoration. Actual Foundation baseline/restoration each
+> passed 13 T15/T16 cases; a separate throwaway charge removal failed the named case with zero refusals.
+> Actual registered iOS 26.3.1 Simulator passed all 13 selected cases, zero failures, 0.290s.
+> Source digests agreed and restored checkpoint remained clean; native/stock bytes were verified
+> in the built test bundle. DGX retains five complete logs, 53 hash-verified closed XCResult files
+> and the actual receipt at `mac-mini-offload/GODSTONE/evidence/board1-rc15-scan-clock-smoke-ri1ro9kh`.
+> Owned local scratch/device cleanup followed preservation; user devices and primary native stage remain.
+> These are repaired-checkpoint smoke results, not a whole lane, final-C canonical population or freeze.
+> Corrected immutable C must earn its own 179 semantic and two separately reported structural controls,
+> fresh mode-`all`, ten lanes, all 27 local gates, seven hosted jobs and authenticated rc15/A replay.
 > `REMEDIATION_IN_PROGRESS`, five external obligations and zero `VERIFIED_FIXED` remain unchanged.
 
 The COUNTS and the class memberships are re-derived from `REMEDIATION_STATE.json`; the narrative

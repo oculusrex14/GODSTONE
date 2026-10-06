@@ -1,6 +1,6 @@
 # Candidate status — AUDIT-003-R1, COMPUTED at round 122 (every figure re-derived from the ledger)
 
-> **CURRENT STATE (2026-10-05) — DERIVED, NOT CARRIED.** *Everything below this banner is HISTORICAL
+> **CURRENT STATE (2026-10-06) — DERIVED, NOT CARRIED.** *Everything below this banner is HISTORICAL
 > candidate narrative from the round-122 era and is preserved verbatim; its SHAs, lane counts and class
 > membership are NOT the current state.* **The current canonical state is DERIVED by
 > `scripts/build_structured_closure.py`: builder status `REMEDIATION_IN_PROGRESS`, **35 internal obligations
@@ -362,6 +362,39 @@
 > C6 remains cancelled and untagged, not a completed canonical campaign. The next immutable candidate
 > requires its own separately reported 179 semantic and two structural controls, fresh mode-`all`,
 > all 27 local gates, seven hosted jobs and rc15/A replay. Completed B is not rerun or relabelled.
+> `REMEDIATION_IN_PROGRESS`, five external obligations and zero `VERIFIED_FIXED` remain unchanged.
+>
+> **Completed failed C7 `66d061ec` / `37435793791`: no integration or canonical campaign.**
+> Attempt 1 ended with an authenticated GitHub internal iOS runner error, not a test verdict.
+> The user approved preserving and deleting exactly three duplicate-name attempt-1 artifacts before
+> one whole-workflow pinned-attempt retry of unchanged C7. All 23,655,054 original ZIP bytes were
+> SHA-verified on DGX first; no other GitHub artifact was deleted and no second source push occurred.
+> Attempt 2 passed five non-iOS jobs and the real Foundation/UI steps, but the Simulator aggregate
+> executed 1,406 tests with one failure: T15 raw-advertisement charging recorded zero refusals.
+> The named flood took 1.241s, crossing the admission budget's real 1,000ms window even though the
+> transport's injected test clock remained frozen. Raw `xcodebuild` exited 65; the iOS job failed
+> after 3h 40m 19s and the terminal job was skipped. Neither attempt started mode-`all` or canonical
+> controls. Actual C7 release `37435793774/1` captured internal PASS and external `BLOCKED_EXTERNAL`.
+>
+> **Scan-clock repair checkpoint `58cfdc46`, not final-C proof:** both transport admission budgets
+> now use its already resolved monotonic clock instead of hidden independent uptime clocks.
+> Production still defaults to system monotonic uptime. The charge-before-parse guard, 65,536-record
+> global limit, 1,000ms window and canonical population are unchanged. The existing named T15 case
+> still drives 70,000 actual transport advertisement callbacks and additionally proves budget
+> restoration after advancing the injected clock by one full window; no sleep or weakened oracle.
+> Actual native Foundation T15/T16 baseline passed 13 cases, a throwaway production-charge removal
+> failed the named case with zero refusals, and restored source passed all 13 cases.
+> Actual registered iOS 26.3.1 Simulator T15/T16 passed 13 cases with zero failures in 0.290s;
+> the corrected scan case passed in 0.176s. The built test bundle carried the verified registered
+> Simulator native image `5361d7db210fb84cbf6caa7cba5985c9a05a6cff2559fa5767e40ef3a9406b04`
+> and registered-runtime stock oracle `7acd62eeaf83809cb22da08615c10b0a08f28fb029d4cf2a935525e02e25c3d5`.
+> Source digests agreed before/after and the checkpoint tree remained clean after restoring the
+> throwaway mutant. DGX retains all five closed logs, all 53 hash-verified XCResult producer files
+> and the actual receipt at `mac-mini-offload/GODSTONE/evidence/board1-rc15-scan-clock-smoke-ri1ro9kh`.
+> Only its owned local scratch and newly created Simulator were removed after preservation.
+> This smoke neither completes a whole lane nor relabels C7 or preparatory B. Corrected immutable C
+> must earn its own 179 semantic and two separately reported structural controls, fresh mode-`all`,
+> all ten lanes, all 27 local gates, seven hosted jobs, annotated rc15 and authenticated child-A replay.
 > `REMEDIATION_IN_PROGRESS`, five external obligations and zero `VERIFIED_FIXED` remain unchanged.
 
 
