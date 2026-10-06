@@ -1074,3 +1074,57 @@ and instantiated-tab properties unchanged). These host lanes stop at the
 AndroidKeyStore/SQLCipher device boundary: the terminal pre-private vault rung and
 on-device key material remain unproven here, crash-resumable and fail-closed by
 construction, not externally verifiable claims.
+
+## D-B1-NATIVE-TAB-QUERY — A private accessibility-identifier query is repaired at the test, not the product
+
+The exact C9 UI relaunch case addressed its tab through a private Text-identifier query, and
+that case failed. No hosted hierarchy or XCResult was uploaded for C9, so the exact hosted
+cause remains [INFERENCE]. What IS measured is independent and local: a diagnostic on the
+actual registered iOS 26.3.1 / `23D8133` Simulator showed those accessibility identifiers are
+not propagated to the native tab-bar buttons, whose declared Text labels the hierarchy does
+carry. The completed candidate `c56557efbcfffee17c13d826aa184f9f346b8d81`
+(tree `ddeba2cfd5061909c8c53f668087dad057d9d77d`)
+proved the cost: its iOS UI step ran 43 actual tests with one failure, the SOS-relaunch
+existence assertion at source line 450, and the job failed after 1h 32m 21s; Foundation
+passed 1533 tests / 98 suites / 0 failures and the Android job passed with all seven lanes,
+but Simulator, mode-`all` and the canonical campaign were never reached and the terminal job
+was skipped. A temporary diagnostic on the actual registered iOS 26.3.1 / `23D8133`
+Simulator, instrumenting only that named case and capturing hierarchy and screenshot
+(1 test / 0 failures, 16.817s; XCResult+attachments archive 393,418 bytes, SHA-256
+`fcb98c76b4347107b6b9e10e257793f9c4f7757761f7be13630644399bd87791`), captured the immediate
+post-relaunch hierarchy at elapsed t=12.18s: the healthy Conversation `TabView` carrying five
+native tab-bar BUTTONS with declared labels and NO `lab.tab.*` identifier, while other
+controls retained their identifiers, and the old SOS-identifier query first matched only at
+t=13.53s of that case.
+
+The cutover therefore replaces BOTH private `tab(_:in:)` helpers, all 40 callers and the
+recovery-negative census with actual native `.button` label queries in both
+`app.tabBars.buttons[label]` and `app.buttons[label]`, under the same 45s bound with a
+150ms poll and the plain final button query: no identifier-to-label mapping, no
+identifier/label shim or fallback, no role relaxation, no retry or added wait, no gate
+bypass and no state rearm. Every case, journey, shared-SOS durable equality and real
+terminate/launch is unchanged, and the production five `lab.tab.*` declarations with the
+`ci/check_lab_isolation.py` guard remain untouched -- this is a test-query correction, never
+a production SOS or recovery change. No hosted hierarchy or XCResult was uploaded, so the
+exact hosted cause of C9 remains INFERENCE and no recovery-only/journal/SQLite composition
+cause is asserted; local 26.3.1 is not claimed to reproduce the CI 27 failure. The two
+UI source files are checkpointed immutably at parent C9 (`616402abee59dbcee859479a974e2c939c9e7cb0`,
+tree `342383cd02b5b4e8f9cead15021a0d6a51c203c1`). The first two-scheme runner invocation
+failed before any arm in 152.56s (exit 3): a custom device name resolved against `OS:latest`,
+so zero schemes launched -- a runtime-selection failure, preserved and not a source/UI
+regression, with no source or wait change. The parent then changed only the runtime
+invocation, naming the same owned iOS 26.3.1 device by explicit UUID
+`32ECCF0C-9EBA-4C67-8955-B3600009A01C`, and that complete post-cutover local smoke actually
+PASSED: 43 actual case pass records with 2 `TEST SUCCEEDED` in 730.74s -- `LabMeshUI` 29
+actual tests / 0 failures / 0 skips (11 AX + 18 journey cases) and `GodstoneArchiveUI` 14
+actual tests / 0 failures / 0 skips. The former C9 SOS-relaunch case actually passed in
+16.202s on the owned 26.3.1 / `23D8133` iPhone 17 Pro arm64 device at SDK 27.0, which is no
+apples-to-apples speedup and no CI-27 equivalence. The exact clean source and tree snapshots
+both read `all[]` / ok before and after with an identical iOS digest, the settled screenshot
+showed the normal Conversation UI with all five native tab buttons, and the closed console
+(418,478 bytes) plus the two original XCResult archives (6,100,812 bytes) and screenshots were
+SCP'd and remote-hash verified into the C9 DGX root, whose authoritative
+`actual-native-label-all-ui-smoke-receipt.json` is complete. This is a source-checkpoint
+post-fix smoke only -- not final C, not a broadened C9 success, not a replacement hosted proof
+and no evidence of product durability -- and the checkpoint is pre-seal source repair, not the
+sealed final candidate.

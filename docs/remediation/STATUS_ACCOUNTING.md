@@ -161,6 +161,58 @@
 > 179 semantic and two separately reported structural controls, fresh mode-`all`, ten lanes,
 > all 27 local gates, seven hosted jobs and authenticated rc15/A replay; completed B is untouched.
 > `REMEDIATION_IN_PROGRESS`, five external obligations and zero `VERIFIED_FIXED` remain unchanged.
+> C9 `c56557ef` / `37517820872/1` completed FAILED at tree `ddeba2cfd5061909c8c53f668087dad057d9d77d`:
+> constraints (38s), parity (703s), content (39s), meshsim (60s) and Android (587s, explicit Ubuntu SDK
+> provision, all seven actual Android lanes) passed, Foundation passed 1533 actual tests / 98 suites / 0
+> failures, and the iOS UI step ran 43 actual tests with ONE failure -- the real SOS-relaunch existence
+> assertion at source line 450, 151.009s case. Terminal was SKIPPED; C9 has no Simulator, mode-`all`,
+> canonical campaign, 27-gate or freeze result, is untagged, and is NOT final C. Its actual parent consumer
+> of the downloaded ORIGINAL Android artifacts passed in 0.44s with zero skips/failures/errors (app 128,
+> core 22, mesh 1479, labmesh 40, UI 168, Simulator 40, Production 1479): that is Android-only and neither
+> judges iOS nor all ten lanes. All 11 original archive ZIPs, 23,706,754 bytes, were parent SHA/size-verified
+> with zero mismatches and none deleted; the integration-evidence entry is FIXTURE-ONLY (29,506 bytes), not
+> the actual mode-`all` population. Actual release `37517820947/1` captured internal PASS and external
+> `BLOCKED_EXTERNAL` in 17.28s; its producer evidence is 301 files totalling 3,515,775 bytes, parent
+> hash+size verified against the actual `producer-file-manifest.json`. A measured local relaunch diagnostic
+> on the actual registered iOS 26.3.1 / `23D8133` Simulator (1 test / 0 failures, 16.817s, production source
+> unchanged) captured the immediate post-relaunch hierarchy at t=12.18s showing five native tab-bar BUTTONS
+> with declared labels and NO `lab.tab.*` identifier, while other actual controls kept their identifiers;
+> the old SOS-identifier query first matched only at t=13.53s of that case. Native Text-identifier query
+> fragility is thus measured locally; the exact hosted C9 cause is NOT, since no hosted hierarchy or
+> XCResult was uploaded and the exact C9 case queried a Text identifier. The clean TEST-SIDE cutover to
+> native button-label queries in both `app.tabBars.buttons[label]` and `app.buttons[label]` (same 45s bound,
+> 150ms poll, no identifier/label mapping or fallback, unchanged censuses, production `lab.tab.*`
+> declarations and the `ci/check_lab_isolation.py:484-488` guard untouched) is checkpointed immutably at
+> parent C9 (`616402abee59dbcee859479a974e2c939c9e7cb0`, tree
+> `342383cd02b5b4e8f9cead15021a0d6a51c203c1`). Its first two-scheme runner invocation failed BEFORE ANY ARM
+> in 152.56s (exit 3) because a custom device name resolved against `OS:latest`, so zero schemes launched --
+> a runtime-selection failure, not a source/UI regression, preserved and with no source or wait change; the
+> parent then named the same owned iOS 26.3.1 device by explicit UUID
+> `32ECCF0C-9EBA-4C67-8955-B3600009A01C` for the unchanged `LabMeshUI` + `GodstoneArchiveUI` complete actual
+> smoke. That complete post-cutover local runtime has now actually PASSED: 43 actual case pass records
+> with 2 `TEST SUCCEEDED` and the whole command in 730.74s -- LabMeshUI 29 actual tests / 0 failures /
+> 0 skips / 0 expected failures (11 AX + 18 journey cases) and GodstoneArchiveUI 14 actual tests /
+> 0 failures / 0 skips / 0 expected failures. The former C9 SOS-relaunch case actually passed in 16.202s
+> on the owned 26.3.1 / `23D8133` iPhone 17 Pro arm64 device at SDK 27.0; no apples-to-apples speedup and
+> no CI-27 equivalence is claimed. The exact clean source `616402ab…` / tree `342383cd…` start and end
+> snapshots both reported `all[]` / ok, and the actual iOS pre/post digest was identical
+> `1476060ae63bb635375eafda052e8238b2c8d2a302a888fcdd8dcffbf4d0da53`. The settled screenshot was read
+> and observed as the normal Conversation UI with all five native tab buttons. The full closed console is
+> 418,478 bytes, SHA-256
+> `615068703c2b8cf0a0ca09c2f7c7153e72fea10b63c24b8f389c1e345dcc113c`; the two original XCResult archives
+> are 6,100,812 bytes, SHA-256
+> `cc1cb9a4e10d90e354bada508691d19f45f12bce462d77fbf3fac7b1ed8a0b82`, and the actual screenshots were
+> retained, the first transition frame kept honestly beside the settled one. All SCP transfers and remote
+> SHA-256 checks passed in the C9 DGX root, whose authoritative actual
+> `actual-native-label-all-ui-smoke-receipt.json` is now complete. This is a SOURCE-CHECKPOINT
+> post-fix smoke only: it is NOT final C, not a broadened C9 success and not a replacement hosted proof.
+> The separate diagnostic
+> XCResult+attachments archive is 393,418 bytes, SHA-256
+> `fcb98c76b4347107b6b9e10e257793f9c4f7757761f7be13630644399bd87791`; its temporary instrumentation was
+> removed before the checkpoint smoke. This is a source-query correction, not a production SOS/recovery
+> change. Corrected immutable C still requires its own 179 semantic and two separately reported structural
+> controls, fresh mode-`all`, all ten lanes, all 27 local gates, all seven hosted jobs and authenticated
+> rc15/A replay; completed B and the completed canonical campaign are never rerun or relabelled.
 
 The COUNTS and the class memberships are re-derived from `REMEDIATION_STATE.json`; the narrative
 sections are maintained by hand and say so. Nothing here is new evidence. It states the

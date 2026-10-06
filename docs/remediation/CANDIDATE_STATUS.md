@@ -430,6 +430,88 @@
 > `REMEDIATION_IN_PROGRESS`, five external obligations and zero `VERIFIED_FIXED` remain unchanged.
 
 
+> **Completed failed C9 `c56557ef` / `37517820872/1`: five jobs PASS, the iOS job FAILED, terminal SKIPPED.**
+> The exact completed candidate is `c56557efbcfffee17c13d826aa184f9f346b8d81`, tree
+> `ddeba2cfd5061909c8c53f668087dad057d9d77d`. Constraints (`112455173095`, 38s), parity (`112455173355`,
+> 703s), content (`112455173583`, 39s) and meshsim (`112455173595`, 60s) passed; the Android job passed in
+> 587s (`112455173402`) with the explicit Ubuntu SDK provision and all seven actual Android lanes. The iOS
+> job failed after 1h 32m 21s (5541s, `112455173469`): Foundation passed 1533 actual tests / 98 suites / 0
+> failures, while the UI step ran 43 actual tests with ONE failure --
+> `LabMeshAccessibilityUITests/testGSINT001TheDistressStateSurvivesRelaunchInTheSharedVocabulary`, the
+> assertion that the SOS tab exists after relaunch, 151.009s case (roughly 47s of SOS-identifier Button
+> element queries plus a 20s wait after a real terminate+launch), asserting source line 450 on that exact C9
+> source. Terminal `112494610903` was SKIPPED; Simulator, mode-`all`, the canonical campaign and every
+> ten-family / 27-gate / C9-success / freeze claim were never reached. The workflow was NOT all-green and
+> the five external obligations are unchanged. C9 is untagged and is NOT final C.
+> **Its narrow passing scopes, never borrowed:** the actual local parent consumer of C9's downloaded
+> ORIGINAL Android artifacts passed in 0.44s with 0 skips/failures/errors (app 128, core 22, mesh 1479,
+> labmesh 40, UI 168, Simulator 40, Production 1479) -- that judges the Android consumer only, NOT iOS or
+> all ten lanes. Foundation's 1533 tests / 98 suites / 0 failures is ONE lane. Actual release capture
+> `37517820947/1` reported INTERNAL PASS and typed external `BLOCKED_EXTERNAL` in 17.28s; a capture result
+> is not a green workflow. C9's producer evidence is 301 files totalling 3,515,775 bytes (parent hash+size
+> verified against the actual `producer-file-manifest.json`; `parent-producer-preservation-acceptance.json`
+> on the same C9 root is the authority, superseding the earlier 3,535,336-byte summary) at
+> `ssh://dgx-cable/home/oculus-rex/mac-mini-offload/GODSTONE/evidence/rc15-final-c56557ef/`. No iOS or
+> all-ten-lane verdict is inferred anywhere from the Android-only consumer pass.
+> **Archive preservation and integration provenance:** all 11 original repository archive ZIPs,
+> 23,706,754 bytes, were parent SHA/size-verified on the remote with ZERO mismatches and NONE was deleted.
+> `board1-integration-evidence-11443018960` is FIXTURE-ONLY (29,506 bytes) and is NOT the actual mode-`all`
+> integration; C9 supplied no fresh mode-`all`, canonical or simulator population.
+> **Measured local relaunch diagnostic (NOT C9 CI proof):** a temporary separate C9 diagnostic instrumented
+> ONLY the existing named real SOS relaunch case to capture hierarchy and screenshot on the actual iOS
+> 26.3.1 / `23D8133` registered Simulator with SDK 27.0 and unchanged production source: actual 1 test / 0
+> failures in 16.817s (41.45s command). The immediate post-relaunch hierarchy, captured at elapsed t=12.18s,
+> showed the healthy Conversation `TabView` with five native `TabBar` BUTTONS whose declared labels are
+> `Identity screen`, `Contacts screen`, `Conversation screen`, `SOS screen` and `Diagnostics screen`, with
+> NO `lab.tab.*` identifier, while other actual controls retained theirs; the old SOS-identifier query
+> first matched only at elapsed t=13.53s of that case, not 13.53s after the snapshot. That measured local
+> hierarchy demonstrates native Text-identifier query fragility on the local runtime. The exact C9 HOSTED
+> root cause remains [INFERENCE]: the exact C9 case queried a Text identifier and no hosted hierarchy or
+> XCResult was uploaded, so no recovery-only/journal/SQLite composition cause is asserted, and it is NOT
+> claimed that local 26.3.1 reproduced the CI 27 failure. The closed diagnostic XCResult+attachments
+> archive (393,418 bytes, SHA-256
+> `fcb98c76b4347107b6b9e10e257793f9c4f7757761f7be13630644399bd87791`) and the full original console plus
+> the instrumented test source are retained and remote-hash verified; the temporary instrumentation was
+> removed before the source checkpoint smoke.
+> **Two-file source checkpoint with its observed post-cutover local smoke:** the clean cutover replaces BOTH private
+> `tab(_:in:)` helpers, all 40 callers and the recovery-negative census with actual native `.button` label
+> queries in both `app.tabBars.buttons[label]` and `app.buttons[label]`, under the same 45s bound with a
+> 150ms poll and the plain final button query -- no identifier-to-label mapping, no identifier/label shim
+> or fallback, no role relaxation, no retry or extra wait, no gate bypass and no state rearm. Every case,
+> journey, shared-SOS durable equality, real terminate/launch and the RTL/large-text censuses stay
+> unchanged; the production five `lab.tab.*` Text declarations and the `ci/check_lab_isolation.py:484-488`
+> guard remain and are NOT weakened. Two UI source files are checkpointed immutably
+> (`616402abee59dbcee859479a974e2c939c9e7cb0`, tree `342383cd02b5b4e8f9cead15021a0d6a51c203c1`, parent C9).
+> The first two-scheme runner invocation failed BEFORE ANY ARM in 152.56s (exit 3): the custom device name
+> resolved against `OS:latest`, so zero schemes launched. That was a RUNTIME-SELECTION failure, not a source
+> or UI regression; no Busy state was observed, the run is preserved, and no source, wait, helper-retry or
+> gate was changed. The parent then changed ONLY the runtime invocation, naming the same owned iOS 26.3.1
+> device by explicit UUID `32ECCF0C-9EBA-4C67-8955-B3600009A01C` for the unchanged `LabMeshUI` +
+> `GodstoneArchiveUI` complete actual smoke. That complete post-cutover local runtime has now actually
+> PASSED: 43 actual case pass records with 2 `TEST SUCCEEDED` and the whole command in 730.74s --
+> `LabMeshUI` 29 actual tests / 0 failures / 0 skips / 0 expected failures (11 AX + 18 journey cases) and
+> `GodstoneArchiveUI` 14 actual tests / 0 failures / 0 skips / 0 expected failures. The former C9
+> SOS-relaunch case actually passed in 16.202s on the owned iOS 26.3.1 / `23D8133` iPhone 17 Pro arm64
+> device at SDK 27.0; no apples-to-apples speedup and no CI-27 equivalence is claimed from that. The exact
+> clean source `616402ab…` / tree `342383cd…` start and end snapshots both reported `all[]` / ok, and the
+> actual iOS pre/post digest was identical `1476060ae63bb635375eafda052e8238b2c8d2a302a888fcdd8dcffbf4d0da53`.
+> The settled screenshot was read and observed as the normal Conversation UI with all five native tab
+> buttons. The full closed console is 418,478 bytes, SHA-256
+> `615068703c2b8cf0a0ca09c2f7c7153e72fea10b63c24b8f389c1e345dcc113c`; the two original XCResult archives are
+> 6,100,812 bytes, SHA-256 `cc1cb9a4e10d90e354bada508691d19f45f12bce462d77fbf3fac7b1ed8a0b82`, and the actual
+> screenshots were retained, the first transition frame kept honestly beside the settled one. All SCP
+> transfers and remote SHA-256 checks passed in the C9 DGX root, whose authoritative actual
+> `actual-native-label-all-ui-smoke-receipt.json` is now complete. This is a SOURCE-CHECKPOINT
+> post-fix smoke ONLY: it is NOT final C, not a broadened C9 success and not a replacement hosted proof,
+> and it does not establish product durability. No result is carried into any hosted or canonical claim.
+> This cutover is a TEST-SIDE query correction, NOT a production SOS/recovery change, and the checkpoint is
+> PRE-SEAL source repair -- not C10 and not final proof.
+> **Still required for final C:** fresh exact-C all-ten-lane / mode-`all`, its own canonical campaign
+> reported as 179 semantic + 2 structural separately, all 27 local gates, all seven hosted jobs, an
+> annotated rc15 with a direct attestation-only child A, and read-only replay. `REMEDIATION_IN_PROGRESS`,
+> five external obligations OPEN/BLOCKED and zero `VERIFIED_FIXED` remain unchanged.
+
+
 **BOTH CANDIDATES REMAIN NO-GO.** The readiness flags are FALSE and enforced false by a passing canonical
 control; THE FIVE EXTERNAL GATES REMAIN OPEN OR BLOCKED; NO finding carrieth `closure_evidence`.
 
