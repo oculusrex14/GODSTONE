@@ -466,6 +466,13 @@ jobs:
           grep -q distributionSha256Sum gradle/wrapper/gradle-wrapper.properties \
             || { echo "::error::distributionSha256Sum missing from gradle-wrapper.properties"; exit 1; }
           echo "ok: committed wrapper verified (jar+properties+gradlew, distributionSha256Sum pinned)"
+      # Provision the host-pinned SDK and version-selected packages before Gradle.
+      # This does not pin NDK archive bytes or repair an upstream corrupt download.
+      - name: provision the pinned Android command-line SDK before any consumer Gradle
+        run: |
+          set -euo pipefail
+          export ANDROID_HOME="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-$HOME/Android/Sdk}}"
+          bash tools/supplychain/provision_android_cmdline_tools.sh
       # T68: the reviewed supply-chain documents are themselves checked into this
       # repository, so this audit is host-independent: it verifies the toolchain
       # lock against the current digests of the input files it names (a changed

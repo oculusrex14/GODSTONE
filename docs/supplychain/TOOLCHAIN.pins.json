@@ -24,7 +24,32 @@
         "authority_host_os": "macosx",
         "sha1_source": "the <checksum> Google's repository2-1.xml declares for commandlinetools-mac-11076708_latest.zip (cmdline-tools;12.0, host os macosx)",
         "sha256_source": "measured on a fresh download of the URL above; the measured size (153607488) equals the size repository2-1.xml declares for this archive, so the measured bytes are the declared bytes",
-        "consumed_by": "the ios job's 'provision the Android command-line SDK' step, which unzippeth this archive into $ANDROID_HOME/cmdline-tools/latest"
+        "consumed_by": "the ios job's 'provision the Android command-line SDK' step and, on a Darwin host, tools/supplychain/provision_android_cmdline_tools.sh, which unzippeth this archive into the VERSION-ADDRESSED $ANDROID_HOME/cmdline-tools/11076708 -- never into a shared cmdline-tools/latest"
+      }
+    },
+    {
+      "id": "android-commandlinetools-linux",
+      "url": "https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip",
+      "filename": "commandlinetools-linux-11076708_latest.zip",
+      "install_subdir": "11076708",
+      "bytes": 153607504,
+      "sha1": "d313adb7aedccf6cf0cfca51ec180f0059f5f8f8",
+      "sha256": "2d2d50857e4eb553af5a6dc3ad507a17adf43d115264b1afc116f95c92e5e258",
+      "extracted": {
+        "root": "cmdline-tools",
+        "files": 104,
+        "tree_sha256": "fd2de7b0db82a1edde2f83ab1397a81cfbef4b23e09f3ea806df596ee809294a",
+        "pkg_revision": "12.0",
+        "pkg_path": "cmdline-tools;12.0",
+        "digest_rule": "sha256 over the sorted 'relpath\\0bytes\\0sha256(blob)\\n' of every regular file under the archive's cmdline-tools/ root (symlinks refused); the tree is digested by CONTENT so a preexisting $ANDROID_HOME/cmdline-tools/latest that is not these bytes is refused rather than trusted"
+      },
+      "provenance": {
+        "authority": "https://dl.google.com/android/repository/repository2-1.xml",
+        "authority_package": "cmdline-tools;12.0",
+        "authority_host_os": "linux",
+        "sha1_source": "the <checksum> Google repository2-1.xml declares for commandlinetools-linux-11076708_latest.zip (cmdline-tools;12.0, host os linux)",
+        "sha256_source": "measured on a fresh download of the URL above; measured size (153607504) and SHA-1 agree with Google repository2-1.xml",
+        "consumed_by": "the Android repository-verification job explicitly provisions the pinned version-addressed SDK before source sampling and Gradle consumer execution"
       }
     }
   ]

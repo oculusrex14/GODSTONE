@@ -808,11 +808,14 @@ court passed 12 tests. This does not discharge production recovery or prove a ho
 
 ## D-B1-SDK — Verify the bootstrap bytes actually used
 
-The macOS Android bootstrap retains its hash-pinned download outside the checkout and installs only
-the pin's version-addressed directory. Every invocation checks the retained archive and installed
-tree; a mismatched existing directory is refused rather than removed or silently replaced. A user's
-`latest` remains untouched. Licence acceptance checks the SDK manager's exit status, tolerating
-only the producer's expected SIGPIPE.
+The Android bootstrap selects the measured macOS or Linux archive from the actual host OS,
+retains its hash-pinned download outside the checkout, and installs only the pin's version-addressed
+directory. Every invocation checks the retained archive and installed tree; a mismatched existing
+directory is refused rather than removed or silently replaced. A user's `latest` remains untouched.
+Licence acceptance uses a finite 64-line confirmation file and requires the SDK manager's own
+successful exit status; no producer pipeline or SIGPIPE exception decides success.
+The Ubuntu Android job provisions this SDK and the existing version-selected packages before
+supply-chain verification, source sampling and consumer Gradle configuration.
 
 The helper exports `GODSTONE_BOARD1_SDK_ARCHIVE` and `GODSTONE_BOARD1_SDK_CMDLINE_TOOLS`.
 Canonical Board1 verification has separate actual-archive, actual-tree and negative-control gates.
@@ -822,6 +825,15 @@ Builder verification: actual provisioning succeeded with CLI 12.0 in `cmdline-to
 post-use quiet verification and the three canonical SDK gates passed. Copies of the actual archive
 with one byte changed and actual installed `sdkmanager` with bytes appended were refused by their
 SHA-256 and tree digest respectively. This is a local subset, not hosted candidate or terminal proof.
+
+Linux extension verification: actual DGX Linux cold provisioning passed in 27.40s with CLI 12.0 and
+the unchanged NDK `27.0.12077973`; package properties and exported paths were retained. The measured
+Linux archive's size and SHA-1 agree with Google's metadata, and its 104-file extracted tree passed
+the unchanged verifier's Path-component-ordered content digest. Actual Darwin default-root
+`--verify-only` passed in 0.46s against the unchanged Mac pin. The full Linux log and both-host receipt
+are retained at `mac-mini-offload/GODSTONE/evidence/board1-rc15-linux-sdk-smoke-9h5b4ba3`.
+This ARM64 provisioning smoke does not claim Ubuntu AMD64 compiler/Gradle execution, an NDK payload
+digest, future CDN health, or a completed final-candidate lane/canonical campaign.
 
 ## D-B1-ARTIFACT — Inspect real build products, not only synthetic controls
 

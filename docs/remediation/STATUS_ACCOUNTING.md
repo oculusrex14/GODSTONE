@@ -139,6 +139,28 @@
 > Corrected immutable C must earn its own 179 semantic and two separately reported structural controls,
 > fresh mode-`all`, ten lanes, all 27 local gates, seven hosted jobs and authenticated rc15/A replay.
 > `REMEDIATION_IN_PROGRESS`, five external obligations and zero `VERIFIED_FIXED` remain unchanged.
+> C8 `98269150` / `37481536356/1` passed all three real iOS lanes and fresh hosted mode-`all`;
+> the iOS job finished in 3h 22m 26s. Actual downloaded mode-`all` passed the unchanged portable
+> checker in 1.24s: eight cross-platform rows, two crash/recovery rows, two actual terminations,
+> zero problems. Android failed in 1m 56s before tests during `:llm` configuration: absent NDK
+> `27.0.12077973` downloaded as a non-ZIP. Terminal was skipped; no canonical campaign, ten-lane
+> result, 27-gate proof, tag or freeze exists for C8. Release `37481536374/1` captured internal PASS
+> and external `BLOCKED_EXTERNAL`. All 12 original repository ZIPs, 198,593,173 bytes, were
+> parent SHA/size-verified at `mac-mini-offload/GODSTONE/evidence/rc15-final-98269150`; none deleted.
+> The existing SDK installer now selects the measured Darwin/Linux pin by actual host, and the
+> Ubuntu Android job explicitly provisions it before source sampling and consumer Gradle.
+> Actual Linux cold install passed in 27.40s with SDK 12.0 and unchanged NDK `27.0.12077973`;
+> actual Darwin default-root archive/tree verification passed in 0.46s. Exact SDK archive/tree
+> identity, finite 64 licence inputs and consumer status remain; no fake-host proof is credited.
+> The unchanged tree verifier's Path-component order is retained; the Linux pin uses its measured
+> digest, not the precursor receipt's flat-relpath ordering. Mac pin identity remains unchanged.
+> Actual receipts/logs are retained at
+> `mac-mini-offload/GODSTONE/evidence/board1-rc15-linux-sdk-smoke-9h5b4ba3`.
+> This pre-seal smoke neither supplies a final-C lane/campaign nor proves AMD64 compiler execution,
+> NDK payload byte identity or future CDN health. Corrected immutable C still requires its own
+> 179 semantic and two separately reported structural controls, fresh mode-`all`, ten lanes,
+> all 27 local gates, seven hosted jobs and authenticated rc15/A replay; completed B is untouched.
+> `REMEDIATION_IN_PROGRESS`, five external obligations and zero `VERIFIED_FIXED` remain unchanged.
 
 The COUNTS and the class memberships are re-derived from `REMEDIATION_STATE.json`; the narrative
 sections are maintained by hand and say so. Nothing here is new evidence. It states the

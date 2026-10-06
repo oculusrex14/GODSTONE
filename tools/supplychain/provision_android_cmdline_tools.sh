@@ -14,10 +14,11 @@
 # archive merely because it is there; and "latest" is a name two versions cannot
 # both hold. This script:
 #
-#   1. Reads the ONE pin (docs/supplychain/TOOLCHAIN.pins.json): the archive's
-#      exact bytes and its sha256 (measured, agreeing with the sha1 and size
-#      Google's own repository2-1.xml declareth), and the VERSION-ADDRESSED
-#      install subdirectory that pin names.
+#   1. Reads the HOST-ADDRESSED pin (docs/supplychain/TOOLCHAIN.pins.json): the
+#      archive's exact bytes and its sha256 (measured, agreeing with the sha1 and
+#      size Google's own repository2-1.xml declareth), and the VERSION-ADDRESSED
+#      install subdirectory that pin names. The pin is selected from the ACTUAL
+#      host OS (`uname -s`), never guessed and never overridden by a flag.
 #   2. Installs into `$ANDROID_HOME/cmdline-tools/<install_subdir>` (e.g.
 #      `11076708`), NEVER into a shared `latest`. A user's own `latest` is left
 #      byte-identical -- nothing is deleted, nothing is overwritten.
@@ -42,8 +43,22 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 PIN="${REPO_ROOT}/docs/supplychain/TOOLCHAIN.pins.json"
 VERIFY="${REPO_ROOT}/tools/supplychain/verify_toolchain_download.py"
-ID="android-commandlinetools-macos"
-ANDROID_HOME="${ANDROID_HOME:-$HOME/Library/Android/sdk}"
+
+# Select the measured host archive and its conventional SDK root.
+case "$(uname -s)" in
+  Darwin)
+    ID="android-commandlinetools-macos"
+    ANDROID_HOME="${ANDROID_HOME:-$HOME/Library/Android/sdk}"
+    ;;
+  Linux)
+    ID="android-commandlinetools-linux"
+    ANDROID_HOME="${ANDROID_HOME:-$HOME/Android/Sdk}"
+    ;;
+  *)
+    echo "::error::unsupported host $(uname -s): the pinned command-line tools are provisioned only on Darwin and Linux" >&2
+    exit 1
+    ;;
+esac
 VERIFY_ONLY=0
 QUIET=0
 for arg in "$@"; do

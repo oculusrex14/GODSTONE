@@ -396,6 +396,38 @@
 > must earn its own 179 semantic and two separately reported structural controls, fresh mode-`all`,
 > all ten lanes, all 27 local gates, seven hosted jobs, annotated rc15 and authenticated child-A replay.
 > `REMEDIATION_IN_PROGRESS`, five external obligations and zero `VERIFIED_FIXED` remain unchanged.
+>
+> **Completed failed C8 `98269150` / `37481536356/1`: iOS repair PASS, Android provisioning FAIL.**
+> All three real iOS lanes, fresh hosted mode-`all` and final source-clean provenance passed;
+> the iOS job finished in 3h 22m 26s. The downloaded actual integration producer passed the unchanged
+> portable checker in 1.24s: eight cross-platform rows, two crash/recovery rows, two actual crash
+> terminations and zero problems. This is C8 evidence, not borrowed into a later candidate.
+> Android failed in 1m 56s before tests, while AGP configured `:llm` and downloaded absent NDK
+> `27.0.12077973`: `java.util.zip.ZipException: Archive is not a ZIP archive`. The terminal job was
+> skipped; C8 has no canonical campaign, all-ten-lane result, 27-gate proof, tag or freeze.
+> Actual release `37481536374/1` captured internal PASS and external `BLOCKED_EXTERNAL`.
+> All 12 original repository artifact ZIPs, 198,593,173 bytes, were parent SHA/size-verified on DGX
+> at `mac-mini-offload/GODSTONE/evidence/rc15-final-98269150`; none was deleted.
+>
+> **Explicit Linux provisioning, pre-seal smoke only:** the existing pinned command-line SDK installer
+> now selects the measured Darwin or Linux archive by actual host OS. The Ubuntu Android job invokes
+> it before supply-chain verification, source sampling and consumer Gradle; the version-addressed
+> destination, exact SDK archive/tree verification, finite 64 licence inputs and consumer status remain.
+> Linux archive `commandlinetools-linux-11076708_latest.zip` is 153,607,504 bytes, SHA-256
+> `2d2d50857e4eb553af5a6dc3ad507a17adf43d115264b1afc116f95c92e5e258`; measured size and SHA-1 agree
+> with Google's published `cmdline-tools;12.0` Linux metadata. The unchanged retained verifier accepts
+> its 104-file tree, SHA-256 `fd2de7b0db82a1edde2f83ab1397a81cfbef4b23e09f3ea806df596ee809294a`.
+> Actual DGX Linux cold provision passed in 27.40s under separately byte-verified userspace Java 17,
+> installing the original package set including NDK `27.0.12077973`; actual package properties and
+> exported version-addressed paths were retained. Actual Darwin default-root `--verify-only` passed
+> in 0.46s against the unchanged Mac archive/tree. No fake-host run is credited as Linux runtime proof.
+> Active SDK scratch stayed on the execution host. DGX retains the actual two-host receipt and Linux
+> log at `mac-mini-offload/GODSTONE/evidence/board1-rc15-linux-sdk-smoke-9h5b4ba3`.
+> This does not invent an NDK payload digest, change its version, repair future corrupt CDN bytes,
+> or claim Ubuntu AMD64 native/Gradle execution from the ARM64 smoke.
+> Corrected immutable C still requires its own 179 semantic and two separately reported structural
+> controls, fresh mode-`all`, all ten lanes, 27 local gates, seven hosted jobs, rc15 and child-A replay.
+> `REMEDIATION_IN_PROGRESS`, five external obligations and zero `VERIFIED_FIXED` remain unchanged.
 
 
 **BOTH CANDIDATES REMAIN NO-GO.** The readiness flags are FALSE and enforced false by a passing canonical
