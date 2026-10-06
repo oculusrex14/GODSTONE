@@ -98,6 +98,25 @@
 > and campaign-free. Final immutable C must still earn its own separately reported 179 semantic
 > and two structural controls, fresh mode-`all`, 27 local gates, seven hosted jobs and rc15/A replay.
 > `REMEDIATION_IN_PROGRESS` and the five open/blocked external obligations remain unchanged.
+> C6 `21c23718` / `37382616410/1` passed all six prerequisites and fresh hosted mode-`all`.
+> Actual downloaded portable proof passed the unchanged checker: eight cross-platform rows,
+> two crash/recovery rows, two actual terminations and zero problems. Release `37382616464/1`
+> captured internal PASS and external `BLOCKED_EXTERNAL`.
+> Terminal `112064270922` was cancelled after 6h 1m 4s during the canonical loop; its 378 retained
+> phase logs name 126 controls but supply no sealed manifest or 27-gate outputs. They are partial proof.
+> Mirror write mode now preserves unchanged compiler-input bytes instead of deleting/recopying all
+> generated Swift files, while pruning the same obsolete owned outputs and retaining strict checks.
+> Semantic JVM phases force their selected Test with task-level `--rerun`, preserve prior-XML deletion
+> and fresh named rosters, and no longer force unchanged compiler/KSP dependencies. No bound or oracle changed.
+> Actual unpublished checkpoint `cd8187f5` passed the real Swift/Kotlin baseline/mutant/restored arms
+> in 65.67s: intended defects killed, full restoration green, zero skips/invalid phases/timeouts.
+> Generator CLI refused an obsolete source before write, removed it and passed strict checks after;
+> unchanged compiler-input bytes/mtime survived two write/check cycles. DGX retains the proof at
+> `mac-mini-offload/GODSTONE/evidence/board1-rc15-canonical-smoke-0b30do_i`.
+> This selected repair smoke does not complete C6 or supply the next candidate's canonical population.
+> The next immutable C must earn its own 179 semantic and two separately reported structural controls,
+> fresh mode-`all`, all 27 local gates, seven hosted jobs and authenticated rc15/A replay; B remains untouched.
+> `REMEDIATION_IN_PROGRESS`, five external obligations and zero `VERIFIED_FIXED` remain unchanged.
 
 The COUNTS and the class memberships are re-derived from `REMEDIATION_STATE.json`; the narrative
 sections are maintained by hand and say so. Nothing here is new evidence. It states the

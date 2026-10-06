@@ -330,6 +330,39 @@
 > its own 179 semantic and two separately reported structural controls, fresh portable integration,
 > all 27 local gates, all seven hosted jobs, annotated rc15 and authenticated attestation-only child.
 > `REMEDIATION_IN_PROGRESS` and all five external obligations remain; these smoke results close none.
+>
+> **Completed C6 `21c23718` / `37382616410/1`: six prerequisite jobs PASS, terminal CANCELLED.**
+> Android and all three iOS lanes passed. Fresh hosted mode-`all` `20261006T012302Z-7afa97` produced
+> eight cross-platform rows and two crash/recovery rows. Its downloaded schema-3 archive was accepted
+> by the unchanged source/native/fixture checker with zero problems and two actual crash terminations:
+> 30,914,560 bytes, SHA-256 `491c00a204a3bef3b31924b75ccbe20b2f78d166834f67562ef637f3b816da28`.
+> Actual release `37382616464/1` captured internal PASS and external `BLOCKED_EXTERNAL`.
+> The terminal job ran from 01:34:23 to 07:35:27 UTC on 2026-10-06 and was cancelled during its
+> canonical loop. DGX retains 378 phase logs for 126 named controls, but no sealed campaign manifest
+> or 27-gate outputs. Phase filenames and buffered console kills do not complete the 181-control proof.
+>
+> **Canonical execution repair:** mirror write mode previously deleted and recopied every generated
+> Swift source/test, invalidating unchanged compiler inputs on each phase. It now reconciles the same
+> owned output set, preserves byte-equal files and removes obsolete outputs. Check-mode refusals,
+> Git membership, manifest schema/digests and hand-maintained `Package.swift` ownership remain.
+> The semantic JVM executor now forces only its selected Test with Gradle 8.9's task-level `--rerun`,
+> not the entire dependency graph with global `--rerun-tasks`. It still deletes prior phase XML,
+> executes fresh named rosters and judges the same failures; changed compile inputs retain normal
+> source-sensitive rebuilds. No control, phase, oracle, population or wait bound was removed or loosened.
+>
+> **Pre-seal checkpoint `cd8187f5`, not final-C campaign proof:** the real Swift egress and Kotlin
+> publication rods both killed their intended defects and returned their complete rosters to green.
+> All six baseline/mutant/restored phases ran in 65.67s, with zero skips, invalid phases or timeouts.
+> Swift compiled its cold baseline in 17.24s, then the changed/restored phases in 2.61s/2.66s;
+> all six named cases still executed each time. Kotlin ran 14 cases per phase and caught both aimed
+> failures. A real throwaway generator CLI first refused an obsolete generated source, then removed it
+> and passed strict checks; unchanged compiler-input bytes/mtime survived two write/check cycles.
+> DGX retains this selected-path proof at
+> `mac-mini-offload/GODSTONE/evidence/board1-rc15-canonical-smoke-0b30do_i`.
+> C6 remains cancelled and untagged, not a completed canonical campaign. The next immutable candidate
+> requires its own separately reported 179 semantic and two structural controls, fresh mode-`all`,
+> all 27 local gates, seven hosted jobs and rc15/A replay. Completed B is not rerun or relabelled.
+> `REMEDIATION_IN_PROGRESS`, five external obligations and zero `VERIFIED_FIXED` remain unchanged.
 
 
 **BOTH CANDIDATES REMAIN NO-GO.** The readiness flags are FALSE and enforced false by a passing canonical
