@@ -20,34 +20,18 @@ final class LabMeshUITests: XCTestCase {
         continueAfterFailure = false
     }
 
-    /// *** A TAB IS ADDRESSED WHERE SWIFTUI PUTS IT, WHICH IS NOT `app.buttons`. ***
-    ///
-    /// *MEASURED: `app.buttons["lab.tab.diagnostics"]` did NOT match and the arm failed after its 20s wait. The lab
-    /// renders a real `TabView`, so its items live under `tabBars` -- **and a query that looks in the wrong place
-    /// reports a missing control, which is exactly the shape of a false alarm about a green build.** This helper
-    /// looks in BOTH places, so it cannot be wrong about which container SwiftUI chose.*
-    private func tab(_ identifier: String, in app: XCUIApplication) -> XCUIElement {
-        // *** A BOUNDED POLL ON THE IDENTIFIER IN **EITHER** CONTAINER, SO A COLD LAUNCH IS TOLERATED WITHOUT WAITING ON
-        // THE WRONG ELEMENT. ***
-        //
-        // *MEASURED, HOSTED RUN `36299487250`: `testGSINT001ACancelledSosHoldDoesNotReachTheRuntime` FAILED at "the SOS
-        // tab must exist" while ANOTHER ARM OF THE SAME RUN found `lab.tab.sos` in under a second -- so the control
-        // EXISTETH and the arm's own launch was simply slow to render it.* **THE OBVIOUS REPAIR -- wait on
-        // `app.tabBars.buttons[identifier]` -- WAS TRIED AND REGRESSED THE ARM LOCALLY, BECAUSE THAT CONTAINER IS NOT
-        // WHERE THIS CONTROL LIVETH: it BURNED THE WHOLE BOUND ON AN ELEMENT THAT NEVER ARISETH THERE BEFORE CONSULTING
-        // THE FALLBACK.** *So the poll watcheth BOTH containers TOGETHER (whichever ariseth first winneth) with ONE
-        // generous bound, which tolerates the cold start WITHOUT preferring a container that may be wrong.*
-        // **A genuinely-absent control still reddeneth -- the poll returneth the plain query after the bound -- so only
-        // the TIMING is absorbed.***
+    /// Query the native tab's declared accessibility label in either container.
+    /// A tab-item Text identifier need not appear on its native button after relaunch.
+    private func tab(_ label: String, in app: XCUIApplication) -> XCUIElement {
         let deadline = Date().addingTimeInterval(45)
         while Date() < deadline {
-            let viaTabBar = app.tabBars.buttons[identifier]
+            let viaTabBar = app.tabBars.buttons[label]
             if viaTabBar.exists { return viaTabBar }
-            let plain = app.buttons[identifier]
+            let plain = app.buttons[label]
             if plain.exists { return plain }
             usleep(150_000)
         }
-        return app.buttons[identifier]
+        return app.buttons[label]
     }
 
     /// *** GS-UX-001: A CONTROL BELOW THE FOLD IS REACHABLE, AND THE ARM MUST PROVE IT RATHER THAN ASSUME IT. ***
@@ -86,11 +70,12 @@ final class LabMeshUITests: XCTestCase {
         let app = XCUIApplication()
         app.launch()
 
-        // THE CONVERSATION TAB, BY ITS OWN IDENTIFIER.
-        let conversationTab = tab("lab.tab.conversation", in: app)
+        // THE CONVERSATION TAB, BY ITS DECLARED ACCESSIBILITY LABEL.
+        let conversationTab = tab("Conversation screen", in: app)
         XCTAssertTrue(conversationTab.waitForExistence(timeout: 20),
-                      "*** THE CONVERSATION TAB MUST EXIST: if the accessibility identifier is missing, the control " +
-                          "is not reachable by a user of assistive technology either. ***")
+                      "*** THE CONVERSATION TAB MUST EXIST: the native tab button carrieth this declared accessibility "
+                          + "label, so if the label is missing the control is not reachable by a user of assistive "
+                          + "technology either. ***")
         conversationTab.tap()
 
         // *** THE RECIPIENT SELECTOR -- THE CARD'S "real recipient selector". ***
@@ -262,7 +247,7 @@ final class LabMeshUITests: XCTestCase {
         let app = XCUIApplication()
         app.launch()
 
-        let diagnosticsTab = tab("lab.tab.diagnostics", in: app)
+        let diagnosticsTab = tab("Diagnostics screen", in: app)
         XCTAssertTrue(diagnosticsTab.waitForExistence(timeout: 20), "the diagnostics tab must exist")
         diagnosticsTab.tap()
 
@@ -336,7 +321,7 @@ final class LabMeshUITests: XCTestCase {
         // *** AND THE RELAUNCH: A FRESH PROCESS MUST READ THE SAME DURABLE RECORD. ***
         app.terminate()
         app.launch()
-        let relaunchedTab = tab("lab.tab.diagnostics", in: app)
+        let relaunchedTab = tab("Diagnostics screen", in: app)
         XCTAssertTrue(relaunchedTab.waitForExistence(timeout: 30),
                       "the diagnostics tab must exist after relaunch")
         relaunchedTab.tap()
@@ -405,7 +390,7 @@ final class LabMeshUITests: XCTestCase {
         }
         /// The diagnostics surface must stand before any of its readouts mean anything.
         func openDiagnostics(_ app: XCUIApplication) {
-            let tab = self.tab("lab.tab.diagnostics", in: app)
+            let tab = self.tab("Diagnostics screen", in: app)
             XCTAssertTrue(tab.waitForExistence(timeout: 30),
                           "*** A SETTLED RECORD MUST COMPOSE NORMALLY, SO THE DIAGNOSTICS SURFACE MUST STAND. ***")
             tab.tap()
@@ -582,7 +567,7 @@ final class LabMeshUITests: XCTestCase {
         let app = XCUIApplication()
         app.launch()
 
-        let sosTab = tab("lab.tab.sos", in: app)
+        let sosTab = tab("SOS screen", in: app)
         XCTAssertTrue(sosTab.waitForExistence(timeout: 20), "the SOS tab must exist")
         sosTab.tap()
 
@@ -655,11 +640,12 @@ final class LabMeshUITests: XCTestCase {
 
         // *** THE TAB BAR MUST STILL WORK UNDER MIRRORING -- a control that vanished would be a REAL a11y defect,
         // not a test artifact.
-        let conversation = tab("lab.tab.conversation", in: app)
+        let conversation = tab("Conversation screen", in: app)
         XCTAssertTrue(
             conversation.waitForExistence(timeout: 20),
-            "*** THE TAB MUST REMAIN ADDRESSABLE UNDER RTL AND AT AX-XXXL: an identifier that disappears when the " +
-                "layout is mirrored or the type is enlarged is a control some users cannot reach. ***",
+            "*** THE TAB MUST REMAIN ADDRESSABLE UNDER RTL AND AT AX-XXXL: a native tab button whose declared "
+                + "accessibility label disappears when the layout is mirrored or the type is enlarged is a control "
+                + "some users cannot reach. ***",
         )
         conversation.tap()
 
@@ -706,7 +692,7 @@ final class LabMeshUITests: XCTestCase {
         expectation(for: NSPredicate(format: "count == 0"), evaluatedWith: app.keyboards)
         waitForExpectations(timeout: 10)
 
-        let contactsTab = tab("lab.tab.contacts", in: app)
+        let contactsTab = tab("Contacts screen", in: app)
         XCTAssertTrue(contactsTab.exists, "the Contacts tab must be addressable")
         contactsTab.tap()
 
@@ -747,7 +733,7 @@ final class LabMeshUITests: XCTestCase {
         let app = XCUIApplication()
         app.launch()
 
-        let contactsTab = tab("lab.tab.contacts", in: app)
+        let contactsTab = tab("Contacts screen", in: app)
         XCTAssertTrue(contactsTab.waitForExistence(timeout: 20), "the Contacts tab must exist")
         contactsTab.tap()
 
@@ -789,7 +775,7 @@ final class LabMeshUITests: XCTestCase {
         let app = XCUIApplication()
         app.launch()
 
-        let sosTab = tab("lab.tab.sos", in: app)
+        let sosTab = tab("SOS screen", in: app)
         XCTAssertTrue(sosTab.waitForExistence(timeout: 20), "the SOS tab must exist")
         sosTab.tap()
 
@@ -867,7 +853,7 @@ final class LabMeshUITests: XCTestCase {
         // addressable in the tree" -- because the control renders on a tab the app had not opened. **A missing
         // NAVIGATION step reads exactly like a missing CONTROL**, which is the false signal this bundle exists to
         // avoid.*
-        let sosTab = tab("lab.tab.sos", in: app)
+        let sosTab = tab("SOS screen", in: app)
         XCTAssertTrue(sosTab.waitForExistence(timeout: 20), "the SOS tab must exist")
         sosTab.tap()
 
@@ -923,11 +909,11 @@ final class LabMeshUITests: XCTestCase {
         app.launch()
 
         // *** AND THE TAB IS REACHED THE WAY THIS FILE ALREADY REACHETH IT. *** *My first version guessed
-        // \`app.tabBars.buttons["Contacts"]\` and the arm FAILED on "the Contacts tab must exist" -- **the tab carrieth
-        // an IDENTIFIER (\`lab.tab.contacts\`), not that label, and a name SEARCH is not a name READ.*** *The sibling arm
-        // above useth the \`tab(_:in:)\` helper, which resolveth by identifier and FALLETH BACK to a plain button -- so
-        // the helper is used here too rather than a second, guessed road.*
-        let contactsTab = tab("lab.tab.contacts", in: app)
+        // \`app.tabBars.buttons["Contacts"]\` and the arm FAILED on "the Contacts tab must exist" -- **the tab is
+        // addressed by its DECLARED ACCESSIBILITY LABEL (\`Contacts screen\`), NOT the visible word, and a name SEARCH
+        // is not a name READ.*** *The sibling arms useth the \`tab(_:in:)\` helper, which resolveth that label in
+        // either native container -- so the helper is used here too rather than a second, guessed road.*
+        let contactsTab = tab("Contacts screen", in: app)
         XCTAssertTrue(contactsTab.waitForExistence(timeout: 20), "the Contacts tab must exist")
         contactsTab.tap()
 
@@ -1018,7 +1004,7 @@ final class LabMeshUITests: XCTestCase {
         let app = XCUIApplication()
         app.launch()
 
-        let contactsTab = tab("lab.tab.contacts", in: app)
+        let contactsTab = tab("Contacts screen", in: app)
         XCTAssertTrue(contactsTab.waitForExistence(timeout: 20), "the Contacts tab must exist")
         contactsTab.tap()
 
@@ -1078,7 +1064,7 @@ final class LabMeshUITests: XCTestCase {
         let app = XCUIApplication()
         app.launch()
 
-        let conversationTab = tab("lab.tab.conversation", in: app)
+        let conversationTab = tab("Conversation screen", in: app)
         XCTAssertTrue(conversationTab.waitForExistence(timeout: 20), "the Conversation tab must exist")
         conversationTab.tap()
 
@@ -1118,7 +1104,7 @@ final class LabMeshUITests: XCTestCase {
         let app = XCUIApplication()
         app.launch()
 
-        let conversationTab = tab("lab.tab.conversation", in: app)
+        let conversationTab = tab("Conversation screen", in: app)
         XCTAssertTrue(conversationTab.waitForExistence(timeout: 20), "the Conversation tab must exist")
         conversationTab.tap()
 
@@ -1140,7 +1126,7 @@ final class LabMeshUITests: XCTestCase {
         // *** THE RELAUNCH: the process dies, and a fresh one must read the SAME medium. ***
         app.terminate()
         app.launch()
-        let relaunchedTab = tab("lab.tab.conversation", in: app)
+        let relaunchedTab = tab("Conversation screen", in: app)
         XCTAssertTrue(relaunchedTab.waitForExistence(timeout: 20), "the Conversation tab must exist after relaunch")
         relaunchedTab.tap()
         let relaunchedDurable = app.descendants(matching: .any)["lab.conversation.durable"]
@@ -1166,7 +1152,7 @@ final class LabMeshUITests: XCTestCase {
         let app = XCUIApplication()
         app.launch()
 
-        let sosTab = tab("lab.tab.sos", in: app)
+        let sosTab = tab("SOS screen", in: app)
         XCTAssertTrue(sosTab.waitForExistence(timeout: 20), "the SOS tab must exist")
         sosTab.tap()
 
@@ -1196,7 +1182,7 @@ final class LabMeshUITests: XCTestCase {
         // *** (2a) TERMINATE AND RELAUNCH: the ACTIVE call must survive. ***
         app.terminate()
         app.launch()
-        let relaunchedSosTab = tab("lab.tab.sos", in: app)
+        let relaunchedSosTab = tab("SOS screen", in: app)
         XCTAssertTrue(relaunchedSosTab.waitForExistence(timeout: 20), "the SOS tab must exist after relaunch")
         relaunchedSosTab.tap()
         let relaunchedState = app.descendants(matching: .any)["lab.sos.state"]
@@ -1226,7 +1212,7 @@ final class LabMeshUITests: XCTestCase {
         // *** (3) THE SECOND RELAUNCH: the TERMINAL state must survive, read from the same durable row. ***
         app.terminate()
         app.launch()
-        let thirdSosTab = tab("lab.tab.sos", in: app)
+        let thirdSosTab = tab("SOS screen", in: app)
         XCTAssertTrue(thirdSosTab.waitForExistence(timeout: 20), "the SOS tab must exist after the second relaunch")
         thirdSosTab.tap()
         let thirdState = app.descendants(matching: .any)["lab.sos.state"]
@@ -1254,7 +1240,7 @@ final class LabMeshUITests: XCTestCase {
         app.launch()
 
         // THE SURFACES THE JOURNEYS DEPEND ON, EACH ADDRESSED WHERE IT RENDERS.
-        let conversationTab = tab("lab.tab.conversation", in: app)
+        let conversationTab = tab("Conversation screen", in: app)
         XCTAssertTrue(conversationTab.waitForExistence(timeout: 20), "the Conversation tab must exist")
         conversationTab.tap()
 
@@ -1277,14 +1263,15 @@ final class LabMeshUITests: XCTestCase {
         XCTAssertTrue(unlabelled.isEmpty,
                       "*** EVERY BUTTON MUST CARRY A NON-EMPTY LABEL. Unlabelled: \(unlabelled) ***")
 
-        // AND THE OTHER TWO SURFACES' STATE READOUTS, EACH ADDRESSED BY ITS OWN IDENTIFIER.
-        let contactsTab = tab("lab.tab.contacts", in: app)
+        // AND THE OTHER TWO SURFACES' STATE READOUTS, EACH ADDRESSED BY ITS OWN IDENTIFIER (the tabs themselves by
+        // their declared accessibility labels).
+        let contactsTab = tab("Contacts screen", in: app)
         XCTAssertTrue(contactsTab.exists, "the Contacts tab must be addressable")
         contactsTab.tap()
         XCTAssertTrue(app.descendants(matching: .any)["lab.trust.status"].waitForExistence(timeout: 20),
                       "the trust status readout must render")
 
-        let sosTab = tab("lab.tab.sos", in: app)
+        let sosTab = tab("SOS screen", in: app)
         XCTAssertTrue(sosTab.exists, "the SOS tab must be addressable")
         sosTab.tap()
         let sosState = app.descendants(matching: .any)["lab.sos.state"]
@@ -1318,7 +1305,7 @@ final class LabMeshUITests: XCTestCase {
         let app = XCUIApplication()
         app.launchEnvironment["GODSTONE_LAB_RECOVERY_FIXTURE"] = "reset"
         app.launch()
-        XCTAssertTrue(tab("lab.tab.diagnostics", in: app).waitForExistence(timeout: 25),
+        XCTAssertTrue(tab("Diagnostics screen", in: app).waitForExistence(timeout: 25),
                       "*** THE POSITIVE CONTROL: a reset boot MUST reach the normal surfaces, or the recovery-only "
                           + "arms below prove nothing about what the fixture changed. ***")
         app.terminate()
@@ -1347,9 +1334,9 @@ final class LabMeshUITests: XCTestCase {
     /// *The journal is planted at a REAL, durable `REQUESTED` phase (pinned to a seeded floor) beside the lab's real
     /// inventory. The holder reads it BEFORE constructing anything, renders recovery-only, and the arm binds:*
     ///   * the TYPED decision is a recovery state (never clean/wipe-completed) with a NAMED rung;
-    ///   * **NO normal surface exists** (every `lab.tab.*` absent) **AND the zero-open witness -- raised at the real
-    ///     store-construction doors -- reads 0** (a tab-absence-only claim could not distinguish "gate held" from
-    ///     "never composed");
+    ///   * **NO normal surface exists** (no native tab button is reachable by its declared accessibility label)
+    ///     **AND the zero-open witness -- raised at the real store-construction doors -- reads 0** (a
+    ///     tab-absence-only claim could not distinguish "gate held" from "never composed");
     ///   * the GATE renders `recovery=permitted operator=not-required` and ONLY the Retry control stands;
     ///   * the Retry RESUMES (`requestFresh: false`): its typed answer names the authority's own summary, NOT a fresh
     ///     wipe -- which is the exact defect (a Retry that started destruction from a settled estate);
@@ -1378,11 +1365,11 @@ final class LabMeshUITests: XCTestCase {
                       "*** NO PRIVATE STORE MAY BE CONSTRUCTED BEHIND THE RECOVERY SURFACE. This count is raised " +
                           "inside `LabRuntime.compose` at the store-construction calls, so it is REAL construction " +
                           "evidence rather than the absent tab tree. Observed: \(readouts.opens.label) ***")
-        for identifier in ["lab.tab.identity", "lab.tab.contacts", "lab.tab.conversation",
-                           "lab.tab.sos", "lab.tab.diagnostics"] {
-            XCTAssertFalse(app.tabBars.buttons[identifier].exists || app.buttons[identifier].exists,
-                           "*** NO NORMAL SURFACE MAY EXIST BEHIND A BLOCKED ESTATE: \(identifier) IS reachable, so " +
-                               "the recovery-only gate did not hold. ***")
+        for label in ["Identity screen", "Contacts screen", "Conversation screen",
+                      "SOS screen", "Diagnostics screen"] {
+            XCTAssertFalse(app.tabBars.buttons[label].exists || app.buttons[label].exists,
+                           "*** NO NORMAL SURFACE MAY EXIST BEHIND A BLOCKED ESTATE: the '\(label)' native tab " +
+                               "button IS reachable, so the recovery-only gate did not hold. ***")
         }
 
         // (3) THE GATE, AND ONLY THE RETRY.
@@ -1403,7 +1390,7 @@ final class LabMeshUITests: XCTestCase {
         // **THE EFFECT IS THE GRAPH'S RETURN, NOT A STRING:** a fresh-request Retry from a settled estate (the defect)
         // or a resume that did nothing would leave the recovery surface standing.
         retry.tap()
-        let returnedTab = tab("lab.tab.diagnostics", in: app)
+        let returnedTab = tab("Diagnostics screen", in: app)
         XCTAssertTrue(returnedTab.waitForExistence(timeout: 30),
                       "*** A PERMITTED RESUME MUST DRIVE THE DURABLE LADDER AND RE-GATE TO THE NORMAL GRAPH. " +
                           "Observed recovery surface still standing, or the resume did not settle the estate. ***")
@@ -1420,7 +1407,7 @@ final class LabMeshUITests: XCTestCase {
         app.terminate()
         let relaunched = XCUIApplication()
         relaunched.launch()
-        XCTAssertTrue(tab("lab.tab.diagnostics", in: relaunched).waitForExistence(timeout: 30),
+        XCTAssertTrue(tab("Diagnostics screen", in: relaunched).waitForExistence(timeout: 30),
                       "*** A RECORD THE PREVIOUS PROCESS SETTLED MUST STILL COMPOSE NORMALLY IN A FRESH PROCESS: " +
                           "this is the durability half, and NO FIXTURE VALUE is present here. ***")
         XCTAssertFalse(relaunched.staticTexts["lab.recovery.decision"].exists,
@@ -1484,10 +1471,10 @@ final class LabMeshUITests: XCTestCase {
                       "the report must be the authority's own summary; observed: \(operatorWords.label)")
 
         // (4) AND THE GRAPH RETURNS: the holder re-ran the gate over the settled estate.
-        XCTAssertTrue(tab("lab.tab.diagnostics", in: app).waitForExistence(timeout: 30),
+        XCTAssertTrue(tab("Diagnostics screen", in: app).waitForExistence(timeout: 30),
                       "*** AFTER THE OWNED WIPE AND RE-GATE, THE NORMAL SURFACES MUST RETURN -- the tab set is the " +
                           "witness that the corrupt block was cleared by a real resolution. ***")
-        let diagnosticsTab = tab("lab.tab.diagnostics", in: app)
+        let diagnosticsTab = tab("Diagnostics screen", in: app)
         diagnosticsTab.tap()
         let opens = app.staticTexts["lab.diagnostics.privateopens"]
         XCTAssertTrue(opens.waitForExistence(timeout: 20),
@@ -1530,7 +1517,7 @@ final class LabMeshUITests: XCTestCase {
 
         // *** THE RESUME CONTINUES FROM THE PERSISTED RUNG AND SETTLES: the graph returns with real store opens. ***
         app.buttons["lab.recovery.retry"].tap()
-        let diagnosticsTab = tab("lab.tab.diagnostics", in: app)
+        let diagnosticsTab = tab("Diagnostics screen", in: app)
         XCTAssertTrue(diagnosticsTab.waitForExistence(timeout: 30),
                       "*** A PERMITTED RESUME FROM AN INTERMEDIATE RUNG MUST DRIVE THE LADDER TO A SETTLED ESTATE " +
                           "AND RE-GATE. ***")
@@ -1550,9 +1537,9 @@ final class LabMeshUITests: XCTestCase {
     /// real store-construction doors inside `LabRuntime.compose`.*
     func testG1ANormalBootReallyOpensPrivateStores() throws {
         let app = launchFixture("reset")
-        XCTAssertTrue(tab("lab.tab.diagnostics", in: app).waitForExistence(timeout: 25),
+        XCTAssertTrue(tab("Diagnostics screen", in: app).waitForExistence(timeout: 25),
                       "a clean first launch must reach the normal surfaces")
-        let diagnosticsTab = tab("lab.tab.diagnostics", in: app)
+        let diagnosticsTab = tab("Diagnostics screen", in: app)
         diagnosticsTab.tap()
         let opens = app.staticTexts["lab.diagnostics.privateopens"]
         XCTAssertTrue(opens.waitForExistence(timeout: 20),

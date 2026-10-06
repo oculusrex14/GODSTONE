@@ -33,20 +33,18 @@ final class LabMeshAccessibilityUITests: XCTestCase {
     // Shared helpers -- the same tab-resolution idiom `LabMeshUITests` uses, for the same reason.
     // ---------------------------------------------------------------------------------------------
 
-    /// *** THE TAB IS ADDRESSED WHERE SWIFTUI PUT IT, IN EITHER CONTAINER. ***
-    /// *MEASURED (recorded in `LabMeshUITests`): the lab renders a real `TabView`, whose items can live under
-    /// `tabBars`; a query that looks only in `app.buttons` reports a missing control and reads like a broken
-    /// product. The poll watcheth BOTH and returns whichever ariseth first, so only TIMING is absorbed.*
-    private func tab(_ identifier: String, in app: XCUIApplication) -> XCUIElement {
+    /// Query the native tab's declared accessibility label in either container.
+    /// A tab-item Text identifier need not appear on its native button after relaunch.
+    private func tab(_ label: String, in app: XCUIApplication) -> XCUIElement {
         let deadline = Date().addingTimeInterval(45)
         while Date() < deadline {
-            let viaTabBar = app.tabBars.buttons[identifier]
+            let viaTabBar = app.tabBars.buttons[label]
             if viaTabBar.exists { return viaTabBar }
-            let plain = app.buttons[identifier]
+            let plain = app.buttons[label]
             if plain.exists { return plain }
             usleep(150_000)
         }
-        return app.buttons[identifier]
+        return app.buttons[label]
     }
 
     /// *** A CONTROL BELOW THE FOLD IS REACHABLE BY SCROLLING, AND THE ARM PROVES IT RATHER THAN ASSUMING IT. ***
@@ -219,7 +217,7 @@ final class LabMeshAccessibilityUITests: XCTestCase {
         let app = XCUIApplication()
         app.launch()
 
-        let conversationTab = tab("lab.tab.conversation", in: app)
+        let conversationTab = tab("Conversation screen", in: app)
         XCTAssertTrue(conversationTab.waitForExistence(timeout: 20), "the Conversation tab must exist")
         conversationTab.tap()
 
@@ -279,7 +277,7 @@ final class LabMeshAccessibilityUITests: XCTestCase {
         }
 
         // THE SOS HALF, ON ITS OWN TAB.
-        let sosTab = tab("lab.tab.sos", in: app)
+        let sosTab = tab("SOS screen", in: app)
         XCTAssertTrue(sosTab.waitForExistence(timeout: 20), "the SOS tab must exist")
         sosTab.tap()
         for (identifier, label) in essentialRoster where identifier.hasPrefix("lab.sos") {
@@ -315,7 +313,7 @@ final class LabMeshAccessibilityUITests: XCTestCase {
     func testGSINT001TheRecipientSelectionMovesTheRenderedState() throws {
         let app = XCUIApplication()
         app.launch()
-        let conversationTab = tab("lab.tab.conversation", in: app)
+        let conversationTab = tab("Conversation screen", in: app)
         XCTAssertTrue(conversationTab.waitForExistence(timeout: 20), "the Conversation tab must exist")
         conversationTab.tap()
 
@@ -360,7 +358,7 @@ final class LabMeshAccessibilityUITests: XCTestCase {
     func testGSINT001TheSosStateSpeaksTheSharedVocabularyAndItsChangeReachesTheAnnouncementDoor() throws {
         let app = XCUIApplication()
         app.launch()
-        let sosTab = tab("lab.tab.sos", in: app)
+        let sosTab = tab("SOS screen", in: app)
         XCTAssertTrue(sosTab.waitForExistence(timeout: 20), "the SOS tab must exist")
         sosTab.tap()
 
@@ -430,7 +428,7 @@ final class LabMeshAccessibilityUITests: XCTestCase {
     func testGSINT001TheDistressStateSurvivesRelaunchInTheSharedVocabulary() throws {
         let app = XCUIApplication()
         app.launch()
-        let sosTab = tab("lab.tab.sos", in: app)
+        let sosTab = tab("SOS screen", in: app)
         XCTAssertTrue(sosTab.waitForExistence(timeout: 20), "the SOS tab must exist")
         sosTab.tap()
 
@@ -446,7 +444,7 @@ final class LabMeshAccessibilityUITests: XCTestCase {
         // *** THE RELAUNCH: a FRESH process, nothing of the first consulted. ***
         app.terminate()
         app.launch()
-        let relaunchedTab = tab("lab.tab.sos", in: app)
+        let relaunchedTab = tab("SOS screen", in: app)
         XCTAssertTrue(relaunchedTab.waitForExistence(timeout: 20), "the SOS tab must exist after relaunch")
         relaunchedTab.tap()
         let relaunched = element("lab.sos.state", in: app)
@@ -489,11 +487,12 @@ final class LabMeshAccessibilityUITests: XCTestCase {
         let label = "\(rtl ? "RTL" : "LTR")/\(largestText ? "largest" : "default")"
 
         // THE TAB BAR MUST STILL WORK UNDER THE MIRROR AND THE ENLARGED TYPE.
-        let conversationTab = tab("lab.tab.conversation", in: app)
+        let conversationTab = tab("Conversation screen", in: app)
         XCTAssertTrue(
             conversationTab.waitForExistence(timeout: 40),
-            "*** [$label] THE CONVERSATION TAB MUST REMAIN ADDRESSABLE: an identifier that disappeareth when the "
-                + "layout is mirrored or the type is enlarged is a control some users cannot reach. ***",
+            "*** [$label] THE CONVERSATION TAB MUST REMAIN ADDRESSABLE: a native tab button whose declared "
+                + "accessibility label disappeareth when the layout is mirrored or the type is enlarged is a control "
+                + "some users cannot reach. ***",
         )
         conversationTab.tap()
 
@@ -577,7 +576,7 @@ final class LabMeshAccessibilityUITests: XCTestCase {
         }
 
         // *** AND THE SOS SURFACE'S ROSTER + ITS RELEVANT STATES, IN THIS COMBINATION. ***
-        let sosTab = tab("lab.tab.sos", in: app)
+        let sosTab = tab("SOS screen", in: app)
         XCTAssertTrue(sosTab.waitForExistence(timeout: 40),
                       "*** [$label] THE SOS TAB MUST REMAIN ADDRESSABLE. ***")
         sosTab.tap()
@@ -649,7 +648,7 @@ final class LabMeshAccessibilityUITests: XCTestCase {
             let app = XCUIApplication()
             app.launchArguments += launchArguments
             app.launch()
-            let tab = self.tab("lab.tab.conversation", in: app)
+            let tab = self.tab("Conversation screen", in: app)
             _ = tab.waitForExistence(timeout: 40)
             tab.tap()
             let field = app.textFields["lab.conversation.field"]
@@ -683,7 +682,7 @@ final class LabMeshAccessibilityUITests: XCTestCase {
     func testGSINT001TheTrustSurfacesAreOperableNotMerelyLabelled() throws {
         let app = XCUIApplication()
         app.launch()
-        let contactsTab = tab("lab.tab.contacts", in: app)
+        let contactsTab = tab("Contacts screen", in: app)
         XCTAssertTrue(contactsTab.waitForExistence(timeout: 20), "the Contacts tab must exist")
         contactsTab.tap()
 
@@ -737,7 +736,7 @@ final class LabMeshAccessibilityUITests: XCTestCase {
     func testGSINT001TheOutcomeChangeReachesTheAnnouncementDoor() throws {
         let app = XCUIApplication()
         app.launch()
-        let conversationTab = tab("lab.tab.conversation", in: app)
+        let conversationTab = tab("Conversation screen", in: app)
         XCTAssertTrue(conversationTab.waitForExistence(timeout: 20), "the Conversation tab must exist")
         conversationTab.tap()
 
