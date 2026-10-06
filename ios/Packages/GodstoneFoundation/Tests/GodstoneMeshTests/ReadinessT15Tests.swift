@@ -291,6 +291,10 @@ final class ReadinessT15Tests: XCTestCase {
         transport.start()
         let cm = transport.requireContextCentralForTest()
         let epoch = transport.currentTransportEpoch
+        // The flood is driven WITHOUT advancing the injected clock: the budget's window is the
+        // transport's own injected monotonic source, so the same-clock flood can never be refunded by
+        // a hidden real clock mid-flood. The bound is 65,536 records per 1,000 ms, so 70,000 charges
+        // must cross it deterministically on ANY machine, however fast or slow.
         for i in 0..<70_000 {
             _ = transport.processOutboundDiscover(
                 peerId: UUID(), rssi: -50, serviceDataHint: nil, peripheral: nil,
@@ -298,13 +302,32 @@ final class ReadinessT15Tests: XCTestCase {
             )
             _ = i
         }
-        let budgetRefusals = transport.rejectionRecordsForTest()
-            .filter { $0.site.contains("admission") || $0.reason.contains("budget") }.count
+        let budgetRefusals = budgetRefusalCensus(transport)
         XCTAssertTrue(
             budgetRefusals > 0,
             "a flood of RAW advertisements must be CHARGED at the scan door and eventually REFUSED; the "
                 + "audited road charged nothing for air traffic at all. Refusals seen: " + String(budgetRefusals)
         )
+
+        // The charge is a REAL allowance, not a one-way door: when the window's period elapses on the
+        // injected clock, the next advertisement is admitted again. The census is cleared first so the
+        // probe readeth ONLY what the post-period charge did; the transport's OWN census is the judge.
+        transport.clearRejectionRecordsForTest()
+        clock.advance(1_000)
+        _ = transport.processOutboundDiscover(
+            peerId: UUID(), rssi: -50, serviceDataHint: nil, peripheral: nil,
+            sourceEpoch: epoch, from: cm
+        )
+        XCTAssertEqual(budgetRefusalCensus(transport), 0,
+                       "the next period's window must admit raw air traffic again -- the charge is a "
+                           + "budget, not a permanent lockout; refusals after the period: "
+                           + String(budgetRefusalCensus(transport)))
+    }
+
+    /// The transport's own admission-budget refusal census, filtered from its rejection ring.
+    private func budgetRefusalCensus(_ t: BleTransport) -> Int {
+        return t.rejectionRecordsForTest()
+            .filter { $0.site.contains("admission") || $0.reason.contains("budget") }.count
     }
 
 }

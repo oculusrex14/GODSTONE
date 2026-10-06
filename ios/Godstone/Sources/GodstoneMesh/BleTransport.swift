@@ -619,11 +619,19 @@ extension BleTransport: Transport {
 public final class BleTransport: NSObject, @unchecked Sendable {
     /// IOS-05 / T27 (steps 1-2): THE PRE-AUTH ADMISSION BUDGET, charged at the ingress doors BEFORE
     /// parsing, reassembly, DH or trust work. The iOS twin of the android isle's `AdmissionBudget`.
-    private let admissionBudget = AdmissionBudget()
+    ///
+    /// ITS WINDOW RUNS ON THE TRANSPORT'S OWN INJECTED `MonotonicClock` -- the same monotonic source
+    /// every deadline here useth -- and NEVER on a hidden second clock. A budget whose window rolled
+    /// on a clock the court cannot drive would roll MID-FLOOD and refund the flood: the same one-second
+    /// window that a fast machine never crosses is crossed by a slower one, which is exactly the
+    /// machine-speed-dependent refusal the Android isle avoideth by injecting `admissionClockMillis`
+    /// into its transport constructor (`BleTransport.kt`). The clock is passed at construction, below.
+    private let admissionBudget: AdmissionBudget
 
     /// IOS-05 / T27 (step 3): THE AUTHENTICATED BUDGET -- a SEPARATE instance, so that each scope's
     /// counters report ONE scope. Charged AFTER AEAD, before the plaintext leaveth for the application.
-    private let authenticatedAdmissionBudget = AdmissionBudget()
+    /// It shares the transport's injected clock for the same reason as the pre-auth budget above.
+    private let authenticatedAdmissionBudget: AdmissionBudget
 
     /// IOS-05 / T27 (step 1): THE CANONICAL GOVERNOR, UNDER THE RUNTIME OWNER. Its configuration is the
     /// shared default one (the specified 256 tracked identities and the priority capacity/refill tables)
@@ -1356,7 +1364,14 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         self.provisionalTimeoutSeconds = provisionalTimeoutSeconds
         self.managerFactory = managerFactory ?? DefaultTransportManagerFactory()
         self.leaseSweepInterval = leaseSweepInterval
-        self.clock = clock ?? SystemMonotonicClock()
+        let resolvedClock = clock ?? SystemMonotonicClock()
+        self.clock = resolvedClock
+        // IOS-05 / T27: THE ADMISSION BUDGETS SHARE THE TRANSPORT'S OWN INJECTED MONOTONIC CLOCK, so a
+        // court that driveth the clock driveth the very window the flood is charged against -- the
+        // Android parity (`admissionClockMillis` in `BleTransport.kt`). Production passeth no clock and
+        // therefore getteth `SystemMonotonicClock`, byte-identical to the budget's former default.
+        self.admissionBudget = AdmissionBudget(nowMillis: { Int64(resolvedClock.nowUptimeMillis()) })
+        self.authenticatedAdmissionBudget = AdmissionBudget(nowMillis: { Int64(resolvedClock.nowUptimeMillis()) })
         super.init()
         self.snapshotAuthority = LinkInfoSnapshotAuthority(
             identityProvider: { [weak self] in self?.identity },
