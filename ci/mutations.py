@@ -2846,14 +2846,32 @@ def _run_harness(entry, wt_path, timeout=2400, env=None):
         # write and the restore all land inside one daemon-less invocation
         # each, but a build cache keyed on the previous phase's bytes would
         # hand back the PREVIOUS phase's XML.* **So the task directory is
-        # DELETED before every run and `--rerun-tasks` is passed, and a roster
-        # that did not actually execute cannot satisfy a rod.**
+        # DELETED before every run and the SELECTED TEST TASK is forced fresh
+        # with the task-level `--rerun`, and a roster that did not actually
+        # execute cannot satisfy a rod.**
+        #
+        # *** `--rerun` IS SCOPED TO THE TASK IT FOLLOWS, WHICH IS WHY IT IS
+        # PLACED AFTER `:module:task` AND NOT THE GLOBAL `--rerun-tasks`. ***
+        #
+        # **`--rerun` on a task makes THAT task execute fresh -- it is never
+        # answered by UP-TO-DATE or FROM-CACHE -- and it does not force the
+        # tasks it depends upon.** So the roster is freshly produced on every
+        # phase, while the compiler/KSP dependencies the selected test task
+        # depends on keep Gradle's normal source-sensitive behaviour: their
+        # inputs (sources, classpath, task inputs) decide, and an unchanged
+        # dependency may legitimately be reused. *The previous global
+        # `--rerun-tasks` forced the WHOLE compile graph to re-execute on every
+        # phase, which is the whole-compile cost the rod measured and did not
+        # need.* The selected test task's own freshness holds either way, for
+        # `--rerun` always re-executes it, and its test inputs include the
+        # compiled mutant bytes -- so no cached prior-phase roster can be
+        # handed back.
         xml_dir = os.path.join(wt_path, "android", module, "build", "test-results",
                                task)
         shutil.rmtree(xml_dir, ignore_errors=True)
         proc = subprocess.run(
-            ["./gradlew", ":" + module + ":" + task, "--no-daemon", "-q",
-             "--rerun-tasks", "--tests", entry["gradle_filter"]],
+            ["./gradlew", ":" + module + ":" + task, "--rerun", "--no-daemon",
+             "-q", "--tests", entry["gradle_filter"]],
             cwd=os.path.join(wt_path, "android"), capture_output=True, text=True,
             env=_gradle_env,
             timeout=timeout)
