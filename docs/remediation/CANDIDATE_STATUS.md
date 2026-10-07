@@ -1,6 +1,6 @@
 # Candidate status — AUDIT-003-R1, COMPUTED at round 122 (every figure re-derived from the ledger)
 
-> **CURRENT STATE (2026-10-06) — DERIVED, NOT CARRIED.** *Everything below this banner is HISTORICAL
+> **CURRENT STATE (2026-10-07) — DERIVED, NOT CARRIED.** *Everything below this banner is HISTORICAL
 > candidate narrative from the round-122 era and is preserved verbatim; its SHAs, lane counts and class
 > membership are NOT the current state.* **The current canonical state is DERIVED by
 > `scripts/build_structured_closure.py`: builder status `REMEDIATION_IN_PROGRESS`, **35 internal obligations
@@ -510,6 +510,69 @@
 > reported as 179 semantic + 2 structural separately, all 27 local gates, all seven hosted jobs, an
 > annotated rc15 with a direct attestation-only child A, and read-only replay. `REMEDIATION_IN_PROGRESS`,
 > five external obligations OPEN/BLOCKED and zero `VERIFIED_FIXED` remain unchanged.
+>
+> **Completed C10 `52f7a00b` / repository verification `37537225005/1`: all six prerequisites PASS, the terminal job
+> CANCELLED mid-campaign; no manifest, no gate set, no tag, no child A.** The exact candidate is
+> `52f7a00bef26644cbbc87e2c6470cd0f59a05f09`, tree `c0ace1c5342c345125739c89e13097451bf16566`, on the pushed branch
+> `board1/rc15-final-52f7a00b`. Constraints, repo-owned parity and safety invariants (A,B,C,E,F,G,H), content, meshsim,
+> the iOS job and the Android job all PASSED: the iOS job ran 10246s (2h 50m 46s) and the Android job carried all seven
+> actual Android lanes in 884s. The terminal job `112574909035`, running the exact-candidate mutation campaign, was
+> CANCELLED after 21648s (6h 0m 48s). The campaign DID launch and its rows ran serially until the cancel; what C10 has
+> is no COMPLETED canonical campaign, no gate manifest, no 27-gate set, no rc15 tag and no attestation child A; it is
+> NOT final C. No archive was deleted.
+> **What survived is PARTIAL evidence, never the terminal manifest, and the two uploaders must be told apart.** The
+> campaign writes a rod's three phase logs together AFTER that row's classification, serial in ledger order
+> (`ci/mutations.py:3664-3670` inside `run_semantic`, `ci/mutations.py:3374-3735`). The cancel left **474 campaign phase
+> logs -- 158 complete baseline/mutant/restored trios -- plus one release JSON, 475 files in all, and NO gate manifest**.
+> The `board1-gate-manifest` upload step was **SKIPPED**, because its file was never produced. The post-cancel
+> `always()` `board1-terminal-evidence` uploader is a DISTINCT thing and it **SUCCEEDED**: artifact `11466006285`,
+> 4,491,437 bytes, SHA-256 `c94e987cbe8c7910383e6b1f8fab67223b723a9433687c4631e9e34c78628ef0`. A succeeded partial uploader
+> says nothing about a manifest that was skipped, and **no 179-semantic + 2-structural score, no ten-lane/mode-`all`
+> verdict and no child A is inferred from that archive.**
+> **Actual C10 producer consumption, separate from the cancelled campaign:** the exact clean `52f7a00b` checkout
+> passed the original-data all-ten-lane reader in 1.46s: iOS Foundation 1533, UI 43 and Simulator 1406 cases;
+> all seven Android lanes passed, with zero skips, failures or errors. Its fresh mode-`all` run
+> `20261007T003625Z-b64458` passed the strict downloaded-original reader in 1.33s: 10 rows, eight cross-platform,
+> two crash-recovery rows, two observed process deaths, zero problems. Source SHA/tree and clean `all=[]` matched
+> before and after; the declared native compile input remained `93a68319…`. The 14 repository originals
+> (219,020,797 bytes) were independently parent SHA/size-verified on DGX. Receipt:
+> `rc15-final-52f7a00b/actual-ten-lane-mode-all-original-consumer-receipt.json`. This is C10-only proof, not C11 or rc15.
+> **Measured serial cause, not a concurrency claim.** The campaign ran its rows SERIALLY in the one terminal job; the
+> three `ios-ui` rods each run the FULL 43-case UI lane three times (baseline, mutant, restored). Of the 158 retained
+> trio-write intervals, exactly two exceed 600s and both are `ios-ui` controls: `IOS-WIPE-UX-002` **4958s (82m 38s)** and
+> `IOS-SOS-RETRY-001` **4878s (81m 18s)**, together 9836s (2h 43m 56s). The interval semantics are stated honestly:
+> successive original trio written mtimes INCLUDE the following rod's preparation, all three of its phases, the previous
+> rod's cleanup and its log write, at the ZIP's 2s resolution -- they are NOT individual phase wall times. The first
+> interval begins at the actual step start 00:49:35 and includes campaign setup before the first row.
+> When the job was cancelled, the last completed trio was `ARCHIVE-PROV-006` (written 06:44:18), so the next ordered `ios-ui` entry,
+> `ARCHIVE-PROV-007`, was in flight; its phase is UNKNOWN and only the in-flight fact is [INFERENCE]. The per-outcome
+> tally line never printed, so C10 carrieth no tally.
+> **S2 is not failed.** The 70 explicit baseline Swift build durations sum 4844.35s, while the 69 mutant
+> durations sum 431.51s and the 70 restored durations sum 405.86s: mutant/restored compilation is already incremental.
+> Totals cover all targets and only explicit Swift builds -- not whole phases and not xcodebuild/Gradle time
+> -- and no cold-versus-warm claim is made for all three phases.
+> **Release capture is not a green workflow.** The actual capture `37537225078/1` reported internal `PASS` and typed
+> external `BLOCKED_EXTERNAL` in 16.78s; its eight original artifacts, 15,278,928 bytes, were parent SHA/size-verified
+> and none was deleted. The release workflow was NOT all-green.
+> **Bounded two-resource-class executor — actual pre-seal smoke PASSED.** ONE canonical campaign stays inside one terminal
+> job: `ios-ui` entries run SERIALLY in one worker; every other entry runs SERIALLY in the second, concurrent ONLY across
+> those classes. Every rod retains a fresh disposable detached worktree and all three phases; every UI control still
+> runs the full 43-case UI lane. At immutable code checkpoint `3c1e9e4cf83b8c98d5a6af2734b95ba8d7da4c13`
+> / tree `5ef03db5f0c8b89bfe16fe515bae85045ac10bb0`, the actual three-harness smoke took 2360.28s (39m 20.28s).
+> Reported SEPARATELY: **two semantic smoke controls KILLED** (JVM T55 and Swift T56, each 15 cases per phase);
+> **one structural smoke control KILLED** (`ARCHIVE-PROV-007`, all 43 UI cases in every phase). Each named witness failed
+> only on the mutant; baseline/restored were green, all three rosters matched per control, with zero skips or invalid,
+> incomplete, timed-out or escaped controls. The ten original files (manifest plus nine phase logs), 2,018,020 bytes,
+> were independently remote SHA/size-verified on DGX; each log matched its manifest-bound SHA.
+> Actual rod bounds show T55 (07:41:39–07:42:15Z) and T56 (07:42:15–07:43:02Z), serial within the non-UI class,
+> overlapping the UI rod (07:41:39–08:20:58Z) by 36s and 47s. These are **rod-work bounds**, including preparation,
+> native work, compilation and tests, NOT individual phase wall times or a claim of simultaneous test-case execution.
+> The checkpoint SHA/tree and clean `all=[]` matched before/native-after/smoke-after. Receipt:
+> `rc15-final-52f7a00b/actual-bounded-two-class-executor-real-smoke-receipt.json`. No stub or old campaign was used.
+> This is a subset smoke, NOT the full 179-semantic or 2-structural score and NOT final C11 proof. The next immutable
+> candidate still owes fresh mode-`all`, all ten lanes, all 27 local gates, all seven hosted jobs, separately reported
+> 179 semantic and 2 structural controls, annotated rc15, sole attestation-file direct child A and authenticated read-only replay.
+> `REMEDIATION_IN_PROGRESS`, five external obligations OPEN/BLOCKED and zero `VERIFIED_FIXED` remain unchanged.
 
 
 **BOTH CANDIDATES REMAIN NO-GO.** The readiness flags are FALSE and enforced false by a passing canonical
