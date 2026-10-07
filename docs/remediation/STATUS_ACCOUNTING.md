@@ -470,13 +470,30 @@ none was deleted, and no completed producer was rerun.
 **Exact resume point.** A real native-Bash replay of that exact corrected block against the retained C11
 originals passed all 27 local gates in 710.85 s on clean unchanged C11 (source `all=[]` and the generated
 native expectation `93a68319…` unchanged at both ends). The post-gate manifest emission then refused ONLY the
-three Android report lanes (`android:ui`, `android:simulator`, `android:production`) as STALE, each comparing
-the recorded digest against the empty-tree digest `e3b0c442…`. The dispatcher repair already makes the recorded
-and recomputed digests AGREE; the remaining hop is inside `ci/lane_registry.py`'s `verify_lane_report`, which
-still recomputes the compared digest from a source set carrying no entry for the three report lanes. THAT hop
-is the next action, and it requires a NEW immutable candidate (C12) with its OWN complete exact-source proof:
-fresh 179 semantic + 2 structural reported separately, all ten lanes and mode-`all`, all 27 local gates, all
-seven hosted jobs, annotated rc15 and the sole attestation-file direct child A. C11 is NOT final C and no
-completed producer is rerun or relabelled.
+three Android report lanes (`android:ui`, `android:simulator`, `android:production`) as STALE, comparing the
+recorded digest (5e8e4e9b / 5b2df666 / 2cbb5384, one per lane) against the SAME empty-input digest
+`e3b0c442…` for all three. The dispatcher repair is in place and its behavior is verified: the recorded
+digests and the manifest's own derived digest now agree.
+
+**OPEN — the resume defect, verified against source (read-only tracer).** A SECOND digest implementation is
+still reachable: `ci/check_lane_results.py:_android_source_digest` (:2343-2355) hashes `ANDROID_SOURCE_TREES`
+(:2335-2340), which carries ONLY the four unit lanes (`android:app/core/mesh/labmesh`); for the three report
+labels `.get(label, ())` is empty and the helper returns the empty-input digest `e3b0c442…` for EVERY lane.
+The manifest reader must reach the registry instead: the registry is `tools/readiness/lane_registry.py` —
+NOT `ci/lane_registry.py` — and `verify_lane_report` (:554) recomputes `current = source_digest(spec)`
+(:589, helper `source_digest` :244-256 over `source_files` :228-241) and refuses at `:593-595`; that registry
+path is the CORRECT receiver for the report lanes, because `LANE_SPECS` carries real `sources` for
+`android:ui` (:133), `android:simulator` (:165) and `android:production` (:194-195). `lane_digest`
+(`ci/check_board1_manifest.py:1022-1034`) routes report lanes to the registry at `:1027-1030` and falls back
+to the unit helper at `:1034`; `lane_facts` reads the compared value from the EVIDENCE-root sidecar at
+`:1106-1107`. The observed constant `e3b0c442…` for all three lanes is therefore the UNIT helper's output,
+reached while the report lane was judged by the wrong receiver — a real defect in the digest dispatch, to be
+fixed at its source (NOT by teaching the unit helper the registry lanes, copying sources into the evidence
+root, or weakening the staleness comparison).
+
+That fix requires a NEW immutable candidate (C12) with its OWN complete exact-source proof: fresh 179
+semantic + 2 structural reported separately, all ten lanes and mode-`all`, all 27 local gates, all seven
+hosted jobs, annotated rc15 and the sole attestation-file direct child A. C11 is NOT final C and no completed
+producer is rerun or relabelled.
 
 Posture is unchanged: `REMEDIATION_IN_PROGRESS`, five external obligations OPEN/BLOCKED, zero `VERIFIED_FIXED`.
