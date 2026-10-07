@@ -75,6 +75,7 @@ A control that has never been observed failing is not a control.
 from __future__ import annotations
 
 import argparse
+import concurrent.futures
 import datetime
 import hashlib
 import importlib.util
@@ -86,6 +87,7 @@ import shutil
 import subprocess
 import tempfile
 import sys
+import threading
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -2615,7 +2617,21 @@ UI_CASE_RE = re.compile(r"Test Case '-\[([\w.]+) ([\w]+)\]' (passed|failed)")
 UI_SKIP_RE = re.compile(r"Test Case '[^']+' skipped")
 
 
-def _worktree_add(head, wt_path):
+# *** ONE LOCK FOR THE SHARED GIT STORE'S WORKTREE ADMINISTRATION. ***
+#
+# *`git worktree add/remove/prune` all mutate the SAME worktree registry under
+# `.git`, so two campaign workers must never administer worktrees at once: the
+# second `add` of a detached worktree racing the first's `prune` can lose a
+# registration or fail with "is already registered".* **The lock is held ONLY
+# around these administration calls -- never while a harness runs -- so the two
+# resource-class workers still execute their rods concurrently; they merely
+# queue for the few hundred milliseconds it taketh to create or destroy a
+# worktree.**
+_WORKTREE_ADMIN_LOCK = threading.Lock()
+
+
+def _worktree_add_locked(head, wt_path):
+    """The `add` itself; the caller holdeth `_WORKTREE_ADMIN_LOCK`."""
     subprocess.run(["git", "worktree", "add", "--force", "--detach", wt_path, head],
                    cwd=ROOT, check=True, capture_output=True, timeout=300)
     subprocess.run(["git", "checkout", "--force", head], cwd=wt_path, check=True,
@@ -2625,10 +2641,38 @@ def _worktree_add(head, wt_path):
     assert st.strip() == "", "the worktree is not pristine:\n" + st
 
 
-def _worktree_remove(wt_path):
+def _worktree_remove_locked(wt_path):
+    """The `remove`/`prune` itself; the caller holdeth `_WORKTREE_ADMIN_LOCK`."""
     subprocess.run(["git", "worktree", "remove", "--force", wt_path], cwd=ROOT,
                    capture_output=True, timeout=300)
     subprocess.run(["git", "worktree", "prune"], cwd=ROOT, capture_output=True, timeout=300)
+
+
+def _worktree_add(head, wt_path):
+    """Create a pristine disposable worktree, serialized on the shared admin lock."""
+    with _WORKTREE_ADMIN_LOCK:
+        _worktree_add_locked(head, wt_path)
+
+
+def _worktree_remove(wt_path):
+    """Remove a disposable worktree, serialized on the shared admin lock."""
+    with _WORKTREE_ADMIN_LOCK:
+        _worktree_remove_locked(wt_path)
+
+
+def _worktree_fresh(head, wt_path):
+    """*** CLEAR A STALE ROOT FOR THIS ROD AND ADD ITS REPLACEMENT ATOMICALLY. ***
+
+    *The pair is done under ONE hold of the shared admin lock, so no other
+    worker's `add`/`remove`/`prune` can interleave between the removal of a
+    leftover root and the add that must replace it -- the atomicity the old
+    two-call sequence (`if os.path.exists: remove` then `add`) did not have once
+    a second worker existed. The lock is released before the harness runs.*
+    """
+    with _WORKTREE_ADMIN_LOCK:
+        if os.path.exists(wt_path):
+            _worktree_remove_locked(wt_path)
+        _worktree_add_locked(head, wt_path)
 
 
 # ---------------------------------------------------------------------------
@@ -3371,6 +3415,262 @@ def _toolchain_probe() -> dict:
 # the honest classifier refuseTH as a non-catch. `--harness-timeout` raiseth the
 # bound per invocation; the default is unchanged, and every verdict still cometh
 # from the logs, never from the clock.
+# *** THE TWO RESOURCE-CLASS WORKERS' SHARED PROGRESS DISCIPLINE. ***
+#
+# *Two rods executing at once write their progress lines to the SAME stdout, and
+# a bare `print` composes and writes its text and its newline in two calls -- so
+# two workers can interleave between them and weld two rods' lines into one
+# unreadable line. The line is built whole and written under this lock, flushed,
+# so the parent's live console still showeth each rod's outcome as it landeth.*
+_SEMANTIC_SAY_LOCK = threading.Lock()
+
+
+def _say(message):
+    with _SEMANTIC_SAY_LOCK:
+        print(message, flush=True)
+
+
+def _run_semantic_rod(entry, head, wt_path, harness_timeout, emit_dir, mrow):
+    """*** ONE ROD, ONE DISPOSABLE WORKTREE, THREE PHASES -- THE WHOLE BODY. ***
+
+    *This is the body the campaign used to run inline for every rod, extracted
+    UNCHANGED so that ONE worker may execute it serially for the `ios-ui` class
+    and ONE for every other class, concurrently -- each class still in LEDGER
+    ORDER within itself. It receiveth no other rod's state: `mrow` is the
+    campaign's row-builder, and the function RETURNETH the single row it
+    produced. A raise escapes to the caller, which recordeth an EXEC_INVALID row
+    -- no rod is ever lost.*
+    """
+    _worktree_fresh(head, wt_path)
+    # machine-local provisioning: the SDK pointer is uncommitted by
+    # law, so the lab cannot inherit it from the revision. Copy it in
+    # (provisioning, not test content) before any harness may speak.
+    prov = os.path.join(ROOT, "android", "local.properties")
+    if os.path.exists(prov):
+        shutil.copyfile(prov, os.path.join(wt_path, "android", "local.properties"))
+    # *** THE SWIFT NATIVE SUPPLY, BEFORE THE BASELINE MAY SPEAK, AND
+    # BEFORE THE MIRROR SYNC THAT CARRIETH IT TO THE COMPILER. ***
+    #
+    # *A Swift rod is judged by compiling and executing the candidate at
+    # this head, and BOTH require the pinned native artifact: the engine
+    # importeth the ignored GENERATED `SQLCipherTrustedExpectation.swift`
+    # (absent from a pristine worktree, so the baseline would not compile)
+    # and the mandatory native arms need the verified image or they SKIP
+    # (and a skip measureth nothing, so the baseline reads INVALID).*
+    # **So the lab provisioneth the whole supply from the WORKTREE'S OWN
+    # builder/register, ONCE per campaign, and a failure is a NAMED
+    # refusal -- never a skip, never a kill.** *The env passed below
+    # carrieth the exact artifact dir and `DYLD_LIBRARY_PATH`, so the
+    # native arms execute rather than silently skip.*
+    swift_native = entry["platform"] == "swift" and not entry.get("guard_file")
+    harness_env = None
+    if swift_native:
+        harness_env, prov_log, prov_reason = _provision_swift_native(wt_path)
+        if harness_env is None:
+            if emit_dir:
+                # *** THE FULL BUILDER/VERIFIER OUTPUT IS RETAINED, never
+                # truncated: the row may carry the concise reason, but the
+                # evidence a reader re-checks is the whole blob, written as
+                # this rod's baseline log (its only phase). ***
+                log_dir = os.path.join(emit_dir, "logs")
+                os.makedirs(log_dir, exist_ok=True)
+                open(os.path.join(log_dir, entry["id"] + ".baseline.log"), "w",
+                     encoding="utf-8").write(
+                         "(the Swift native supply could not be provisioned: %s)\n\n%s"
+                         % (prov_reason, prov_log))
+            _say("  EXEC_INVALID  %-34s supply: %s" % (entry["id"], prov_reason[:100]))
+            return mrow(entry, head, "semantic", 0, None,
+                        [entry["witness"]], None, "EXEC_INVALID",
+                        "the Swift native supply could not be provisioned: " + prov_reason,
+                        None)
+    # the mirrored package is the compiler's true input on the swift
+    # side; regenerate it in the lab so the run reads the very sources
+    # under audit, and let any drift show rather than be hidden.
+    # *** A GUARD-SCRIPT ROD COMPILES NOTHING: its oracle is the guard's
+    # own process, which reads the worktree directly, so re-syncing the
+    # Swift mirror would be pure cost on a rod whose file is not a mirror
+    # source at all. ***
+    sync_needed = not entry.get("guard_file")
+    if sync_needed:
+        subprocess.run([sys.executable, "scripts/sync_ios_foundation_package.py"],
+                       cwd=wt_path, capture_output=True, timeout=300, check=True)
+    target = os.path.join(wt_path, entry["file"])
+    text = open(target, encoding="utf-8").read()
+    anchor_count = text.count(entry["find"])
+    if anchor_count != 1:
+        _say("  SKIPPED  %-34s anchor %d -- the needle moved on"
+             % (entry["id"], anchor_count))
+        return mrow(entry, head, "semantic", anchor_count, None,
+                    [entry["witness"]], None, "SKIPPED",
+                    "anchor seen %d times; never counted as a catch" % anchor_count,
+                    None)
+    # *** WITNESS-PRESENCE PREFLIGHT: THE NAMED ARM MUST EXIST IN THE COURT
+    # AT THE AUDITED COMMIT, OR THE ROD CANNOT BE AIMED. ***
+    #
+    # *A witness that is ABSENT from a court bundle runs ZERO tests that match
+    # it, so the "baseline green" is a green over a class that never contained
+    # the witness -- the exact false-green section 21 refuses. This is also the
+    # MIRROR-DRIFT signal: a lane built from the GENERATED package will present
+    # a stale class if the sync did not run, so a missing witness is refused BY
+    # NAME here rather than emerging later as an innocent-looking SKIP.*
+    court = entry.get("court")
+    witness = entry.get("witness")
+    if court and witness and not witness.startswith("COMPILE_NEGATIVE"):
+        court_path = os.path.join(wt_path, court)
+        if os.path.isfile(court_path):
+            body = open(court_path, encoding="utf-8").read()
+            # swift `func`, python `def`, kotlin `fun` -- the named arm's decl
+            present = any(("%s %s(" % (kw, witness)) in body
+                          for kw in ("func", "def", "fun"))
+            if not present:
+                _say("  SKIPPED  %-34s witness ABSENT from the court" % entry["id"])
+                return mrow(entry, head, "semantic", 0, None,
+                            [witness], None, "SKIPPED",
+                            f"the named witness {witness!r} is ABSENT from {court} at this commit -- "
+                            f"a court that never contained the witness cannot be aimed (a missing sync "
+                            f"or an unlanded arm), never a catch", None)
+    # 1. the baseline must pass unmutated, or nothing below may claim a kill
+    #
+    # *** A BASELINE THAT HANGS OR THROWS IS RECORDED, NOT DROPPED. ***
+    #
+    # *THE DEFECT THIS CLOSES: `_run_harness` was called with NO guard, so a baseline `TimeoutExpired` escaped
+    # the per-rod `try` and reached... the outer handler, where `rows` never received a row for this rod. **A
+    # campaign that crashes on rod 12 produceth a manifest with eleven rows and an exception traceback -- and
+    # eleven KILLED rows in a file named `manifest.json` read as a complete, green campaign.** So the baseline
+    # is guarded exactly as the mutant and the restoration already are, its raw stderr is retained, and the
+    # row is written with an explicit outcome.*
+    try:
+        base = _run_harness(entry, wt_path, timeout=harness_timeout, env=harness_env)
+    except subprocess.TimeoutExpired as exc:
+        if emit_dir:
+            log_dir = os.path.join(emit_dir, "logs")
+            os.makedirs(log_dir, exist_ok=True)
+            blob = (exc.stdout or b"") if isinstance(exc.stdout, bytes) else (exc.stdout or "")
+            if isinstance(blob, bytes):
+                blob = blob.decode("utf-8", "replace")
+            open(os.path.join(log_dir, entry["id"] + ".baseline.log"), "w",
+                 encoding="utf-8").write(str(blob) + "\n\n"
+                                         "(the baseline harness timed out; partial stdout above)")
+        _say("  TIMEOUT  %s (baseline)" % entry["id"])
+        return mrow(entry, head, "semantic", anchor_count, None,
+                    [entry["witness"]], None, "TIMEOUT",
+                    "the BASELINE harness did not settle inside the bound", None)
+    except Exception as exc:  # noqa: BLE001 - a baseline exception must be a ROW, never a lost rod
+        _say("  BASELINE_INVALID  %s :: %s" % (entry["id"], exc))
+        return mrow(entry, head, "semantic", anchor_count, None,
+                    [entry["witness"]], None, "BASELINE_INVALID",
+                    f"the baseline harness raised {type(exc).__name__}: {exc}", None)
+    baseline_ok = (base["build_exit"] == 0 and base["run"] not in (None, 0)
+                   and not base["failed"] and not base["skipped"])
+    # 2. install the mutant, exactly once
+    open(target, "w", encoding="utf-8").write(
+        text.replace(entry["find"], entry["replace"], 1))
+    post = open(target, encoding="utf-8").read()
+    if entry["replace"]:
+        assert post.count(entry["replace"]) == 1 and post.count(entry["find"]) == 0, \
+            "the mutation did not install cleanly"
+    else:
+        # *** AN OMISSION ROD DELETES ITS ANCHOR. *** *A control that
+        # strikes a rendered control by REMOVING it has an empty
+        # replacement, so the install proof is that the anchor is gone
+        # and the file SHRANK by exactly its length -- never that the
+        # empty string "appears once".*
+        assert post.count(entry["find"]) == 0 and len(post) == len(text) - len(entry["find"]), \
+            "the omission did not install cleanly"
+    # the island's compiler reads the mirrored package: after any
+    # mutation of a canonical source the mirror must be re-synced,
+    # or the mutant never reaches the binary and a false escape is
+    # recorded against a witness that never saw the mutation
+    if sync_needed:
+        subprocess.run([sys.executable, "scripts/sync_ios_foundation_package.py"],
+                       cwd=wt_path, capture_output=True, timeout=300, check=True)
+    if entry["platform"] == "swift" and sync_needed:
+        # a witness may only swear upon the mirrored package it saw
+        # with its own eyes: confirm the mutation is in the compiler's
+        # true input, retrying the sync once should a racing teardown
+        # of the previous harness have obscured it
+        mir = os.path.join(wt_path, entry["file"].replace(
+            "ios/Godstone/Sources/", "ios/Packages/GodstoneFoundation/Sources/"))
+        for _ in range(2):
+            mt = open(mir, encoding="utf-8").read()
+            # *** THE MIRROR MUST BE THE MUTANT SOURCE, BYTE FOR BYTE. ***
+            # *For an insertion rod that meaneth the replacement is present
+            # once and the anchor gone; for an OMISSION rod (empty
+            # replacement) it meaneth the anchor is gone and the file is
+            # exactly the mutant target -- an "the empty string appears
+            # once" test would be vacuous.*
+            if mt == open(target, encoding="utf-8").read():
+                break
+            subprocess.run([sys.executable, "scripts/sync_ios_foundation_package.py"],
+                           cwd=wt_path, capture_output=True, timeout=300, check=True)
+        else:
+            raise AssertionError("the mutation never reached the mirrored package: " + mir)
+    # 3. run the witnesses against the mutant
+    try:
+        mutant = _run_harness(entry, wt_path, timeout=harness_timeout, env=harness_env)
+    except subprocess.TimeoutExpired:
+        _say("  TIMEOUT  %s" % entry["id"])
+        return mrow(entry, head, "semantic", anchor_count, None,
+                    [entry["witness"]], None, "TIMEOUT",
+                    "the harness did not settle inside the bound", None)
+    # *** 4. RESTORE THE TREE AND RUN THE ROSTER ONCE MORE. ***
+    #
+    # *A kill is only attributable if the SAME roster passeth on the
+    # restored tree: without this phase, a witness that failed for a
+    # reason that has nothing to do with the mutation -- a flaky arm,
+    # a dirty mirror, a wedged device -- is recorded as a catch.* **So
+    # the restore is EXECUTED, not asserted, and a row without it is
+    # INCOMPLETE rather than KILLED.**
+    open(target, "w", encoding="utf-8").write(text)
+    if sync_needed:
+        subprocess.run([sys.executable, "scripts/sync_ios_foundation_package.py"],
+                       cwd=wt_path, capture_output=True, timeout=300, check=True)
+    try:
+        restr = _run_harness(entry, wt_path, timeout=harness_timeout, env=harness_env)
+        restored_green = {
+            "ok": (restr["build_exit"] == 0 and restr["run"] not in (None, 0)
+                   and not restr["failed"] and not restr["skipped"]),
+            "run": restr["run"], "skipped": restr["skipped"],
+            "failed": sorted(restr["failed"])}
+        restored_blob = restr["blob"]
+    except subprocess.TimeoutExpired:
+        restored_green = {"ok": False, "run": None, "skipped": None,
+                          "failed": [], "note": "the restored-green rerun timed out"}
+        restored_blob = "(the restored-green rerun did not settle inside the bound)"
+    outcome, note = _classify(entry, mutant["build_exit"], mutant["run"],
+                              mutant["failed"], baseline_ok, anchor_count,
+                              mutant["skipped"], restored_green)
+    # *** WHICH INSTRUMENT DID THE KILLING: `compiler` OR `witness`. ***
+    # *A type-enforcement rod is killed by the compiler refusing the mutant
+    # (build_exit != 0); every other kill is the named witness failing. The
+    # two are recorded so a reader can see the compiler carried the kill
+    # rather than having to infer it from a green test log.*
+    kill_channel = ("compiler" if (outcome == "KILLED" and mutant["build_exit"] != 0)
+                    else ("witness" if outcome == "KILLED" else None))
+    entry["ended_utc"] = _now_utc()
+    log_path = None
+    if emit_dir:
+        # *** THE COMPLETE BLOBS, NEVER A TRUNCATION. *** *The old runner
+        # kept `blob0[-4000:]` and `blob[-12000:]`, so a rod whose
+        # evidence lived earlier in its own log had nothing to re-read
+        # and the retained artifact could not settle a dispute about the
+        # run. THREE PHASES, THREE FULL LOGS, EACH WITH ITS OWN DIGEST.*
+        log_dir = os.path.join(emit_dir, "logs")
+        os.makedirs(log_dir, exist_ok=True)
+        for phase, payload in (("baseline", base["blob"]),
+                               ("mutant", mutant["blob"]),
+                               ("restored", restored_blob)):
+            open(os.path.join(log_dir, entry["id"] + "." + phase + ".log"),
+                 "w", encoding="utf-8").write(payload)
+        log_path = os.path.join(log_dir, entry["id"] + ".mutant.log")
+    _say("  %-14s %-34s run=%s skipped=%s failed=%d restored_green=%s :: %s"
+         % (outcome, entry["id"], mutant["run"], mutant["skipped"],
+            len(mutant["failed"]), restored_green.get("ok"), note[:120]))
+    return mrow(entry, head, "semantic", anchor_count, mutant["build_exit"],
+                [entry["witness"]], mutant["run"], outcome, note, log_path,
+                restored_green=restored_green, kill_channel=kill_channel)
+
+
 def run_semantic(report_only, emit_dir, baseline_sha, work_parent, only_ids=None, group=None,
                  harness_timeout=2400):
     head = baseline_sha or subprocess.run(
@@ -3391,7 +3691,6 @@ def run_semantic(report_only, emit_dir, baseline_sha, work_parent, only_ids=None
     if unknown:
         print("::error::unknown rod id(s): " + ", ".join(unknown), file=sys.stderr)
         return 1
-    rows = []
     tally = {k: 0 for k in ("KILLED", "SKIPPED", "BUILD_INVALID", "EXEC_INVALID",
                             "BASELINE_INVALID", "INCOMPLETE", "TIMEOUT", "ESCAPED")}
     # *** EVERY ROW'S PATH IS STORED RELATIVE TO THE CAMPAIGN ROOT. *** *A
@@ -3424,272 +3723,90 @@ def run_semantic(report_only, emit_dir, baseline_sha, work_parent, only_ids=None
           "disposable worktrees; the live tree is never touched)")
     if only_ids:
         print("  (subset: %d of %d row(s), selected by --id)" % (len(selected), len(SEMANTIC)))
-    for spec in selected:
-        entry = dict(spec)
-        entry["patch_sha"] = _sha_text(entry["find"] + "\n==\n" + entry["replace"])
-        entry["started_utc"] = _now_utc()
-        entry["ended_utc"] = None
-        wt_path = os.path.join(work_parent, "wt_" + entry["id"])
-        if os.path.exists(wt_path):
-            _worktree_remove(wt_path)
-        try:
-            _worktree_add(head, wt_path)
-            # machine-local provisioning: the SDK pointer is uncommitted by
-            # law, so the lab cannot inherit it from the revision. Copy it in
-            # (provisioning, not test content) before any harness may speak.
-            prov = os.path.join(ROOT, "android", "local.properties")
-            if os.path.exists(prov):
-                shutil.copyfile(prov, os.path.join(wt_path, "android", "local.properties"))
-            # *** THE SWIFT NATIVE SUPPLY, BEFORE THE BASELINE MAY SPEAK, AND
-            # BEFORE THE MIRROR SYNC THAT CARRIETH IT TO THE COMPILER. ***
-            #
-            # *A Swift rod is judged by compiling and executing the candidate at
-            # this head, and BOTH require the pinned native artifact: the engine
-            # importeth the ignored GENERATED `SQLCipherTrustedExpectation.swift`
-            # (absent from a pristine worktree, so the baseline would not compile)
-            # and the mandatory native arms need the verified image or they SKIP
-            # (and a skip measureth nothing, so the baseline reads INVALID).*
-            # **So the lab provisioneth the whole supply from the WORKTREE'S OWN
-            # builder/register, ONCE per campaign, and a failure is a NAMED
-            # refusal -- never a skip, never a kill.** *The env passed below
-            # carrieth the exact artifact dir and `DYLD_LIBRARY_PATH`, so the
-            # native arms execute rather than silently skip.*
-            swift_native = entry["platform"] == "swift" and not entry.get("guard_file")
-            harness_env = None
-            if swift_native:
-                harness_env, prov_log, prov_reason = _provision_swift_native(wt_path)
-                if harness_env is None:
-                    tally["EXEC_INVALID"] += 1
-                    if emit_dir:
-                        # *** THE FULL BUILDER/VERIFIER OUTPUT IS RETAINED, never
-                        # truncated: the row may carry the concise reason, but the
-                        # evidence a reader re-checks is the whole blob, written as
-                        # this rod's baseline log (its only phase). ***
-                        log_dir = os.path.join(emit_dir, "logs")
-                        os.makedirs(log_dir, exist_ok=True)
-                        open(os.path.join(log_dir, entry["id"] + ".baseline.log"), "w",
-                             encoding="utf-8").write(
-                                 "(the Swift native supply could not be provisioned: %s)\n\n%s"
-                                 % (prov_reason, prov_log))
-                    rows.append(_mrow(entry, head, "semantic", 0, None,
-                                    [entry["witness"]], None, "EXEC_INVALID",
-                                    "the Swift native supply could not be provisioned: " + prov_reason,
-                                    None))
-                    print("  EXEC_INVALID  %-34s supply: %s" % (entry["id"], prov_reason[:100]))
-                    continue
-            # the mirrored package is the compiler's true input on the swift
-            # side; regenerate it in the lab so the run reads the very sources
-            # under audit, and let any drift show rather than be hidden.
-            # *** A GUARD-SCRIPT ROD COMPILES NOTHING: its oracle is the guard's
-            # own process, which reads the worktree directly, so re-syncing the
-            # Swift mirror would be pure cost on a rod whose file is not a mirror
-            # source at all. ***
-            sync_needed = not entry.get("guard_file")
-            if sync_needed:
-                subprocess.run([sys.executable, "scripts/sync_ios_foundation_package.py"],
-                               cwd=wt_path, capture_output=True, timeout=300, check=True)
-            target = os.path.join(wt_path, entry["file"])
-            text = open(target, encoding="utf-8").read()
-            anchor_count = text.count(entry["find"])
-            if anchor_count != 1:
-                tally["SKIPPED"] += 1
-                rows.append(_mrow(entry, head, "semantic", anchor_count, None,
-                                [entry["witness"]], None, "SKIPPED",
-                                "anchor seen %d times; never counted as a catch" % anchor_count,
-                                None))
-                print("  SKIPPED  %-34s anchor %d -- the needle moved on"
-                      % (entry["id"], anchor_count))
-                continue
-            # *** WITNESS-PRESENCE PREFLIGHT: THE NAMED ARM MUST EXIST IN THE COURT
-            # AT THE AUDITED COMMIT, OR THE ROD CANNOT BE AIMED. ***
-            #
-            # *A witness that is ABSENT from a court bundle runs ZERO tests that match
-            # it, so the "baseline green" is a green over a class that never contained
-            # the witness -- the exact false-green section 21 refuses. This is also the
-            # MIRROR-DRIFT signal: a lane built from the GENERATED package will present
-            # a stale class if the sync did not run, so a missing witness is refused BY
-            # NAME here rather than emerging later as an innocent-looking SKIP.*
-            court = entry.get("court")
-            witness = entry.get("witness")
-            if court and witness and not witness.startswith("COMPILE_NEGATIVE"):
-                court_path = os.path.join(wt_path, court)
-                if os.path.isfile(court_path):
-                    body = open(court_path, encoding="utf-8").read()
-                    # swift `func`, python `def`, kotlin `fun` -- the named arm's decl
-                    present = any(("%s %s(" % (kw, witness)) in body
-                                  for kw in ("func", "def", "fun"))
-                    if not present:
-                        tally["SKIPPED"] += 1
-                        rows.append(_mrow(entry, head, "semantic", 0, None,
-                                        [witness], None, "SKIPPED",
-                                        f"the named witness {witness!r} is ABSENT from {court} at this commit -- "
-                                        f"a court that never contained the witness cannot be aimed (a missing sync "
-                                        f"or an unlanded arm), never a catch", None))
-                        print("  SKIPPED  %-34s witness ABSENT from the court" % entry["id"])
-                        continue
-            # 1. the baseline must pass unmutated, or nothing below may claim a kill
-            #
-            # *** A BASELINE THAT HANGS OR THROWS IS RECORDED, NOT DROPPED. ***
-            #
-            # *THE DEFECT THIS CLOSES: `_run_harness` was called with NO guard, so a baseline `TimeoutExpired` escaped
-            # the per-rod `try` and reached... the outer handler, where `rows` never received a row for this rod. **A
-            # campaign that crashes on rod 12 produceth a manifest with eleven rows and an exception traceback -- and
-            # eleven KILLED rows in a file named `manifest.json` read as a complete, green campaign.** So the baseline
-            # is guarded exactly as the mutant and the restoration already are, its raw stderr is retained, and the
-            # row is written with an explicit outcome.*
+    # *** TWO RESOURCE-CLASS WORKERS, AT MOST. ***
+    #
+    # *The classes are `ios-ui` (every rod that builds and drives a simulator
+    # lane, and therefore contends for the simulator supply) and `other` (the
+    # jvm/python/swift/shell/selftest rods, whose only shared exclusive resource
+    # is the one macOS SQLCipher build cache, which the `macos` mode's
+    # once-per-campaign build already owns).*
+    #
+    # **The partition is the settled execution contract: ALL `ios-ui` entries
+    # run SERIALLY in ONE worker, ALL other entries run SERIALLY in ONE worker,
+    # and the ONLY concurrency is between these two disjoint classes.** *Each
+    # class executes strictly in LEDGER order, so no two rods of one class ever
+    # run at once; and a single-class selection runneth that one class serially
+    # with no pool at all, so the old single-worker behaviour is preserved
+    # exactly where the pool would buy nothing.*
+    ui_entries = [s for s in selected if s["platform"] == "ios-ui"]
+    other_entries = [s for s in selected if s["platform"] != "ios-ui"]
+    classes = [(n, c) for n, c in (("ios-ui", ui_entries), ("other", other_entries)) if c]
+
+    def _campaign_class(entries):
+        """Run one resource class serially, in ledger order; return its rows."""
+        out = []
+        for spec in entries:
+            entry = dict(spec)
+            entry["patch_sha"] = _sha_text(entry["find"] + "\n==\n" + entry["replace"])
+            entry["started_utc"] = _now_utc()
+            entry["ended_utc"] = None
+            wt_path = os.path.join(work_parent, "wt_" + entry["id"])
             try:
-                base = _run_harness(entry, wt_path, timeout=harness_timeout, env=harness_env)
-            except subprocess.TimeoutExpired as exc:
-                tally["TIMEOUT"] += 1
-                row = _mrow(entry, head, "semantic", anchor_count, None,
-                           [entry["witness"]], None, "TIMEOUT",
-                           "the BASELINE harness did not settle inside the bound", None)
-                if emit_dir:
-                    log_dir = os.path.join(emit_dir, "logs")
-                    os.makedirs(log_dir, exist_ok=True)
-                    blob = (exc.stdout or b"") if isinstance(exc.stdout, bytes) else (exc.stdout or "")
-                    if isinstance(blob, bytes):
-                        blob = blob.decode("utf-8", "replace")
-                    open(os.path.join(log_dir, entry["id"] + ".baseline.log"), "w",
-                         encoding="utf-8").write(str(blob) + "\n\n"
-                                                 "(the baseline harness timed out; partial stdout above)")
-                rows.append(row)
-                print("  TIMEOUT  %s (baseline)" % entry["id"])
-                continue
-            except Exception as exc:  # noqa: BLE001 - a baseline exception must be a ROW, never a lost rod
-                tally["BASELINE_INVALID"] += 1
-                rows.append(_mrow(entry, head, "semantic", anchor_count, None,
-                                 [entry["witness"]], None, "BASELINE_INVALID",
-                                 f"the baseline harness raised {type(exc).__name__}: {exc}", None))
-                print("  BASELINE_INVALID  %s :: %s" % (entry["id"], exc))
-                continue
-            baseline_ok = (base["build_exit"] == 0 and base["run"] not in (None, 0)
-                           and not base["failed"] and not base["skipped"])
-            # 2. install the mutant, exactly once
-            open(target, "w", encoding="utf-8").write(
-                text.replace(entry["find"], entry["replace"], 1))
-            post = open(target, encoding="utf-8").read()
-            if entry["replace"]:
-                assert post.count(entry["replace"]) == 1 and post.count(entry["find"]) == 0, \
-                    "the mutation did not install cleanly"
-            else:
-                # *** AN OMISSION ROD DELETES ITS ANCHOR. *** *A control that
-                # strikes a rendered control by REMOVING it has an empty
-                # replacement, so the install proof is that the anchor is gone
-                # and the file SHRANK by exactly its length -- never that the
-                # empty string "appears once".*
-                assert post.count(entry["find"]) == 0 and len(post) == len(text) - len(entry["find"]), \
-                    "the omission did not install cleanly"
-            # the island's compiler reads the mirrored package: after any
-            # mutation of a canonical source the mirror must be re-synced,
-            # or the mutant never reaches the binary and a false escape is
-            # recorded against a witness that never saw the mutation
-            if sync_needed:
-                subprocess.run([sys.executable, "scripts/sync_ios_foundation_package.py"],
-                               cwd=wt_path, capture_output=True, timeout=300, check=True)
-            if entry["platform"] == "swift" and sync_needed:
-                # a witness may only swear upon the mirrored package it saw
-                # with its own eyes: confirm the mutation is in the compiler's
-                # true input, retrying the sync once should a racing teardown
-                # of the previous harness have obscured it
-                mir = os.path.join(wt_path, entry["file"].replace(
-                    "ios/Godstone/Sources/", "ios/Packages/GodstoneFoundation/Sources/"))
-                for _ in range(2):
-                    mt = open(mir, encoding="utf-8").read()
-                    # *** THE MIRROR MUST BE THE MUTANT SOURCE, BYTE FOR BYTE. ***
-                    # *For an insertion rod that meaneth the replacement is present
-                    # once and the anchor gone; for an OMISSION rod (empty
-                    # replacement) it meaneth the anchor is gone and the file is
-                    # exactly the mutant target -- an "the empty string appears
-                    # once" test would be vacuous.*
-                    if mt == open(target, encoding="utf-8").read():
-                        break
-                    subprocess.run([sys.executable, "scripts/sync_ios_foundation_package.py"],
-                                   cwd=wt_path, capture_output=True, timeout=300, check=True)
-                else:
-                    raise AssertionError("the mutation never reached the mirrored package: " + mir)
-            # 3. run the witnesses against the mutant
-            try:
-                mutant = _run_harness(entry, wt_path, timeout=harness_timeout, env=harness_env)
-            except subprocess.TimeoutExpired:
-                tally["TIMEOUT"] += 1
-                rows.append(_mrow(entry, head, "semantic", anchor_count, None,
-                                [entry["witness"]], None, "TIMEOUT",
-                                "the harness did not settle inside the bound", None))
-                print("  TIMEOUT  %s" % entry["id"])
-                continue
-            # *** 4. RESTORE THE TREE AND RUN THE ROSTER ONCE MORE. ***
-            #
-            # *A kill is only attributable if the SAME roster passeth on the
-            # restored tree: without this phase, a witness that failed for a
-            # reason that has nothing to do with the mutation -- a flaky arm,
-            # a dirty mirror, a wedged device -- is recorded as a catch.* **So
-            # the restore is EXECUTED, not asserted, and a row without it is
-            # INCOMPLETE rather than KILLED.**
-            open(target, "w", encoding="utf-8").write(text)
-            if sync_needed:
-                subprocess.run([sys.executable, "scripts/sync_ios_foundation_package.py"],
-                               cwd=wt_path, capture_output=True, timeout=300, check=True)
-            try:
-                restr = _run_harness(entry, wt_path, timeout=harness_timeout, env=harness_env)
-                restored_green = {
-                    "ok": (restr["build_exit"] == 0 and restr["run"] not in (None, 0)
-                           and not restr["failed"] and not restr["skipped"]),
-                    "run": restr["run"], "skipped": restr["skipped"],
-                    "failed": sorted(restr["failed"])}
-                restored_blob = restr["blob"]
-            except subprocess.TimeoutExpired:
-                restored_green = {"ok": False, "run": None, "skipped": None,
-                                  "failed": [], "note": "the restored-green rerun timed out"}
-                restored_blob = "(the restored-green rerun did not settle inside the bound)"
-            outcome, note = _classify(entry, mutant["build_exit"], mutant["run"],
-                                      mutant["failed"], baseline_ok, anchor_count,
-                                      mutant["skipped"], restored_green)
-            # *** WHICH INSTRUMENT DID THE KILLING: `compiler` OR `witness`. ***
-            # *A type-enforcement rod is killed by the compiler refusing the mutant
-            # (build_exit != 0); every other kill is the named witness failing. The
-            # two are recorded so a reader can see the compiler carried the kill
-            # rather than having to infer it from a green test log.*
-            kill_channel = ("compiler" if (outcome == "KILLED" and mutant["build_exit"] != 0)
-                            else ("witness" if outcome == "KILLED" else None))
-            tally[outcome] += 1
-            entry["ended_utc"] = _now_utc()
-            log_path = None
-            if emit_dir:
-                # *** THE COMPLETE BLOBS, NEVER A TRUNCATION. *** *The old runner
-                # kept `blob0[-4000:]` and `blob[-12000:]`, so a rod whose
-                # evidence lived earlier in its own log had nothing to re-read
-                # and the retained artifact could not settle a dispute about the
-                # run. THREE PHASES, THREE FULL LOGS, EACH WITH ITS OWN DIGEST.*
-                log_dir = os.path.join(emit_dir, "logs")
-                os.makedirs(log_dir, exist_ok=True)
-                for phase, payload in (("baseline", base["blob"]),
-                                       ("mutant", mutant["blob"]),
-                                       ("restored", restored_blob)):
-                    open(os.path.join(log_dir, entry["id"] + "." + phase + ".log"),
-                         "w", encoding="utf-8").write(payload)
-                log_path = os.path.join(log_dir, entry["id"] + ".mutant.log")
-            rows.append(_mrow(entry, head, "semantic", anchor_count, mutant["build_exit"],
-                            [entry["witness"]], mutant["run"], outcome, note, log_path,
-                            restored_green=restored_green, kill_channel=kill_channel))
-            print("  %-14s %-34s run=%s skipped=%s failed=%d restored_green=%s :: %s"
-                  % (outcome, entry["id"], mutant["run"], mutant["skipped"],
-                     len(mutant["failed"]), restored_green.get("ok"), note[:120]))
-        except Exception as exc:  # noqa: BLE001 - NO ROD MAY BE LOST TO AN EXCEPTION
-            # *** THE CATCH-ALL THAT MAKES A PARTIAL CAMPAIGN VISIBLE. ***
-            #
-            # *An exception anywhere in the per-rod body -- an anchor assert, a worktree failure, a mirror sync error --
-            # used to escape this loop entirely, so the row for this rod was simply ABSENT from the manifest. **A
-            # manifest with an omitted rod reads as a campaign with fewer rods, not as a campaign that crashed, and the
-            # rods it DID carry are all KILLED.** So the failure is recorded as an explicit row with the exception's
-            # type and text, and the tally carrieth it.*
-            tally["EXEC_INVALID"] += 1
-            rows.append(_mrow(entry, head, "semantic", 0, None, [entry.get("witness")], None,
-                             "EXEC_INVALID",
-                             f"the rod body raised {type(exc).__name__}: {exc}", None))
-            print("  EXEC_INVALID  %s :: %s" % (entry["id"], exc))
-        finally:
-            _worktree_remove(wt_path)
+                out.append(_run_semantic_rod(entry, head, wt_path, harness_timeout,
+                                             emit_dir, _mrow))
+            except Exception as exc:  # noqa: BLE001 - NO ROD MAY BE LOST TO AN EXCEPTION
+                # *** THE CATCH-ALL THAT MAKES A PARTIAL CAMPAIGN VISIBLE. ***
+                #
+                # *An exception anywhere in the per-rod body -- an anchor assert, a worktree failure, a mirror
+                # sync error -- used to escape this loop entirely, so the row for this rod was simply ABSENT from
+                # the manifest. **A manifest with an omitted rod reads as a campaign with fewer rods, not as a
+                # campaign that crashed, and the rods it DID carry are all KILLED.** So the failure is recorded as
+                # an explicit row with the exception's type and text, and the tally carrieth it.*
+                _say("  EXEC_INVALID  %s :: %s" % (entry["id"], exc))
+                out.append(_mrow(entry, head, "semantic", 0, None, [entry.get("witness")],
+                                 None, "EXEC_INVALID",
+                                 f"the rod body raised {type(exc).__name__}: {exc}", None))
+            finally:
+                _worktree_remove(wt_path)
+        return out
+
+    # *** ANY UNEXPECTED WORKER ERROR FAILS THE CAMPAIGN, NEVER A PARTIAL PASS. ***
+    #
+    # *A worker's whole class is guarded rod-by-rod, so the only way `f.result()`
+    # raiseth is a failure of the campaign MACHINERY itself (a dead worker, a
+    # broken lock) -- and such a failure must abort the run rather than let a
+    # truncated row set be written as a manifest. The manifest is built ONCE,
+    # AFTER BOTH workers have settled, from the actual rows they returned, and
+    # ordered by the ORIGINAL selected list -- so the workers' interleaving is
+    # invisible in the artifact.*
+    rows_by_id = {}
+    if len(classes) <= 1:
+        # a single class (or no rod at all) is run serially: no pool, no queue.
+        for _name, entries in classes:
+            for r in _campaign_class(entries):
+                rows_by_id[r["id"]] = r
+    else:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=2,
+                                                   thread_name_prefix="semantic") as pool:
+            futures = {pool.submit(_campaign_class, entries): name
+                       for name, entries in classes}
+            for fut in concurrent.futures.as_completed(futures):
+                name = futures[fut]
+                try:
+                    produced = fut.result()
+                except Exception as exc:  # noqa: BLE001 - machinery failure fails the campaign
+                    print("::error::the %s resource-class worker failed: %s: %s"
+                          % (name, type(exc).__name__, exc), file=sys.stderr)
+                    return 1
+                for r in produced:
+                    rows_by_id[r["id"]] = r
+    rows = [rows_by_id[s["id"]] for s in selected if s["id"] in rows_by_id]
+    # *** THE TALLY IS DERIVED FROM THE ACTUAL ROWS, IN LEDGER ORDER. ***
+    # *It is a pure function of the rows the workers returned -- no counting
+    # inside a concurrent worker, so no rod can be counted twice or missed.*
+    tally = dict.fromkeys(tally, 0)
+    for r in rows:
+        tally[r["outcome"]] += 1
     print("  per outcome: " + ", ".join("%s=%d" % (k, tally[k]) for k in
           ("KILLED", "SKIPPED", "BUILD_INVALID", "EXEC_INVALID", "BASELINE_INVALID",
            "INCOMPLETE", "TIMEOUT", "ESCAPED")))
