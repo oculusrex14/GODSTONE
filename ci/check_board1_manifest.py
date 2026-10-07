@@ -928,7 +928,10 @@ def lane_check(lane_id: str, base: Path = ROOT, *, evidence_root: Path | None = 
                     + list(clr._report_lane_isolation_problems(lane_id, evidence_root=evidence_root)))
         return problems, android_lane_totals(lane_id, base, evidence_root=evidence_root)
     if evidence_root is not None:
-        # *** THE REAL CHECKER IS RE-BASED ON THE EVIDENCE ROOT, SO EVERY EVIDENCE READ USES THE DOWNLOADED ROOT. ***
+        # *** ONLY THE EVIDENCE IS RELOCATED -- `REPO` IS NEVER MUTATED, SO THE SOURCE CENSUS AND SOURCE DIGESTS
+        # STAY ON THE COMMITTED `base`. ***
+        # *The existing adaptor reads every evidence artifact under `evidence_root` and leaves `base` as the source
+        # of truth, so a downloaded root cannot re-derive a population or a digest.*
         return evidence_scoped_lane_check(lane_id, base, evidence_root=evidence_root)
     clr = _import_ci("check_lane_results", base)
     if lane_id == "ios:foundation":
@@ -1078,13 +1081,13 @@ def lane_facts(lane_id: str, base: Path = ROOT, *, check_fn=lane_check, digest_f
     except Exception as exc:  # noqa: BLE001
         facts["problems"].append(f"the roster size could not be derived: {type(exc).__name__}: {exc}")
     try:
-        # *** THE RECORDED FACTS ARE DERIVED FROM THE SAME EVIDENCE ROOT THE ARTIFACTS ARE HASHED FROM. ***
-        # *When the caller supplied no explicit `check_fn` fixture, the REAL checker is re-based on `evidence_root`
-        # (falling back to `base`), so the recorded counts and the later re-check agree and both read the downloaded
-        # artifacts being bound.*
+        # *** ONE CANONICAL DISPATCHER FOR THE DEFAULT CHECKER, WHETHER OR NOT AN EVIDENCE ROOT IS SUPPLIED. ***
+        # *The SOURCE CENSUS and the SOURCE DIGESTS stay on the committed `base`; the canonical lane dispatcher
+        # relocates ONLY the evidence -- report lanes through the registry's own verifier, unit/iOS lanes through the
+        # existing evidence-scoped adaptor -- so the recorded counts and the later re-check agree and both read the
+        # downloaded artifacts being bound.*
         if check_fn is lane_check or check_fn is None:
-            problems, totals = (evidence_scoped_lane_check(lane_id, base, evidence_root=evidence_root)
-                                if evidence_root is not None else lane_check(lane_id, base))
+            problems, totals = lane_check(lane_id, base, evidence_root=evidence_root)
         else:
             problems, totals = check_fn(lane_id, base) if _takes_base(check_fn) else check_fn(lane_id)
         facts["problems"].extend(problems)

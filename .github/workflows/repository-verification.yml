@@ -1102,15 +1102,14 @@ jobs:
           GODSTONE_BOARD1_INTEGRATION_REPORT: ${{ runner.temp }}/board1-inputs/board1-integration-ci/integration-report.json
         run: |
           set -euo pipefail
-          frozen_args=()
+          set --
           if [[ -n "${GODSTONE_BOARD1_FROZEN_TAG:-}" ]]; then
-            frozen_args=(
-              --tag "$GODSTONE_BOARD1_FROZEN_TAG"
-              --frozen-artifacts "$RUNNER_TEMP/board1-frozen/gates"
-              --frozen-campaign-dir "$RUNNER_TEMP/board1-frozen/campaign"
-              --frozen-evidence-root "$RUNNER_TEMP/board1-frozen/evidence"
+            set -- \
+              --tag "$GODSTONE_BOARD1_FROZEN_TAG" \
+              --frozen-artifacts "$RUNNER_TEMP/board1-frozen/gates" \
+              --frozen-campaign-dir "$RUNNER_TEMP/board1-frozen/campaign" \
+              --frozen-evidence-root "$RUNNER_TEMP/board1-frozen/evidence" \
               --frozen-proof-dir "$RUNNER_TEMP/board1-frozen/proof"
-            )
           fi
           python3 tools/readiness/run.py board1 verify \
             --campaign-dir "$RUNNER_TEMP/board1-campaign" \
@@ -1118,7 +1117,7 @@ jobs:
             --proof-dir "$RUNNER_TEMP/board1-proof" \
             --artifacts "$RUNNER_TEMP/board1-gates" \
             --manifest-out "$RUNNER_TEMP/board1-gate-manifest.json" \
-            "${frozen_args[@]}"
+            "$@"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: board1-gate-manifest

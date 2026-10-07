@@ -440,3 +440,43 @@ whose acceptance probability is ~1/2 and whose 65-draw failure is genuinely impo
 The limitation this section used to state is therefore retired for THIS flake — 'the lane is green' now means
 the logged passing run AND a fixture that cannot fail on a 1/256 coin — while the older caveat still stands
 for anything not re-measured: every claim in this document is a LOCAL host reproduction.
+
+## 7. C11 exact-candidate handover (2026-10-07) — campaign PASSED, hosted gate launch FAILED before the gates
+
+Immutable C11 `74d2e67c7eb891cc5a50ad8aa6d5ca8614138c39` (tree
+`c8e9c91a0e9e030062e8c7957f4ad7bea1cc65f7`, branch `board1/rc15-final-74d2e67c`) was pushed ONCE and
+repository verification `37595351687/1` ran to completion. Its SIX prerequisite jobs all passed, and the
+terminal job's real full canonical campaign PASSED: **179 SEMANTIC controls KILLED and, reported SEPARATELY,
+2 STRUCTURAL controls KILLED** (`LANE-ROD-6-android-runner-aborts-before-digests`, `ARCHIVE-PROV-007`), all 543
+baseline/mutant/restored phase-log digests matching the original manifest, every row baseline-SHA and
+tested-tree equal to C11 and restored-green, 178 `witness` + 1 `compiler` kill channel over the semantic set.
+The campaign took 17181 s. The two lineages are NEVER summed.
+
+The terminal job then FAILED BEFORE the Python gate set started: macOS `/bin/bash` 3.2.57 under
+`set -euo pipefail` rejected the empty `frozen_args` array (`line 12: frozen_args[@]: unbound variable`).
+Consequences, all measured: NO gate invocation, NO `board1-gate-manifest` artifact (its upload step SKIPPED),
+NO all-27 result, NO tag, NO child A. The separate `always()` `board1-terminal-evidence` uploader SUCCEEDED and
+its 545-file archive (5735297 bytes, sha256 `9aee6acc…`) is retained. All 14 repository originals
+(266711431 bytes total) were parent-verified against the GitHub API digests AND their DGX copies' SHA/stat;
+none was deleted, and no completed producer was rerun.
+
+**Two source repairs landed and are committed with this handover record:**
+1. `.github/workflows/repository-verification.yml` — the empty-optional-argument boundary is now portable
+   `set --` / quoted `"$@"`; every frozen flag, the guard and the verify command are unchanged.
+2. `ci/check_board1_manifest.py` — `lane_facts` now dispatches EVERY default real checker through the ONE
+   canonical `lane_check(..., evidence_root=...)`, so report lanes reach the registry verifier instead of the
+   generic adaptor; committed source digests and external evidence relocation are both preserved.
+
+**Exact resume point.** A real native-Bash replay of that exact corrected block against the retained C11
+originals passed all 27 local gates in 710.85 s on clean unchanged C11 (source `all=[]` and the generated
+native expectation `93a68319…` unchanged at both ends). The post-gate manifest emission then refused ONLY the
+three Android report lanes (`android:ui`, `android:simulator`, `android:production`) as STALE, each comparing
+the recorded digest against the empty-tree digest `e3b0c442…`. The dispatcher repair already makes the recorded
+and recomputed digests AGREE; the remaining hop is inside `ci/lane_registry.py`'s `verify_lane_report`, which
+still recomputes the compared digest from a source set carrying no entry for the three report lanes. THAT hop
+is the next action, and it requires a NEW immutable candidate (C12) with its OWN complete exact-source proof:
+fresh 179 semantic + 2 structural reported separately, all ten lanes and mode-`all`, all 27 local gates, all
+seven hosted jobs, annotated rc15 and the sole attestation-file direct child A. C11 is NOT final C and no
+completed producer is rerun or relabelled.
+
+Posture is unchanged: `REMEDIATION_IN_PROGRESS`, five external obligations OPEN/BLOCKED, zero `VERIFIED_FIXED`.
